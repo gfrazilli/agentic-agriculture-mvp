@@ -8,6 +8,7 @@
     <meta name="color-scheme" content="light">
     <title>{% block title %}{{ PRODUCT_NAME }}{% endblock %}</title>
     <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+    {% block extra_head %}{% endblock %}
   </head>
   <body>
     <header class="site-header">
@@ -40,7 +41,8 @@
     </main>
 
     <footer class="site-footer">
-      <span>{% translate "A secure foundation for the MVP." %}</span>
+      <span>{% translate "Satellite signals translated into practical field zones." %}</span>
     </footer>
+    {% block extra_scripts %}{% endblock %}
   </body>
 </html>

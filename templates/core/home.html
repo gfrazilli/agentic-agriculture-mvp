@@ -1,33 +1,227 @@
 {% extends "base.html" %}
-{% load i18n %}
+{% load i18n static %}
 
-{% block title %}{% blocktranslate with product_name=PRODUCT_NAME %}Home · {{ product_name }}{% endblocktranslate %}{% endblock %}
+{% block title %}{% blocktranslate with product_name=PRODUCT_NAME %}Map your field · {{ product_name }}{% endblocktranslate %}{% endblock %}
+
+{% block extra_head %}
+  <link rel="stylesheet" href="{% static 'core/farmer-app.css' %}">
+{% endblock %}
 
 {% block content %}
-  <section class="hero" aria-labelledby="home-title">
-    <div>
-      <div class="eyebrow">{% translate "Agricultural foundation" %}</div>
-      <h1 id="home-title">{% translate "The data layer is ready." %}</h1>
-      <p class="lede">
-        {% blocktranslate with username=demo_username %}Welcome, {{ username }}. Fields, boundaries, analyses and agent-session contracts are active.{% endblocktranslate %}
-      </p>
-    </div>
-    <div class="status-card">
-      <span class="status-dot" aria-hidden="true"></span>
+  <section
+    class="farmer-app"
+    id="farmer-app"
+    data-fields-url="/api/v1/fields/"
+    data-boundary-suffix="boundary-suggestions/"
+    data-analyses-url="/api/v1/analyses/"
+    data-fixture-field-url="/api/v1/fixtures/field-draft/"
+    data-fixture-boundary-url="/api/v1/fixtures/boundary-suggestion/"
+    data-fixture-running-url="/api/v1/fixtures/analysis-running/"
+    data-fixture-result-url="/api/v1/fixtures/analysis-result/"
+    data-demo-default="{% if guided_demo_default %}true{% else %}false{% endif %}"
+    data-copy-loading="{% translate 'Please wait…' %}"
+    data-copy-generic-error="{% translate 'Something went wrong. Please try again.' %}"
+    data-copy-session-expired="{% translate 'Your session expired. Sign in again.' %}"
+    data-copy-conflict="{% translate 'This action conflicts with the current state. Refresh and try again.' %}"
+    data-copy-invalid="{% translate 'Check the highlighted information and try again.' %}"
+    data-copy-rate-limit="{% translate 'The daily analysis limit was reached. Try again tomorrow.' %}"
+    data-copy-location-wait="{% translate 'Requesting your location…' %}"
+    data-copy-location-ok="{% translate 'Location captured. You can fine-tune the coordinates below.' %}"
+    data-copy-location-denied="{% translate 'Location was not shared. Enter the coordinates or use the demonstration property.' %}"
+    data-copy-demo-loaded="{% translate 'Demonstration property loaded.' %}"
+    data-copy-field-saving="{% translate 'Saving the field and estimating its boundary…' %}"
+    data-copy-boundary-ready="{% translate 'Boundary estimate ready. Review every vertex before confirming.' %}"
+    data-copy-boundary-saving="{% translate 'Confirming the boundary…' %}"
+    data-copy-analysis-queue="{% translate 'Sending the analysis to the processing queue…' %}"
+    data-copy-analysis-poll="{% translate 'The analysis is still processing. This page will update automatically.' %}"
+    data-copy-analysis-failed="{% translate 'The analysis could not be completed.' %}"
+    data-copy-zone-lower="{% translate 'Lower relative development' %}"
+    data-copy-zone-similar="{% translate 'Similar relative development' %}"
+    data-copy-zone-higher="{% translate 'Higher relative development' %}"
+    data-copy-zone="{% translate 'Zone' %}"
+    data-copy-hectares="{% translate 'ha' %}"
+    data-copy-map-label="{% translate 'Relative development zones within the confirmed field boundary' %}"
+  >
+    <div class="farmer-intro">
       <div>
-        <strong>{% translate "Persistence configured" %}</strong>
-        <span>{% translate "Production agricultural data uses Firestore." %}</span>
+        <p class="farmer-kicker">{% translate "Precision agriculture, made accessible" %}</p>
+        <h1>{% translate "See differences the eye cannot see." %}</h1>
+        <p class="farmer-lede">
+          {% translate "Mark your field, compare its spectral history and receive a clear map of areas that developed differently." %}
+        </p>
+      </div>
+      <div class="farmer-intro-actions">
+        <span class="signed-in">
+          <span class="status-dot" aria-hidden="true"></span>
+          {% blocktranslate with username=demo_username %}Connected as {{ username }}{% endblocktranslate %}
+        </span>
+        <form method="post" action="{% url 'logout' %}">
+          {% csrf_token %}
+          <button class="text-button" type="submit">{% translate "Sign out" %}</button>
+        </form>
       </div>
     </div>
-  </section>
 
-  <section class="next-step" aria-labelledby="next-step-title">
-    <h2 id="next-step-title">{% translate "Ready for the interface" %}</h2>
-    <p>{% translate "The next interface can consume the stable versioned API and fixtures." %}</p>
-  </section>
+    <nav class="stepper" aria-label="{% translate 'Analysis steps' %}">
+      <ol>
+        <li class="is-active" data-step-indicator="1" aria-current="step"><span>1</span><strong>{% translate "Field" %}</strong></li>
+        <li data-step-indicator="2"><span>2</span><strong>{% translate "Boundary" %}</strong></li>
+        <li data-step-indicator="3"><span>3</span><strong>{% translate "Analysis" %}</strong></li>
+        <li data-step-indicator="4"><span>4</span><strong>{% translate "Zones" %}</strong></li>
+      </ol>
+    </nav>
 
-  <form method="post" action="{% url 'logout' %}">
-    {% csrf_token %}
-    <button class="secondary-button" type="submit">{% translate "Sign out" %}</button>
-  </form>
+    <div class="app-alert" id="app-alert" role="alert" hidden></div>
+
+    <section class="app-card app-step is-active" id="step-field" data-step="1" aria-labelledby="field-title">
+      <div class="step-heading">
+        <span class="eyebrow">{% translate "Step 1 of 4 · Field details" %}</span>
+        <h2 id="field-title">{% translate "Register your field" %}</h2>
+        <p>{% translate "A reference point is enough for Gemini to start a boundary estimate. You remain in control of the final polygon." %}</p>
+      </div>
+
+      <form id="field-form" class="field-form" novalidate="novalidate">
+        {% csrf_token %}
+        <div class="form-grid">
+          <div class="field-control field-wide">
+            <label for="field-name">{% translate "Field name" %}<span aria-hidden="true"> *</span></label>
+            <input id="field-name" name="name" maxlength="120" value="{% translate 'My field' %}" required autocomplete="off">
+          </div>
+          <div class="field-control field-wide">
+            <label for="crop">{% translate "Crop" %}<span aria-hidden="true"> *</span></label>
+            <select id="crop" name="crop" required>
+              <option value="">{% translate "Select a crop" %}</option>
+              <option value="soja">{% translate "Soybean" %}</option>
+              <option value="milho">{% translate "Corn" %}</option>
+              <option value="cafe">{% translate "Coffee" %}</option>
+              <option value="cana-de-acucar">{% translate "Sugarcane" %}</option>
+              <option value="algodao">{% translate "Cotton" %}</option>
+              <option value="trigo">{% translate "Wheat" %}</option>
+              <option value="arroz">{% translate "Rice" %}</option>
+              <option value="outra">{% translate "Other" %}</option>
+            </select>
+          </div>
+          <div class="field-control">
+            <label for="season-start">{% translate "Planting date" %}<span aria-hidden="true"> *</span></label>
+            <input id="season-start" name="season_start" type="date" required>
+          </div>
+          <div class="field-control">
+            <label for="season-end">{% translate "Expected end" %}<span aria-hidden="true"> *</span></label>
+            <input id="season-end" name="season_end" type="date" required>
+          </div>
+          <div class="field-control field-wide">
+            <label for="estimated-area">{% translate "Estimated area" %}<span aria-hidden="true"> *</span></label>
+            <div class="input-suffix">
+              <input id="estimated-area" name="estimated_area_ha" type="number" min="0.1" max="500" step="0.1" inputmode="decimal" required>
+              <span>{% translate "hectares" %}</span>
+            </div>
+          </div>
+        </div>
+
+        <fieldset class="location-fieldset">
+          <legend>{% translate "Reference location" %}</legend>
+          <p>{% translate "Use the phone location, the demonstration property, or type a coordinate." %}</p>
+          <div class="location-actions">
+            <button class="choice-button" id="use-location" type="button"><span aria-hidden="true">⌖</span>{% translate "Use my location" %}</button>
+            <button class="choice-button" id="use-demo" type="button"><span aria-hidden="true">◇</span>{% translate "Use demonstration property" %}</button>
+          </div>
+          <p class="location-status" id="location-status" aria-live="polite"></p>
+          <div class="form-grid coordinate-grid">
+            <div class="field-control">
+              <label for="latitude">{% translate "Latitude" %}</label>
+              <input id="latitude" name="latitude" type="number" min="-90" max="90" step="0.000001" inputmode="decimal" required>
+            </div>
+            <div class="field-control">
+              <label for="longitude">{% translate "Longitude" %}</label>
+              <input id="longitude" name="longitude" type="number" min="-180" max="180" step="0.000001" inputmode="decimal" required>
+            </div>
+          </div>
+        </fieldset>
+
+        <label class="demo-switch">
+          <input id="guided-demo" type="checkbox" {% if guided_demo_default %}checked{% endif %}>
+          <span><strong>{% translate "Guided demonstration" %}</strong><small>{% translate "Completes the last step with the audited sample result while preserving the real API flow." %}</small></span>
+        </label>
+
+        <div class="form-actions">
+          <span class="required-note">{% translate "* Required fields" %}</span>
+          <button class="primary-button app-primary" id="create-field" type="submit">{% translate "Estimate field boundary" %}<span aria-hidden="true">→</span></button>
+        </div>
+      </form>
+    </section>
+
+    <section class="app-card app-step" id="step-boundary" data-step="2" aria-labelledby="boundary-title" hidden>
+      <div class="step-heading split-heading">
+        <div>
+          <span class="eyebrow">{% translate "Step 2 of 4 · Boundary" %}</span>
+          <h2 id="boundary-title">{% translate "Confirm the cultivated area" %}</h2>
+          <p>{% translate "The green polygon is an estimate. Drag its points or edit the coordinates, then confirm only when it matches the field." %}</p>
+        </div>
+        <span class="confidence-badge" id="boundary-confidence"></span>
+      </div>
+
+      <div class="map-shell">
+        <svg id="boundary-map" class="field-map" viewBox="0 0 640 360" role="img" aria-label="{% translate 'Editable estimated field boundary' %}"></svg>
+        <div class="map-caption"><span><i class="map-swatch boundary-swatch"></i>{% translate "Estimated boundary" %}</span><span id="boundary-area"></span></div>
+      </div>
+
+      <details class="coordinate-editor">
+        <summary>{% translate "Edit coordinates precisely" %}</summary>
+        <div id="boundary-points" class="boundary-points"></div>
+        <button class="secondary-button" id="redraw-boundary" type="button">{% translate "Update map" %}</button>
+      </details>
+
+      <div class="review-note"><strong>{% translate "Farmer confirmation is required" %}</strong><span>{% translate "The system never silently assumes that the estimated polygon is correct." %}</span></div>
+      <div class="form-actions">
+        <button class="text-button" data-back-to="1" type="button">← {% translate "Edit details" %}</button>
+        <button class="primary-button app-primary" id="confirm-boundary" type="button">{% translate "This boundary is correct" %}<span aria-hidden="true">→</span></button>
+      </div>
+    </section>
+
+    <section class="app-card app-step" id="step-analysis" data-step="3" aria-labelledby="analysis-title" hidden>
+      <div class="analysis-state">
+        <div class="orbit" aria-hidden="true"><span></span><i></i></div>
+        <span class="eyebrow">{% translate "Step 3 of 4 · Analysis" %}</span>
+        <h2 id="analysis-title">{% translate "Gemini is coordinating the field analysis" %}</h2>
+        <p id="progress-message">{% translate "Preparing the Sentinel-2 image sequence." %}</p>
+        <div class="progress-track" id="analysis-progress" role="progressbar" aria-live="polite" aria-label="{% translate 'Analysis progress' %}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress-bar"></span></div>
+        <strong class="progress-value" id="progress-value">0%</strong>
+        <div class="analysis-pipeline" aria-label="{% translate 'Analysis pipeline' %}"><span>{% translate "Acquire scenes" %}</span><span>{% translate "Compare NDVI · NDRE · NDMI" %}</span><span>{% translate "Group zones" %}</span></div>
+      </div>
+    </section>
+
+    <section class="app-card app-step" id="step-results" data-step="4" role="region" aria-labelledby="results-title" hidden>
+      <div id="analysis-results" role="region" aria-labelledby="results-title">
+        <div class="step-heading results-heading">
+          <div><span class="eyebrow">{% translate "Step 4 of 4 · Result" %}</span><h2 id="results-title">{% translate "Your field does not develop uniformly" %}</h2><p id="results-summary"></p></div>
+          <span class="result-badge">{% translate "Sentinel-2 · Multispectral" %}</span>
+        </div>
+
+        <div class="results-layout">
+          <div class="map-shell result-map-shell">
+            <svg id="zone-map" class="field-map" viewBox="0 0 640 360" role="img" aria-label="{% translate 'Relative development zones within the confirmed field boundary' %}"></svg>
+            <div class="zone-legend" id="zone-legend"></div>
+          </div>
+          <div class="zone-cards" id="zone-cards"></div>
+        </div>
+
+        <section class="evidence-panel" aria-labelledby="evidence-title">
+          <div><span class="eyebrow">{% translate "Evidence" %}</span><h3 id="evidence-title">{% translate "What Gemini compared" %}</h3><p>{% translate "Visible and infrared bands were transformed into three complementary vegetation indices and compared through time." %}</p></div>
+          <div class="index-pills" id="index-pills"></div>
+          <div class="scene-table-wrap">
+            <table class="scene-table"><thead><tr><th>{% translate "Date" %}</th><th>NDVI</th><th>NDRE</th><th>NDMI</th><th>{% translate "Cloud cover" %}</th></tr></thead><tbody id="scene-rows"></tbody></table>
+          </div>
+          <p class="provenance" id="result-provenance"></p>
+        </section>
+
+        <aside class="scope-note"><span aria-hidden="true">i</span><div><strong>{% translate "A map for investigation, not a diagnosis" %}</strong><p id="result-disclaimer"></p></div></aside>
+        <div class="form-actions result-actions">
+          <button class="secondary-button" id="restart-analysis" type="button">{% translate "Map another field" %}</button>
+          <button class="primary-button app-primary" id="download-geojson" type="button">{% translate "Download zone GeoJSON" %}</button>
+        </div>
+      </div>
+    </section>
+  </section>
 {% endblock %}
+
+{% block extra_scripts %}<script src="{% static 'core/farmer-app.js' %}" defer></script>{% endblock %}
