@@ -69,7 +69,14 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 @require_GET
 @demo_login_required
 def home_view(request: HttpRequest) -> HttpResponse:
-    return render(request, "core/home.html", {"demo_username": settings.DEMO_USERNAME})
+    return render(
+        request,
+        "core/home.html",
+        {
+            "demo_username": settings.DEMO_USERNAME,
+            "guided_demo_default": not settings.IS_PRODUCTION,
+        },
+    )
 
 
 def _no_store(response: JsonResponse) -> JsonResponse:

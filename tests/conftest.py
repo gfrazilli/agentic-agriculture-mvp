@@ -1,10 +1,3 @@
-import os
-import django
-
-# Inicializa o Django antes de importar ou usar componentes dele
-os.environ.setdefault("DJANGO_SETTINGS_MODULE", "config.settings")
-django.setup()
-
 import pytest
 from django.contrib.auth.hashers import make_password
 

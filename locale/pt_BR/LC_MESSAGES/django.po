@@ -75,3 +75,282 @@ msgstr "A próxima interface pode consumir a API versionada e os exemplos estáv
 
 msgid "Sign out"
 msgstr "Sair"
+
+# Farmer interface (PR3A)
+msgid "Satellite signals translated into practical field zones."
+msgstr "Sinais de satélite traduzidos em zonas práticas da lavoura."
+
+#, python-format
+msgid "Map your field · %(product_name)s"
+msgstr "Mapeie sua lavoura · %(product_name)s"
+
+msgid "Please wait…"
+msgstr "Aguarde…"
+
+msgid "Something went wrong. Please try again."
+msgstr "Algo deu errado. Tente novamente."
+
+msgid "Your session expired. Sign in again."
+msgstr "Sua sessão expirou. Entre novamente."
+
+msgid "This action conflicts with the current state. Refresh and try again."
+msgstr "Esta ação conflita com o estado atual. Atualize a página e tente novamente."
+
+msgid "Check the highlighted information and try again."
+msgstr "Confira as informações destacadas e tente novamente."
+
+msgid "The daily analysis limit was reached. Try again tomorrow."
+msgstr "O limite diário de análises foi atingido. Tente novamente amanhã."
+
+msgid "Requesting your location…"
+msgstr "Solicitando sua localização…"
+
+msgid "Location captured. You can fine-tune the coordinates below."
+msgstr "Localização capturada. Você pode ajustar as coordenadas abaixo."
+
+msgid "Location was not shared. Enter the coordinates or use the demonstration property."
+msgstr "A localização não foi compartilhada. Digite as coordenadas ou use a propriedade demonstrativa."
+
+msgid "Demonstration property loaded."
+msgstr "Propriedade demonstrativa carregada."
+
+msgid "Saving the field and estimating its boundary…"
+msgstr "Salvando a lavoura e estimando seu limite…"
+
+msgid "Boundary estimate ready. Review every vertex before confirming."
+msgstr "Estimativa do limite pronta. Revise cada ponto antes de confirmar."
+
+msgid "Confirming the boundary…"
+msgstr "Confirmando o limite…"
+
+msgid "Sending the analysis to the processing queue…"
+msgstr "Enviando a análise para a fila de processamento…"
+
+msgid "The analysis is still processing. This page will update automatically."
+msgstr "A análise ainda está sendo processada. Esta página será atualizada automaticamente."
+
+msgid "The analysis could not be completed."
+msgstr "Não foi possível concluir a análise."
+
+msgid "Lower relative development"
+msgstr "Desenvolvimento relativo menor"
+
+msgid "Similar relative development"
+msgstr "Desenvolvimento relativo semelhante"
+
+msgid "Higher relative development"
+msgstr "Desenvolvimento relativo maior"
+
+msgid "Zone"
+msgstr "Zona"
+
+msgid "ha"
+msgstr "ha"
+
+msgid "Relative development zones within the confirmed field boundary"
+msgstr "Zonas de desenvolvimento relativo dentro do limite confirmado da lavoura"
+
+msgid "Precision agriculture, made accessible"
+msgstr "Agricultura de precisão ao alcance de todos"
+
+msgid "See differences the eye cannot see."
+msgstr "Veja diferenças que os olhos não conseguem ver."
+
+msgid "Mark your field, compare its spectral history and receive a clear map of areas that developed differently."
+msgstr "Marque sua lavoura, compare seu histórico espectral e receba um mapa claro das áreas que se desenvolveram de forma diferente."
+
+#, python-format
+msgid "Connected as %(username)s"
+msgstr "Conectado como %(username)s"
+
+msgid "Analysis steps"
+msgstr "Etapas da análise"
+
+msgid "Field"
+msgstr "Lavoura"
+
+msgid "Boundary"
+msgstr "Limite"
+
+msgid "Analysis"
+msgstr "Análise"
+
+msgid "Zones"
+msgstr "Zonas"
+
+msgid "Step 1 of 4 · Field details"
+msgstr "Etapa 1 de 4 · Dados da lavoura"
+
+msgid "Register your field"
+msgstr "Cadastre sua lavoura"
+
+msgid "A reference point is enough for Gemini to start a boundary estimate. You remain in control of the final polygon."
+msgstr "Um ponto de referência basta para o Gemini iniciar a estimativa do limite. Você mantém o controle sobre o polígono final."
+
+msgid "Field name"
+msgstr "Nome da lavoura"
+
+msgid "My field"
+msgstr "Minha lavoura"
+
+msgid "Crop"
+msgstr "Cultura"
+
+msgid "Select a crop"
+msgstr "Selecione uma cultura"
+
+msgid "Soybean"
+msgstr "Soja"
+
+msgid "Corn"
+msgstr "Milho"
+
+msgid "Coffee"
+msgstr "Café"
+
+msgid "Sugarcane"
+msgstr "Cana-de-açúcar"
+
+msgid "Cotton"
+msgstr "Algodão"
+
+msgid "Wheat"
+msgstr "Trigo"
+
+msgid "Rice"
+msgstr "Arroz"
+
+msgid "Other"
+msgstr "Outra"
+
+msgid "Planting date"
+msgstr "Data do plantio"
+
+msgid "Expected end"
+msgstr "Término previsto"
+
+msgid "Estimated area"
+msgstr "Área estimada"
+
+msgid "hectares"
+msgstr "hectares"
+
+msgid "Reference location"
+msgstr "Localização de referência"
+
+msgid "Use the phone location, the demonstration property, or type a coordinate."
+msgstr "Use a localização do celular, a propriedade demonstrativa ou digite uma coordenada."
+
+msgid "Use my location"
+msgstr "Usar minha localização"
+
+msgid "Use demonstration property"
+msgstr "Usar propriedade demonstrativa"
+
+msgid "Latitude"
+msgstr "Latitude"
+
+msgid "Longitude"
+msgstr "Longitude"
+
+msgid "Guided demonstration"
+msgstr "Demonstração guiada"
+
+msgid "Completes the last step with the audited sample result while preserving the real API flow."
+msgstr "Conclui a última etapa com o resultado de exemplo auditado, preservando o fluxo real da API."
+
+msgid "* Required fields"
+msgstr "* Campos obrigatórios"
+
+msgid "Estimate field boundary"
+msgstr "Estimar limite da lavoura"
+
+msgid "Step 2 of 4 · Boundary"
+msgstr "Etapa 2 de 4 · Limite"
+
+msgid "Confirm the cultivated area"
+msgstr "Confirme a área cultivada"
+
+msgid "The green polygon is an estimate. Drag its points or edit the coordinates, then confirm only when it matches the field."
+msgstr "O polígono verde é uma estimativa. Arraste os pontos ou edite as coordenadas e só confirme quando ele corresponder à lavoura."
+
+msgid "Editable estimated field boundary"
+msgstr "Estimativa editável do limite da lavoura"
+
+msgid "Estimated boundary"
+msgstr "Limite estimado"
+
+msgid "Edit coordinates precisely"
+msgstr "Editar coordenadas com precisão"
+
+msgid "Update map"
+msgstr "Atualizar mapa"
+
+msgid "Farmer confirmation is required"
+msgstr "A confirmação do agricultor é obrigatória"
+
+msgid "The system never silently assumes that the estimated polygon is correct."
+msgstr "O sistema nunca pressupõe silenciosamente que o polígono estimado está correto."
+
+msgid "Edit details"
+msgstr "Editar dados"
+
+msgid "This boundary is correct"
+msgstr "Este limite está correto"
+
+msgid "Step 3 of 4 · Analysis"
+msgstr "Etapa 3 de 4 · Análise"
+
+msgid "Gemini is coordinating the field analysis"
+msgstr "O Gemini está coordenando a análise da lavoura"
+
+msgid "Preparing the Sentinel-2 image sequence."
+msgstr "Preparando a sequência de imagens do Sentinel-2."
+
+msgid "Analysis progress"
+msgstr "Progresso da análise"
+
+msgid "Analysis pipeline"
+msgstr "Fluxo da análise"
+
+msgid "Acquire scenes"
+msgstr "Buscar imagens"
+
+msgid "Compare NDVI · NDRE · NDMI"
+msgstr "Comparar NDVI · NDRE · NDMI"
+
+msgid "Group zones"
+msgstr "Agrupar zonas"
+
+msgid "Step 4 of 4 · Result"
+msgstr "Etapa 4 de 4 · Resultado"
+
+msgid "Your field does not develop uniformly"
+msgstr "Sua lavoura não se desenvolve de forma uniforme"
+
+msgid "Sentinel-2 · Multispectral"
+msgstr "Sentinel-2 · Multiespectral"
+
+msgid "Evidence"
+msgstr "Evidências"
+
+msgid "What Gemini compared"
+msgstr "O que o Gemini comparou"
+
+msgid "Visible and infrared bands were transformed into three complementary vegetation indices and compared through time."
+msgstr "Bandas visíveis e infravermelhas foram transformadas em três índices complementares de vegetação e comparadas ao longo do tempo."
+
+msgid "Date"
+msgstr "Data"
+
+msgid "Cloud cover"
+msgstr "Cobertura de nuvens"
+
+msgid "A map for investigation, not a diagnosis"
+msgstr "Um mapa para investigação, não um diagnóstico"
+
+msgid "Map another field"
+msgstr "Mapear outra lavoura"
+
+msgid "Download zone GeoJSON"
+msgstr "Baixar GeoJSON das zonas"
