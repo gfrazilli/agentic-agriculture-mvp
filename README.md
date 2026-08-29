@@ -1,23 +1,44 @@
 # Agentic Agriculture MVP
 
-Secure Django bootstrap for the Agentic Agriculture MVP. This first delivery provides a
-database-free demonstration login, a protected home page, PT-BR/English UI, operational
-probes, and one production image ready for Google Cloud Run.
+Google Cloud-ready Django API for the Agentic Agriculture MVP. The current delivery provides
+a secure demonstration login, versioned agricultural contracts, stable UI fixtures, real
+Firestore/Cloud Storage/Cloud Tasks adapters, PT-BR/English UI, operational probes, and one
+production image for Cloud Run.
 
 ## Scope
 
-This repository currently contains only the application foundation:
+This repository currently contains the application foundation and PR2 contract layer:
 
 - Python 3.12 and Django 5.2;
 - one demonstration account configured entirely through environment variables;
-- Django signed-cookie sessions, with no session table or database dependency;
+- Django signed-cookie sessions, with no relational session table;
 - protected `/`, login, POST-only logout, language selection, and static assets;
+- strict Pydantic contracts for fields, boundaries, analyses, agent sessions, and feedback;
+- authenticated `/api/v1/` endpoints with idempotency, validation, and daily analysis limits;
+- stable example payloads for the beginner-friendly PR3A interface;
+- Firestore persistence, Cloud Storage artifact, and Cloud Tasks queue adapters;
+- an authenticated internal Cloud Tasks receiver contract;
+- deterministic in-memory adapters for automated tests and local prototyping;
 - public liveness and readiness endpoints;
 - Gunicorn + WhiteNoise production runtime;
 - pytest, Ruff, Docker/Compose, and GitHub Actions.
 
-Agricultural agents, domain workflows, persistence, integrations, queues, and uploads are
-deliberately outside this delivery and belong to later work.
+Sentinel acquisition, spectral processing, Gemini/ADK agents, MCP tools, and the final UI are
+deliberately outside this delivery and belong to later PRs. The PR2 result fixture is a stable
+interface contract, not a claim that the processing pipeline already ran.
+
+## Data storage
+
+Yes, the application has a production database. Agricultural records are stored in
+**Firestore**: fields, analyses, agent sessions, feedback, idempotency claims, and daily
+usage counters each have their own collection. Larger imagery and generated artifacts use
+**Cloud Storage**, while **Cloud Tasks** coordinates asynchronous work.
+
+The `DATABASES` entry in Django is intentionally a dummy relational backend only because the
+single demonstration login uses a signed cookie and does not need SQL tables. It does not
+mean agricultural data is kept in cookies or discarded. Local development defaults to a
+process-local memory adapter; `APP_ENV=production` fails immediately unless Firestore,
+Cloud Storage, and Cloud Tasks are selected.
 
 ## Quick start with Docker
 
@@ -85,18 +106,37 @@ this automatically.
 | `PRODUCT_NAME` | No | Product label displayed in the UI. |
 | `DEMO_USERNAME` | Yes for readiness | Username for the single demonstration account. |
 | `DEMO_PASSWORD_HASH` | Yes for readiness | Encoded Django password hash, never a plain password. |
+| `PERSISTENCE_BACKEND` | Production | `memory` locally or `firestore` in production. |
+| `ARTIFACT_BACKEND` | Production | `memory` locally or `gcs` in production. |
+| `TASK_BACKEND` | Production | `memory` locally or `cloud_tasks` in production. |
+| `GOOGLE_CLOUD_PROJECT` | Google backends | Google Cloud project ID. |
+| `FIRESTORE_DATABASE` | No | Firestore database; defaults to `(default)`. |
+| `GCS_BUCKET` | GCS | Bucket for imagery and generated artifacts. |
+| `CLOUD_TASKS_LOCATION` | Cloud Tasks | Queue region. |
+| `CLOUD_TASKS_QUEUE` | Cloud Tasks | Queue name. |
+| `CLOUD_TASKS_BASE_URL` | Cloud Tasks | HTTPS base URL of the Cloud Run service. |
+| `CLOUD_TASKS_SERVICE_ACCOUNT` | Recommended | Service account used for OIDC task calls. |
+| `CLOUD_TASKS_SHARED_SECRET` | Cloud Tasks | Random 32+ character secret used only for internal task delivery. |
+| `ANALYSIS_DAILY_LIMIT` | No | New analyses/regroupings per browser/day; defaults to 3. |
+| `API_MAX_REQUEST_BYTES` | No | JSON body ceiling; defaults to 256 KiB. |
 | `DJANGO_TIME_ZONE` | No | Defaults to `America/Sao_Paulo`. |
 | `DJANGO_SESSION_COOKIE_AGE` | No | Maximum session age in seconds; defaults to 8 hours. |
 | `DJANGO_COOKIE_SECURE` | No | Defaults to true in production. |
 | `DJANGO_SECURE_SSL_REDIRECT` | No | Defaults to true in production. |
 | `DJANGO_SECURE_HSTS_SECONDS` | No | Defaults to one year in production and zero locally. |
 | `PORT` | No | HTTP port; defaults to `8080`, as expected by Cloud Run. |
-| `WEB_CONCURRENCY` | No | Gunicorn workers; defaults to 2. |
+| `WEB_CONCURRENCY` | No | Gunicorn workers; use 1 with memory, 2+ with Firestore. |
 | `GUNICORN_THREADS` | No | Threads per worker; defaults to 4. |
 
-Production startup fails if `DJANGO_SECRET_KEY` or `DJANGO_ALLOWED_HOSTS` is absent. The
-readiness probe returns `503` if the demonstration username or password hash is absent or
-malformed.
+Production startup fails if `DJANGO_SECRET_KEY` or `DJANGO_ALLOWED_HOSTS` is absent, or if an
+in-memory agriculture backend is selected. The readiness probe returns `503` if credentials
+or the selected backend configuration is incomplete, so a Cloud Run restart cannot silently
+switch field or analysis data to memory. Readiness validates configuration; it deliberately
+does not add a remote Firestore/Storage/Tasks round trip to every health probe.
+
+The in-memory repository is process-local. Keep `WEB_CONCURRENCY=1` while using it; use the
+Firestore emulator for persistent local integration work. Firestore production can use
+multiple workers and Cloud Run instances safely.
 
 ## Routes
 
@@ -108,6 +148,28 @@ malformed.
 | `POST` | `/i18n/setlang/` | Persists PT-BR or English in Django's language cookie. |
 | `GET` | `/healthz` | Cheap liveness response, independent of auth and persistence. |
 | `GET` | `/readyz` | Validates the minimum demonstration credential configuration. |
+| `POST` | `/internal/tasks/analyses` | Authenticated delivery contract for Cloud Tasks. |
+
+### API v1
+
+All API routes require the demonstration session and return JSON envelopes with
+`schema_version: "1.0"`. POST operations require an `Idempotency-Key` header. Reusing a key
+with the same body atomically creates at most one resource and replays the original result;
+reusing it with a different body returns 409.
+
+| Method | Route | Description |
+| --- | --- | --- |
+| `GET`, `POST` | `/api/v1/fields/` | List or create crop fields. |
+| `GET`, `PATCH` | `/api/v1/fields/{id}/` | Read or edit a field and confirm its boundary. |
+| `POST` | `/api/v1/fields/{id}/boundary-suggestions/` | Return the PR2 suggestion contract. |
+| `POST` | `/api/v1/analyses/` | Queue an analysis for a confirmed field. |
+| `GET` | `/api/v1/analyses/{id}/` | Read analysis state/result. |
+| `POST` | `/api/v1/analyses/{id}/recluster/` | Queue a 2-7-zone regrouping. |
+| `POST` | `/api/v1/agent-sessions/` | Start a voice or text agent session. |
+| `GET`, `PATCH` | `/api/v1/agent-sessions/{id}/` | Read or update agent-session context. |
+| `POST` | `/api/v1/feedback/` | Record farmer feedback. |
+| `GET` | `/api/v1/fixtures/` | List stable PR3A fixture names. |
+| `GET` | `/api/v1/fixtures/{name}/` | Fetch and validate a stable fixture. |
 
 ## Quality checks
 
@@ -119,8 +181,9 @@ python manage.py check
 docker build -t agentic-agriculture-mvp .
 ```
 
-Tests intentionally run without `django_db`: there are no models, migrations, SQLite file,
-or session table in this bootstrap.
+Tests intentionally run without `django_db`: PR2 uses repository ports rather than Django
+ORM models. The in-memory adapter and Firestore adapter share the same contracts; local
+persistent integration testing can use the Firestore emulator.
 
 ## Cloud Run
 
@@ -135,18 +198,34 @@ DJANGO_CSRF_TRUSTED_ORIGINS=https://<service host>
 DEMO_USERNAME=<demo user>
 DEMO_PASSWORD_HASH=<encoded Django hash>
 PRODUCT_NAME=Agentic Agriculture
+PERSISTENCE_BACKEND=firestore
+ARTIFACT_BACKEND=gcs
+TASK_BACKEND=cloud_tasks
+GOOGLE_CLOUD_PROJECT=<project id>
+GCS_BUCKET=<artifact bucket>
+CLOUD_TASKS_LOCATION=<queue region>
+CLOUD_TASKS_QUEUE=<queue name>
+CLOUD_TASKS_BASE_URL=https://<service host>
+CLOUD_TASKS_SHARED_SECRET=<managed random secret of at least 32 characters>
 ```
 
 The image runs as a non-root user, listens on `0.0.0.0:$PORT`, serves static assets through
 WhiteNoise, and understands Cloud Run's `X-Forwarded-Proto` header. Prefer your cloud secret
-manager for the secret key and password hash rather than plain deployment arguments.
+manager for the Django secret, password hash, and internal task secret rather than plain
+deployment arguments.
+
+PR2's internal receiver authenticates and validates Cloud Tasks deliveries, then explicitly
+acknowledges them as `pipeline_implemented: false` without inventing a result. Sentinel and
+Gemini processing will replace that acknowledgement in a later PR. The shared-secret header
+is the application-level authentication mechanism; `X-CloudTasks-TaskName` is also required
+as delivery metadata, but is not treated as a secret.
 
 ## Security model and limitations
 
 Signed-cookie sessions are integrity-protected but **not encrypted**. This application stores
-only an authentication-version HMAC in the session cookie—never the username, password, or
-configured password hash. Changing the username, password hash, or Django secret key
-invalidates existing sessions.
+only an authentication-version HMAC and an opaque random browser actor ID in the session
+cookie—never the username, password, or configured password hash. Changing the username,
+password hash, or Django secret key invalidates existing sessions.
 
 This is deliberately a single-account demonstration gate, not a full identity system. It has
 no centralized session revocation, user administration, audit history, or distributed login

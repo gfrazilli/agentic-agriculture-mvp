@@ -51,27 +51,27 @@ msgstr "Continuar"
 msgid "Home · %(product_name)s"
 msgstr "Início · %(product_name)s"
 
-msgid "Operational foundation"
-msgstr "Base operacional"
+msgid "Agricultural foundation"
+msgstr "Base agrícola"
 
-msgid "The MVP is ready to grow."
-msgstr "O MVP está pronto para crescer."
+msgid "The data layer is ready."
+msgstr "A camada de dados está pronta."
 
 #, python-format
-msgid "Welcome, %(username)s. Authentication, health checks and deployment foundations are active."
-msgstr "Boas-vindas, %(username)s. Autenticação, verificações de saúde e bases de implantação estão ativas."
+msgid "Welcome, %(username)s. Fields, boundaries, analyses and agent-session contracts are active."
+msgstr "Boas-vindas, %(username)s. Os contratos de talhões, limites, análises e sessões do agente estão ativos."
 
-msgid "Bootstrap online"
-msgstr "Bootstrap online"
+msgid "Persistence configured"
+msgstr "Persistência configurada"
 
-msgid "No database is required."
-msgstr "Nenhum banco de dados é necessário."
+msgid "Production agricultural data uses Firestore."
+msgstr "Os dados agrícolas de produção usam Firestore."
 
-msgid "What comes next"
-msgstr "O que vem a seguir"
+msgid "Ready for the interface"
+msgstr "Pronto para a interface"
 
-msgid "Agricultural workflows will be added in a later delivery."
-msgstr "Os fluxos agrícolas serão adicionados em uma entrega posterior."
+msgid "The next interface can consume the stable versioned API and fixtures."
+msgstr "A próxima interface pode consumir a API versionada e os exemplos estáveis."
 
 msgid "Sign out"
 msgstr "Sair"

@@ -5,6 +5,7 @@ from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from agriculture.checks import backend_configuration
 from core.demo_auth import (
     begin_demo_session,
     credentials_are_configured,
@@ -83,9 +84,13 @@ def healthz(request: HttpRequest) -> JsonResponse:  # noqa: ARG001
 
 @require_GET
 def readyz(request: HttpRequest) -> JsonResponse:  # noqa: ARG001
-    ready = credentials_are_configured()
+    checks = {
+        "demo_credentials": credentials_are_configured(),
+        **backend_configuration(),
+    }
+    ready = all(checks.values())
     payload = {
         "status": "ready" if ready else "not_ready",
-        "checks": {"demo_credentials": ready},
+        "checks": checks,
     }
     return _no_store(JsonResponse(payload, status=200 if ready else 503))

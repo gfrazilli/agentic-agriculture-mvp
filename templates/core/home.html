@@ -6,24 +6,24 @@
 {% block content %}
   <section class="hero" aria-labelledby="home-title">
     <div>
-      <div class="eyebrow">{% translate "Operational foundation" %}</div>
-      <h1 id="home-title">{% translate "The MVP is ready to grow." %}</h1>
+      <div class="eyebrow">{% translate "Agricultural foundation" %}</div>
+      <h1 id="home-title">{% translate "The data layer is ready." %}</h1>
       <p class="lede">
-        {% blocktranslate with username=demo_username %}Welcome, {{ username }}. Authentication, health checks and deployment foundations are active.{% endblocktranslate %}
+        {% blocktranslate with username=demo_username %}Welcome, {{ username }}. Fields, boundaries, analyses and agent-session contracts are active.{% endblocktranslate %}
       </p>
     </div>
     <div class="status-card">
       <span class="status-dot" aria-hidden="true"></span>
       <div>
-        <strong>{% translate "Bootstrap online" %}</strong>
-        <span>{% translate "No database is required." %}</span>
+        <strong>{% translate "Persistence configured" %}</strong>
+        <span>{% translate "Production agricultural data uses Firestore." %}</span>
       </div>
     </div>
   </section>
 
   <section class="next-step" aria-labelledby="next-step-title">
-    <h2 id="next-step-title">{% translate "What comes next" %}</h2>
-    <p>{% translate "Agricultural workflows will be added in a later delivery." %}</p>
+    <h2 id="next-step-title">{% translate "Ready for the interface" %}</h2>
+    <p>{% translate "The next interface can consume the stable versioned API and fixtures." %}</p>
   </section>
 
   <form method="post" action="{% url 'logout' %}">

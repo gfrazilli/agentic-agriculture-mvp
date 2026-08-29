@@ -4,7 +4,7 @@ from django.contrib.sessions.backends.signed_cookies import SessionStore
 from django.test import Client, override_settings
 from django.urls import reverse
 
-from core.demo_auth import AUTH_SESSION_KEY
+from core.demo_auth import AUTH_ACTOR_KEY, AUTH_SESSION_KEY
 from tests.conftest import TEST_PASSWORD, TEST_PASSWORD_HASH, TEST_USERNAME
 
 
@@ -77,7 +77,7 @@ def test_csrf_is_required_for_login():
     assert response.status_code == 403
 
 
-def test_signed_cookie_contains_only_auth_version(client):
+def test_signed_cookie_contains_only_auth_version_and_opaque_actor(client):
     client.post(
         reverse("login"),
         {"username": TEST_USERNAME, "password": TEST_PASSWORD},
@@ -85,7 +85,9 @@ def test_signed_cookie_contains_only_auth_version(client):
     cookie = client.cookies[settings.SESSION_COOKIE_NAME]
     decoded_session = SessionStore(session_key=cookie.value).load()
 
-    assert set(decoded_session) == {AUTH_SESSION_KEY}
+    assert set(decoded_session) == {AUTH_ACTOR_KEY, AUTH_SESSION_KEY}
+    assert isinstance(decoded_session[AUTH_ACTOR_KEY], str)
+    assert len(decoded_session[AUTH_ACTOR_KEY]) >= 16
     serialized_values = repr(decoded_session)
     assert TEST_USERNAME not in serialized_values
     assert TEST_PASSWORD not in serialized_values
