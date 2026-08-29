@@ -1,13 +1,13 @@
 # Agentic Agriculture MVP
 
-Google Cloud-ready Django API for the Agentic Agriculture MVP. The current delivery provides
-a secure demonstration login, versioned agricultural contracts, stable UI fixtures, real
-Firestore/Cloud Storage/Cloud Tasks adapters, PT-BR/English UI, operational probes, and one
-production image for Cloud Run.
+Google Cloud-ready Django and Google ADK application for the Agentic Agriculture MVP. It
+combines public Sentinel-2 imagery, deterministic multispectral processing, MCP tools, and
+Gemini 3.5+ agents while preserving a stable interface contract for the independently built
+PR3A web UI.
 
 ## Scope
 
-This repository currently contains the application foundation and PR2 contract layer:
+This repository contains the application foundation plus the PR4-PR7 backend stack:
 
 - Python 3.12 and Django 5.2;
 - one demonstration account configured entirely through environment variables;
@@ -17,15 +17,20 @@ This repository currently contains the application foundation and PR2 contract l
 - authenticated `/api/v1/` endpoints with idempotency, validation, and daily analysis limits;
 - stable example payloads for the beginner-friendly PR3A interface;
 - Firestore persistence, Cloud Storage artifact, and Cloud Tasks queue adapters;
-- an authenticated internal Cloud Tasks receiver contract;
+- an authenticated Cloud Tasks worker that runs the Sentinel pipeline;
+- public Sentinel-2 catalog and COG access through Earth Search on AWS;
+- georeferenced boundary suggestions with an explicit low-confidence fallback;
+- calibrated NDVI, NDRE, and NDMI time-series analysis with deterministic 2-7-zone clustering;
+- read-only MCP tools for the geospatial catalog plus grounded repository tools for evidence;
+- a Portuguese Google ADK multi-agent application using Gemini 3.5+;
 - deterministic in-memory adapters for automated tests and local prototyping;
 - public liveness and readiness endpoints;
 - Gunicorn + WhiteNoise production runtime;
 - pytest, Ruff, Docker/Compose, and GitHub Actions.
 
-Sentinel acquisition, spectral processing, Gemini/ADK agents, MCP tools, and the final UI are
-deliberately outside this delivery and belong to later PRs. The PR2 result fixture is a stable
-interface contract, not a claim that the processing pipeline already ran.
+The PR3A interface remains deliberately independent. No template, stylesheet, browser script,
+or UI fixture was changed by PR4-PR7. Example fixtures remain interface contracts and are not
+presented as results from a real field.
 
 ## Data storage
 
@@ -90,6 +95,17 @@ Then run:
 python manage.py runserver
 ```
 
+To inspect the ADK application locally without calling Gemini or MCP during startup:
+
+```powershell
+$env:AGENT_MCP_ENABLED="false"
+$env:DJANGO_SETTINGS_MODULE="config.settings"
+adk api_server --host 127.0.0.1 --port 8001 --session_service_uri=memory:// --artifact_service_uri=memory:// agentic_agriculture
+```
+
+Open <http://127.0.0.1:8001/docs> or call `GET /list-apps`. A model turn requires valid
+Vertex AI credentials and `GOOGLE_CLOUD_PROJECT`.
+
 Compiled PT-BR messages are included in the repository. After editing `locale/**/*.po`,
 run `python manage.py compilemessages` with GNU gettext installed. The Docker build does
 this automatically.
@@ -118,6 +134,16 @@ this automatically.
 | `CLOUD_TASKS_SERVICE_ACCOUNT` | Recommended | Service account used for OIDC task calls. |
 | `CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS` | Cloud Tasks | Worker request deadline; defaults to 900 and must be 60-1800. |
 | `CLOUD_TASKS_SHARED_SECRET` | Cloud Tasks | Random 32+ character secret used only for internal task delivery. |
+| `BOUNDARY_BACKEND` | Production | `fixture` locally or real `geospatial` suggestions. |
+| `ANALYSIS_PIPELINE_BACKEND` | Production | `disabled` locally or the real `sentinel` pipeline. |
+| `ANALYSIS_TARGET_SCENE_COUNT` | No | Target number of observations; must be 2-12. |
+| `ANALYSIS_MAX_DIMENSION` | No | Maximum processing grid dimension; must be 64-1024 pixels. |
+| `AGENT_MODEL` | No | Gemini model; defaults to `gemini-3.5-flash` and rejects versions below 3.5. |
+| `AGENT_MCP_ENABLED` | No | Enables the agent's read-only MCP toolsets. |
+| `AGENT_MCP_URL` | MCP | Streamable HTTP URL of the private MCP service. |
+| `AGENT_MCP_AUDIENCE` | Private Cloud Run MCP | Service origin used to mint the Google ID token. |
+| `GOOGLE_GENAI_USE_VERTEXAI` | Agent | Set to `true` for Vertex AI-backed ADK execution. |
+| `GOOGLE_CLOUD_LOCATION` | Agent | Vertex AI location; defaults to `global`. |
 | `ANALYSIS_DAILY_LIMIT` | No | New analyses/regroupings per browser/day; defaults to 3. |
 | `API_MAX_REQUEST_BYTES` | No | JSON body ceiling; defaults to 256 KiB. |
 | `DJANGO_TIME_ZONE` | No | Defaults to `America/Sao_Paulo`. |
@@ -207,7 +233,7 @@ GOOGLE_CLOUD_PROJECT=<project id>
 GCS_BUCKET=<artifact bucket>
 CLOUD_TASKS_LOCATION=<queue region>
 CLOUD_TASKS_QUEUE=<queue name>
-CLOUD_TASKS_BASE_URL=https://<service host>
+CLOUD_TASKS_BASE_URL=https://<private worker service host>
 CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS=900
 CLOUD_TASKS_SHARED_SECRET=<managed random secret of at least 32 characters>
 ```
@@ -223,11 +249,15 @@ is 900 seconds and its processing lease is 20 minutes. A delivery received while
 active returns a retryable response; if a worker dies, a later retry resumes the analysis instead
 of acknowledging and losing the task.
 
-PR2's internal receiver authenticates and validates Cloud Tasks deliveries, then explicitly
-acknowledges them as `pipeline_implemented: false` without inventing a result. Sentinel and
-Gemini processing will replace that acknowledgement in a later PR. The shared-secret header
-is the application-level authentication mechanism; `X-CloudTasks-TaskName` is also required
-as delivery metadata, but is not treated as a secret.
+The internal receiver authenticates and validates Cloud Tasks deliveries, then runs the real
+Sentinel pipeline when `ANALYSIS_PIPELINE_BACKEND=sentinel`. Development keeps the original
+explicit `pipeline_implemented: false` response when the pipeline is disabled. The shared
+secret is application-level authentication; `X-CloudTasks-TaskName` is required delivery
+metadata but is not treated as a secret.
+
+Deploy the web API, Sentinel worker, MCP server, and ADK API as four independently permissioned
+Cloud Run services built from the same image. See [architecture](docs/ARCHITECTURE.md) and the
+[Cloud Run deployment guide](docs/CLOUD_RUN_DEPLOYMENT.md).
 
 ## Security model and limitations
 
