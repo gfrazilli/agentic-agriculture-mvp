@@ -1,0 +1,41 @@
+{% extends "base.html" %}
+{% load i18n %}
+
+{% block title %}{% blocktranslate with product_name=PRODUCT_NAME %}Sign in · {{ product_name }}{% endblocktranslate %}{% endblock %}
+
+{% block content %}
+  <section class="auth-card" aria-labelledby="login-title">
+    <div class="eyebrow">{% translate "Demonstration access" %}</div>
+    <h1 id="login-title">{% blocktranslate with product_name=PRODUCT_NAME %}Sign in to {{ product_name }}{% endblocktranslate %}</h1>
+    <p class="lede">{% translate "Use the demonstration credentials configured for this environment." %}</p>
+
+    {% if invalid_credentials %}
+      <div class="alert" role="alert">{% translate "Invalid credentials. Try again." %}</div>
+    {% elif not credentials_configured %}
+      <div class="alert" role="status">{% translate "Demonstration access is not configured yet." %}</div>
+    {% endif %}
+
+    <form class="auth-form" method="post" action="{% url 'login' %}" novalidate>
+      {% csrf_token %}
+      <input type="hidden" name="next" value="{{ next }}">
+
+      <div class="field">
+        <label for="{{ form.username.id_for_label }}">{{ form.username.label }}</label>
+        {{ form.username }}
+        {% if form.username.errors %}
+          <div class="field-error">{{ form.username.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      <div class="field">
+        <label for="{{ form.password.id_for_label }}">{{ form.password.label }}</label>
+        {{ form.password }}
+        {% if form.password.errors %}
+          <div class="field-error">{{ form.password.errors|striptags }}</div>
+        {% endif %}
+      </div>
+
+      <button class="primary-button" type="submit">{% translate "Continue" %}</button>
+    </form>
+  </section>
+{% endblock %}

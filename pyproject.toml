@@ -1,0 +1,41 @@
+[build-system]
+requires = ["setuptools>=75"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-agriculture-mvp"
+version = "0.1.0"
+description = "Secure, database-free Django bootstrap for Agentic Agriculture."
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "Django>=5.2,<5.3",
+    "gunicorn>=23,<24; platform_system != 'Windows'",
+    "whitenoise>=6.9,<7",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8,<10",
+    "pytest-django>=4.8,<5",
+    "ruff>=0.9,<1",
+]
+
+[tool.setuptools.packages.find]
+include = ["config*", "core*"]
+
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "config.settings"
+addopts = "-ra --strict-markers"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+
+[tool.ruff]
+target-version = "py312"
+line-length = 100
+
+[tool.ruff.lint]
+select = ["B", "DJ", "E", "F", "I", "UP"]
+
+[tool.ruff.format]
+quote-style = "double"
