@@ -150,6 +150,9 @@ ARTIFACT_BACKEND = (
 TASK_BACKEND = (
     os.getenv("TASK_BACKEND", "cloud_tasks" if IS_PRODUCTION else "memory").strip().lower()
 )
+BOUNDARY_BACKEND = (
+    os.getenv("BOUNDARY_BACKEND", "geospatial" if IS_PRODUCTION else "fixture").strip().lower()
+)
 
 if IS_PRODUCTION and (
     PERSISTENCE_BACKEND != "firestore" or ARTIFACT_BACKEND != "gcs" or TASK_BACKEND != "cloud_tasks"

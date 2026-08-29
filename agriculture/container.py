@@ -11,6 +11,7 @@ from agriculture.adapters import (
     InMemoryTaskQueue,
 )
 from agriculture.ports.artifacts import ArtifactStore
+from agriculture.ports.boundaries import BoundaryProvider
 from agriculture.ports.repositories import AgricultureRepository
 from agriculture.ports.tasks import TaskQueue
 from agriculture.services.application import AgricultureService
@@ -59,14 +60,30 @@ def get_task_queue() -> TaskQueue:
 
 
 @lru_cache(maxsize=1)
+def get_boundary_provider() -> BoundaryProvider | None:
+    if settings.BOUNDARY_BACKEND == "fixture":
+        return None
+    if settings.BOUNDARY_BACKEND == "geospatial":
+        from geospatial.boundary_service import EarthSearchBoundaryProvider
+
+        return EarthSearchBoundaryProvider()
+    raise RuntimeError(f"Unsupported boundary backend: {settings.BOUNDARY_BACKEND}")
+
+
+@lru_cache(maxsize=1)
 def get_agriculture_service() -> AgricultureService:
-    return AgricultureService(get_repository(), get_task_queue())
+    return AgricultureService(
+        get_repository(),
+        get_task_queue(),
+        boundary_provider=get_boundary_provider(),
+    )
 
 
 def reset_container() -> None:
     """Clear process-local singletons; intended for tests and settings overrides."""
 
     get_agriculture_service.cache_clear()
+    get_boundary_provider.cache_clear()
     get_task_queue.cache_clear()
     get_artifact_store.cache_clear()
     get_repository.cache_clear()

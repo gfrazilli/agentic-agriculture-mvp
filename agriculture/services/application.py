@@ -16,6 +16,7 @@ from agriculture.api.models import (
 )
 from agriculture.domain import AnalysisStatus
 from agriculture.fixture_loader import load_fixture
+from agriculture.ports.boundaries import BoundaryProvider
 from agriculture.ports.repositories import AgricultureRepository
 from agriculture.ports.tasks import TaskQueue
 from agriculture.schemas import (
@@ -55,10 +56,12 @@ class AgricultureService:
         repository: AgricultureRepository,
         task_queue: TaskQueue,
         *,
+        boundary_provider: BoundaryProvider | None = None,
         clock=utc_now,
     ) -> None:
         self.repository = repository
         self.task_queue = task_queue
+        self.boundary_provider = boundary_provider
         self.clock = clock
 
     def create_field(
@@ -125,27 +128,37 @@ class AgricultureService:
         if replay := replay_if_present(self.repository, context):
             return replay
         field = self.get_field(field_id)
-        template = load_fixture("boundary-suggestion")
-        if not isinstance(template, BoundarySuggestion):
-            raise RuntimeError("boundary-suggestion fixture has the wrong contract")
+        if self.boundary_provider is None:
+            template = load_fixture("boundary-suggestion")
+            if not isinstance(template, BoundarySuggestion):
+                raise RuntimeError("boundary-suggestion fixture has the wrong contract")
 
-        ring = template.boundary.coordinates[0]
-        unique = ring[:-1]
-        center_lon = sum(position[0] for position in unique) / len(unique)
-        center_lat = sum(position[1] for position in unique) / len(unique)
-        target_lon, target_lat = field.reference_location.coordinates
-        shifted = tuple(
-            (lon - center_lon + target_lon, lat - center_lat + target_lat) for lon, lat in ring
-        )
-        try:
-            boundary = GeoJSONPolygon(coordinates=(shifted,))
-        except ValidationError as exc:
-            raise APIError(
-                "boundary_suggestion_unavailable",
-                "A safe boundary suggestion could not be generated for this location.",
-                422,
-                exc.errors(include_url=False, include_context=False),
-            ) from None
+            ring = template.boundary.coordinates[0]
+            unique = ring[:-1]
+            center_lon = sum(position[0] for position in unique) / len(unique)
+            center_lat = sum(position[1] for position in unique) / len(unique)
+            target_lon, target_lat = field.reference_location.coordinates
+            shifted = tuple(
+                (lon - center_lon + target_lon, lat - center_lat + target_lat) for lon, lat in ring
+            )
+            try:
+                boundary = GeoJSONPolygon(coordinates=(shifted,))
+            except ValidationError as exc:
+                raise APIError(
+                    "boundary_suggestion_unavailable",
+                    "A safe boundary suggestion could not be generated for this location.",
+                    422,
+                    exc.errors(include_url=False, include_context=False),
+                ) from None
+            estimated_area_ha = field.estimated_area_ha
+            confidence = template.confidence
+            source = template.source
+        else:
+            proposal = self.boundary_provider.suggest(field)
+            boundary = proposal.boundary
+            estimated_area_ha = proposal.estimated_area_ha
+            confidence = proposal.confidence
+            source = proposal.source
 
         now = self.clock()
         if replay := claim_idempotent_request(
@@ -158,9 +171,9 @@ class AgricultureService:
             id=uuid4(),
             field_id=field.id,
             boundary=boundary,
-            estimated_area_ha=field.estimated_area_ha,
-            confidence=template.confidence,
-            source=template.source,
+            estimated_area_ha=estimated_area_ha,
+            confidence=confidence,
+            source=source,
             requires_confirmation=True,
             generated_at=now,
         )
