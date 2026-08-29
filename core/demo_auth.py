@@ -13,6 +13,7 @@ from django.urls import reverse
 from django.utils.crypto import salted_hmac
 
 AUTH_SESSION_KEY = "demo_auth_version"
+AUTH_ACTOR_KEY = "demo_actor_id"
 
 
 def credentials_are_configured() -> bool:
@@ -44,7 +45,8 @@ def is_demo_authenticated(request: HttpRequest) -> bool:
         return False
 
     stored_version = request.session.get(AUTH_SESSION_KEY)
-    if not isinstance(stored_version, str):
+    actor_id = request.session.get(AUTH_ACTOR_KEY)
+    if not isinstance(stored_version, str) or not isinstance(actor_id, str) or not actor_id:
         return False
 
     authenticated = secrets.compare_digest(stored_version, _credential_version())
@@ -56,6 +58,14 @@ def is_demo_authenticated(request: HttpRequest) -> bool:
 def begin_demo_session(request: HttpRequest) -> None:
     request.session.cycle_key()
     request.session[AUTH_SESSION_KEY] = _credential_version()
+    request.session[AUTH_ACTOR_KEY] = secrets.token_urlsafe(18)
+
+
+def get_demo_actor_id(request: HttpRequest) -> str | None:
+    if not is_demo_authenticated(request):
+        return None
+    actor_id = request.session.get(AUTH_ACTOR_KEY)
+    return actor_id if isinstance(actor_id, str) else None
 
 
 def end_demo_session(request: HttpRequest) -> None:

@@ -52,6 +52,7 @@ CSRF_TRUSTED_ORIGINS = env_list("DJANGO_CSRF_TRUSTED_ORIGINS")
 
 INSTALLED_APPS = [
     "django.contrib.staticfiles",
+    "agriculture.apps.AgricultureConfig",
     "core.apps.CoreConfig",
 ]
 
@@ -84,9 +85,9 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 ASGI_APPLICATION = "config.asgi.application"
 
-# This bootstrap intentionally has no persistence requirement. Signed-cookie
-# sessions keep Django from touching the session table. Django's explicit dummy
-# backend makes that intent stable after settings normalization as well.
+# Agricultural data is persisted through the repository adapters configured
+# below (Firestore in production). Django itself does not need a relational
+# database because the demonstration session is stored in a signed cookie.
 DATABASES = {"default": {"ENGINE": "django.db.backends.dummy"}}
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
@@ -137,3 +138,36 @@ SECURE_HSTS_INCLUDE_SUBDOMAINS = SECURE_HSTS_SECONDS > 0
 SECURE_HSTS_PRELOAD = SECURE_HSTS_SECONDS > 0
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+# PR2 persistence/integration backends. Local development and tests default to
+# deterministic in-memory adapters; production must explicitly use Google Cloud.
+PERSISTENCE_BACKEND = (
+    os.getenv("PERSISTENCE_BACKEND", "firestore" if IS_PRODUCTION else "memory").strip().lower()
+)
+ARTIFACT_BACKEND = (
+    os.getenv("ARTIFACT_BACKEND", "gcs" if IS_PRODUCTION else "memory").strip().lower()
+)
+TASK_BACKEND = (
+    os.getenv("TASK_BACKEND", "cloud_tasks" if IS_PRODUCTION else "memory").strip().lower()
+)
+
+if IS_PRODUCTION and (
+    PERSISTENCE_BACKEND != "firestore" or ARTIFACT_BACKEND != "gcs" or TASK_BACKEND != "cloud_tasks"
+):
+    raise ImproperlyConfigured(
+        "Production requires Firestore, Cloud Storage and Cloud Tasks backends."
+    )
+
+GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()
+FIRESTORE_DATABASE = os.getenv("FIRESTORE_DATABASE", "(default)").strip() or "(default)"
+GCS_BUCKET = os.getenv("GCS_BUCKET", "").strip()
+CLOUD_TASKS_LOCATION = os.getenv("CLOUD_TASKS_LOCATION", "").strip()
+CLOUD_TASKS_QUEUE = os.getenv("CLOUD_TASKS_QUEUE", "").strip()
+CLOUD_TASKS_BASE_URL = os.getenv("CLOUD_TASKS_BASE_URL", "").strip()
+CLOUD_TASKS_SERVICE_ACCOUNT = os.getenv("CLOUD_TASKS_SERVICE_ACCOUNT", "").strip()
+CLOUD_TASKS_SHARED_SECRET = os.getenv("CLOUD_TASKS_SHARED_SECRET", "")
+
+API_SCHEMA_VERSION = "1.0"
+API_MAX_REQUEST_BYTES = env_int("API_MAX_REQUEST_BYTES", 256 * 1024)
+ANALYSIS_DAILY_LIMIT = env_int("ANALYSIS_DAILY_LIMIT", 3)
+DATA_UPLOAD_MAX_MEMORY_SIZE = API_MAX_REQUEST_BYTES

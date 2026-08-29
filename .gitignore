@@ -12,7 +12,8 @@ htmlcov/
 venv/
 
 # Django-generated files
-staticfiles/
+staticfiles/*
+!staticfiles/.gitkeep
 *.sqlite3
 
 # Local configuration and tooling

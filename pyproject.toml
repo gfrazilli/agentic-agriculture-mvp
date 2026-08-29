@@ -5,12 +5,16 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "agentic-agriculture-mvp"
 version = "0.1.0"
-description = "Secure, database-free Django bootstrap for Agentic Agriculture."
+description = "Agentic Agriculture contracts and Google Cloud-ready Django API."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "Django>=5.2,<5.3",
+    "google-cloud-firestore>=2.20,<3",
+    "google-cloud-storage>=3,<4",
+    "google-cloud-tasks>=2.18,<3",
     "gunicorn>=23,<24; platform_system != 'Windows'",
+    "pydantic>=2.10,<3",
     "whitenoise>=6.9,<7",
 ]
 
@@ -22,7 +26,10 @@ dev = [
 ]
 
 [tool.setuptools.packages.find]
-include = ["config*", "core*"]
+include = ["agriculture*", "config*", "core*"]
+
+[tool.setuptools.package-data]
+agriculture = ["fixtures/**/*.json"]
 
 [tool.pytest.ini_options]
 DJANGO_SETTINGS_MODULE = "config.settings"

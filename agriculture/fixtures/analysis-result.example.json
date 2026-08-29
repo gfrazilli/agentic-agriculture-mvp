@@ -1,0 +1,233 @@
+{
+  "schema_version": "1.0",
+  "id": "33333333-3333-4333-8333-333333333333",
+  "field_id": "11111111-1111-4111-8111-111111111111",
+  "parent_analysis_id": null,
+  "status": "completed",
+  "requested_zone_count": 4,
+  "progress": {
+    "percent": 100,
+    "stage": "completed",
+    "message_pt": "Comparação concluída em quatro zonas de desenvolvimento relativo.",
+    "message_en": "Comparison completed across four relative development zones.",
+    "updated_at": "2026-03-28T12:02:30Z"
+  },
+  "result": {
+    "selected_zone_count": 4,
+    "mode": "cache",
+    "generated_at": "2026-03-28T12:02:30Z",
+    "scenes": [
+      {
+        "scene_id": "S2B_MSIL2A_20251120T133219_DEMO",
+        "captured_at": "2025-11-20T13:32:19Z",
+        "cloud_cover_percent": 3.2,
+        "field_indices": {
+          "ndvi": 0.31,
+          "ndre": 0.14,
+          "ndmi": 0.09
+        },
+        "preview_uri": "gs://agentic-agriculture-demo/scenes/2025-11-20-preview.webp"
+      },
+      {
+        "scene_id": "S2A_MSIL2A_20251220T133221_DEMO",
+        "captured_at": "2025-12-20T13:32:21Z",
+        "cloud_cover_percent": 1.8,
+        "field_indices": {
+          "ndvi": 0.58,
+          "ndre": 0.31,
+          "ndmi": 0.18
+        },
+        "preview_uri": "gs://agentic-agriculture-demo/scenes/2025-12-20-preview.webp"
+      },
+      {
+        "scene_id": "S2B_MSIL2A_20260119T133219_DEMO",
+        "captured_at": "2026-01-19T13:32:19Z",
+        "cloud_cover_percent": 4.1,
+        "field_indices": {
+          "ndvi": 0.73,
+          "ndre": 0.45,
+          "ndmi": 0.24
+        },
+        "preview_uri": "gs://agentic-agriculture-demo/scenes/2026-01-19-preview.webp"
+      }
+    ],
+    "zones": [
+      {
+        "zone_id": "zone-1",
+        "relative_label": "lower_than_field",
+        "area_ha": 2.6,
+        "area_percent": 21.0,
+        "boundary": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-48.905, -23.98],
+              [-48.9029, -23.9801],
+              [-48.9029, -23.97855],
+              [-48.90495, -23.9785],
+              [-48.905, -23.98]
+            ]
+          ]
+        },
+        "trajectory": [
+          {
+            "scene_id": "S2B_MSIL2A_20251120T133219_DEMO",
+            "captured_at": "2025-11-20T13:32:19Z",
+            "indices": {"ndvi": 0.22, "ndre": 0.08, "ndmi": 0.03}
+          },
+          {
+            "scene_id": "S2A_MSIL2A_20251220T133221_DEMO",
+            "captured_at": "2025-12-20T13:32:21Z",
+            "indices": {"ndvi": 0.43, "ndre": 0.21, "ndmi": 0.1}
+          },
+          {
+            "scene_id": "S2B_MSIL2A_20260119T133219_DEMO",
+            "captured_at": "2026-01-19T13:32:19Z",
+            "indices": {"ndvi": 0.59, "ndre": 0.32, "ndmi": 0.15}
+          }
+        ],
+        "summary_pt": "Esta zona manteve sinais espectrais relativamente menores que o conjunto do talhão nas três datas.",
+        "summary_en": "This zone kept relatively lower spectral signals than the field as a whole on all three dates."
+      },
+      {
+        "zone_id": "zone-2",
+        "relative_label": "similar_to_field",
+        "area_ha": 3.2,
+        "area_percent": 26.0,
+        "boundary": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-48.9029, -23.9801],
+              [-48.901, -23.9802],
+              [-48.9009, -23.97865],
+              [-48.9029, -23.97855],
+              [-48.9029, -23.9801]
+            ]
+          ]
+        },
+        "trajectory": [
+          {
+            "scene_id": "S2B_MSIL2A_20251120T133219_DEMO",
+            "captured_at": "2025-11-20T13:32:19Z",
+            "indices": {"ndvi": 0.3, "ndre": 0.13, "ndmi": 0.08}
+          },
+          {
+            "scene_id": "S2A_MSIL2A_20251220T133221_DEMO",
+            "captured_at": "2025-12-20T13:32:21Z",
+            "indices": {"ndvi": 0.57, "ndre": 0.3, "ndmi": 0.17}
+          },
+          {
+            "scene_id": "S2B_MSIL2A_20260119T133219_DEMO",
+            "captured_at": "2026-01-19T13:32:19Z",
+            "indices": {"ndvi": 0.72, "ndre": 0.44, "ndmi": 0.23}
+          }
+        ],
+        "summary_pt": "Esta zona acompanhou de perto a trajetória espectral predominante no talhão.",
+        "summary_en": "This zone closely followed the predominant spectral trajectory in the field."
+      },
+      {
+        "zone_id": "zone-3",
+        "relative_label": "higher_than_field",
+        "area_ha": 3.5,
+        "area_percent": 28.0,
+        "boundary": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-48.90495, -23.9785],
+              [-48.9029, -23.97855],
+              [-48.90285, -23.9771],
+              [-48.9049, -23.977],
+              [-48.90495, -23.9785]
+            ]
+          ]
+        },
+        "trajectory": [
+          {
+            "scene_id": "S2B_MSIL2A_20251120T133219_DEMO",
+            "captured_at": "2025-11-20T13:32:19Z",
+            "indices": {"ndvi": 0.39, "ndre": 0.2, "ndmi": 0.14}
+          },
+          {
+            "scene_id": "S2A_MSIL2A_20251220T133221_DEMO",
+            "captured_at": "2025-12-20T13:32:21Z",
+            "indices": {"ndvi": 0.69, "ndre": 0.4, "ndmi": 0.25}
+          },
+          {
+            "scene_id": "S2B_MSIL2A_20260119T133219_DEMO",
+            "captured_at": "2026-01-19T13:32:19Z",
+            "indices": {"ndvi": 0.83, "ndre": 0.55, "ndmi": 0.33}
+          }
+        ],
+        "summary_pt": "Esta zona apresentou sinais espectrais relativamente maiores que o conjunto do talhão.",
+        "summary_en": "This zone showed relatively higher spectral signals than the field as a whole."
+      },
+      {
+        "zone_id": "zone-4",
+        "relative_label": "similar_to_field",
+        "area_ha": 3.1,
+        "area_percent": 25.0,
+        "boundary": {
+          "type": "Polygon",
+          "coordinates": [
+            [
+              [-48.9029, -23.97855],
+              [-48.9009, -23.97865],
+              [-48.9008, -23.9772],
+              [-48.90285, -23.9771],
+              [-48.9029, -23.97855]
+            ]
+          ]
+        },
+        "trajectory": [
+          {
+            "scene_id": "S2B_MSIL2A_20251120T133219_DEMO",
+            "captured_at": "2025-11-20T13:32:19Z",
+            "indices": {"ndvi": 0.33, "ndre": 0.15, "ndmi": 0.1}
+          },
+          {
+            "scene_id": "S2A_MSIL2A_20251220T133221_DEMO",
+            "captured_at": "2025-12-20T13:32:21Z",
+            "indices": {"ndvi": 0.59, "ndre": 0.32, "ndmi": 0.19}
+          },
+          {
+            "scene_id": "S2B_MSIL2A_20260119T133219_DEMO",
+            "captured_at": "2026-01-19T13:32:19Z",
+            "indices": {"ndvi": 0.75, "ndre": 0.46, "ndmi": 0.25}
+          }
+        ],
+        "summary_pt": "Esta zona permaneceu próxima da trajetória geral, com pequenas diferenças entre as datas.",
+        "summary_en": "This zone stayed close to the overall trajectory, with small differences between dates."
+      }
+    ],
+    "scope": {
+      "kind": "relative_spatial_variability_only",
+      "diagnostic": false,
+      "excluded_inferences": ["pest", "disease", "soil", "water"],
+      "disclaimer_pt": "O resultado compara diferenças relativas de desenvolvimento e não identifica causa, praga, doença, condição do solo ou necessidade de água.",
+      "disclaimer_en": "The result compares relative development differences and does not identify a cause, pest, disease, soil condition or water need."
+    },
+    "provenance": {
+      "provider": "Copernicus Data Space Ecosystem",
+      "mission": "Sentinel-2",
+      "product_level": "L2A",
+      "bands": ["B04", "B05", "B08", "B11"],
+      "indices": ["NDVI", "NDRE", "NDMI"],
+      "scene_ids": [
+        "S2B_MSIL2A_20251120T133219_DEMO",
+        "S2A_MSIL2A_20251220T133221_DEMO",
+        "S2B_MSIL2A_20260119T133219_DEMO"
+      ],
+      "processing_version": "mvp-1.0"
+    },
+    "artifacts": {
+      "map_preview_uri": "gs://agentic-agriculture-demo/results/33333333/map.webp",
+      "zone_geojson_uri": "gs://agentic-agriculture-demo/results/33333333/zones.geojson",
+      "report_uri": "gs://agentic-agriculture-demo/results/33333333/report.json"
+    }
+  },
+  "error": null,
+  "created_at": "2026-03-28T12:00:20Z",
+  "updated_at": "2026-03-28T12:02:30Z"
+}

@@ -12,6 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md manage.py ./
+COPY agriculture ./agriculture
 COPY config ./config
 COPY core ./core
 COPY templates ./templates
@@ -19,7 +20,10 @@ COPY locale ./locale
 
 RUN python -m pip install --no-cache-dir --prefix=/install . \
     && python manage.py compilemessages --verbosity 0 \
-    && python manage.py collectstatic --noinput --verbosity 0
+    && APP_ENV=production \
+       DJANGO_SECRET_KEY=build-only-static-manifest-secret \
+       DJANGO_ALLOWED_HOSTS=localhost \
+       python manage.py collectstatic --noinput --verbosity 0
 
 
 FROM python:3.12-slim AS runtime

@@ -16,7 +16,14 @@ def test_readyz_reports_ready_with_valid_demo_credentials(client):
     assert response.status_code == 200
     assert response.json() == {
         "status": "ready",
-        "checks": {"demo_credentials": True},
+        "checks": {
+            "demo_credentials": True,
+            "backend_names": True,
+            "firestore": True,
+            "cloud_storage": True,
+            "cloud_tasks": True,
+            "production_backends": True,
+        },
     }
 
 
@@ -25,10 +32,9 @@ def test_readyz_fails_closed_when_credentials_are_invalid(client):
     response = client.get(reverse("readyz"))
 
     assert response.status_code == 503
-    assert response.json() == {
-        "status": "not_ready",
-        "checks": {"demo_credentials": False},
-    }
+    payload = response.json()
+    assert payload["status"] == "not_ready"
+    assert payload["checks"]["demo_credentials"] is False
 
 
 def test_security_headers_are_present(client):

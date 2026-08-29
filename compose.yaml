@@ -8,6 +8,7 @@ services:
     environment:
       APP_ENV: ${APP_ENV:-development}
       PORT: ${PORT:-8080}
+      WEB_CONCURRENCY: ${WEB_CONCURRENCY:-1}
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
     init: true
