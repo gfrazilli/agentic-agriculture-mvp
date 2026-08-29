@@ -42,7 +42,10 @@ SCENE_FEATURE = {
     "assets": {
         "blue": {"href": "https://public.example/scene/B02.tif"},
         "green": {"href": "https://public.example/scene/B03.tif"},
-        "red": {"href": "https://public.example/scene/B04.tif"},
+        "red": {
+            "href": "https://public.example/scene/B04.tif",
+            "raster:bands": [{"scale": 0.0001, "offset": -0.1}],
+        },
         "nir": {"href": "https://public.example/scene/B08.tif"},
         "rededge1": {"href": "https://public.example/scene/B05.tif"},
         "swir16": {"href": "https://public.example/scene/B11.tif"},
@@ -119,6 +122,8 @@ def test_search_builds_stac_payload_and_parses_public_cog_assets() -> None:
         "visual",
     }
     assert scene.asset_url("nir") == "https://public.example/scene/B08.tif"
+    assert scene.calibration("red") == (0.0001, -0.1)
+    assert scene.calibration("nir") is None
     assert scene.asset_url("thumbnail") is None
     assert scene.bbox == (-49.2, -24.2, -48.7, -23.7)
     assert scene.geometry == SCENE_FEATURE["geometry"]

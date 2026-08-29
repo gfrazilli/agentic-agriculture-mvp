@@ -8,6 +8,12 @@ def backend_configuration() -> dict[str, bool]:
     persistence_valid = settings.PERSISTENCE_BACKEND in {"memory", "firestore"}
     artifacts_valid = settings.ARTIFACT_BACKEND in {"memory", "gcs"}
     tasks_valid = settings.TASK_BACKEND in {"memory", "cloud_tasks"}
+    boundary_valid = settings.BOUNDARY_BACKEND in {"fixture", "geospatial"}
+    pipeline_valid = settings.ANALYSIS_PIPELINE_BACKEND in {"disabled", "sentinel"}
+    pipeline_limits_valid = (
+        2 <= settings.ANALYSIS_TARGET_SCENE_COUNT <= 12
+        and 64 <= settings.ANALYSIS_MAX_DIMENSION <= 1024
+    )
 
     firestore_ready = settings.PERSISTENCE_BACKEND != "firestore" or bool(
         settings.GOOGLE_CLOUD_PROJECT
@@ -27,10 +33,19 @@ def backend_configuration() -> dict[str, bool]:
         settings.PERSISTENCE_BACKEND == "firestore"
         and settings.ARTIFACT_BACKEND == "gcs"
         and settings.TASK_BACKEND == "cloud_tasks"
+        and settings.BOUNDARY_BACKEND == "geospatial"
+        and settings.ANALYSIS_PIPELINE_BACKEND == "sentinel"
     )
 
     return {
-        "backend_names": persistence_valid and artifacts_valid and tasks_valid,
+        "backend_names": (
+            persistence_valid
+            and artifacts_valid
+            and tasks_valid
+            and boundary_valid
+            and pipeline_valid
+        ),
+        "geospatial_processing": boundary_valid and pipeline_valid and pipeline_limits_valid,
         "firestore": firestore_ready,
         "cloud_storage": gcs_ready,
         "cloud_tasks": tasks_ready,
@@ -84,6 +99,17 @@ def check_cloud_backends(app_configs, **kwargs):  # noqa: ARG001
                     "a shared secret of at least 32 characters."
                 ),
                 id="agriculture.E005",
+            )
+        )
+    if not checks["geospatial_processing"]:
+        errors.append(
+            Error(
+                "Geospatial processing settings are invalid.",
+                hint=(
+                    "Use fixture/geospatial for BOUNDARY_BACKEND, disabled/sentinel for "
+                    "ANALYSIS_PIPELINE_BACKEND, 2-12 scenes and a 64-1024 pixel dimension."
+                ),
+                id="agriculture.E006",
             )
         )
     return errors

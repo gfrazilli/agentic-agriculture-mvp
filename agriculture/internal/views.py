@@ -4,7 +4,7 @@ from django.views.decorators.csrf import csrf_exempt
 from agriculture.api.errors import APIError
 from agriculture.api.parsing import parse_json
 from agriculture.api.responses import api_response, handle_api_errors, require_api_methods
-from agriculture.container import get_repository
+from agriculture.container import get_analysis_pipeline, get_repository
 from agriculture.internal.auth import internal_task_required
 from agriculture.internal.models import AnalysisTaskInput
 
@@ -18,13 +18,7 @@ def receive_analysis_task(
     *,
     cloud_task_name: str,  # noqa: ARG001
 ) -> HttpResponse:
-    """Validate and acknowledge analysis work without pretending to run the pipeline.
-
-    A valid delivery is deliberately a read-only operation until the Sentinel/Gemini
-    worker exists. Returning 2xx prevents Cloud Tasks from retrying a permanent,
-    intentionally unimplemented operation. Because no state changes, duplicate
-    deliveries are naturally idempotent.
-    """
+    """Validate a Cloud Tasks delivery and run the configured Sentinel worker."""
 
     payload = parse_json(request, AnalysisTaskInput)
     analysis = get_repository().get_analysis(str(payload.analysis_id))
@@ -47,11 +41,27 @@ def receive_analysis_task(
             status=409,
         )
 
+    pipeline = get_analysis_pipeline()
+    if pipeline is None:
+        return api_response(
+            {
+                "analysis_id": str(analysis.id),
+                "outcome": "acknowledged_not_processed",
+                "pipeline_implemented": False,
+                "reason": "sentinel_gemini_pipeline_not_implemented",
+            }
+        )
+
+    outcome = pipeline.run(str(analysis.id))
     return api_response(
         {
-            "analysis_id": str(analysis.id),
-            "outcome": "acknowledged_not_processed",
-            "pipeline_implemented": False,
-            "reason": "sentinel_gemini_pipeline_not_implemented",
-        }
+            "analysis_id": outcome.analysis_id,
+            "outcome": outcome.status,
+            "pipeline_implemented": True,
+            "scene_count": outcome.scene_count,
+            "zone_count": outcome.zone_count,
+            "error_code": outcome.error_code,
+            "retryable": outcome.retryable,
+        },
+        status=503 if outcome.status == "failed" and outcome.retryable else 200,
     )

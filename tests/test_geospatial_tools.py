@@ -83,6 +83,8 @@ def test_plan_never_fabricates_missing_temporal_evidence():
         "http://sentinel-cogs.s3.amazonaws.com/a.tif",
         "https://example.com/a.tif",
         "https://user:secret@sentinel-cogs.s3.amazonaws.com/a.tif",
+        "https://ec2.us-west-2.amazonaws.com/a.tif",
+        "https://sentinel-cogs.s3.us-west-2.amazonaws.com:8443/a.tif",
         "file:///tmp/a.tif",
     ],
 )
@@ -95,6 +97,30 @@ def test_cog_asset_url_allowlist_accepts_public_sentinel_bucket():
     url = "https://sentinel-cogs.s3.us-west-2.amazonaws.com/sentinel-s2-l2a-cogs/a.tif"
 
     assert validate_asset_url(url) == url
+
+
+def test_observation_plan_counts_adjacent_tiles_from_one_date_once():
+    first = _scene(1)
+    adjacent_tile = Sentinel2Scene(
+        id="scene-1-adjacent",
+        captured_at=first.captured_at.replace(hour=13),
+        cloud_cover=0.5,
+        assets=first.assets,
+        geometry=first.geometry,
+        bbox=first.bbox,
+        properties={},
+    )
+    service = GeospatialTools(FakeClient([first, adjacent_tile, _scene(2)]))
+
+    result = service.plan_observations(
+        polygon={"type": "Polygon", "coordinates": []},
+        start="2026-01-01",
+        end="2026-01-31",
+        scene_count=6,
+    )
+
+    assert result["selected_scene_count"] == 2
+    assert [scene["id"] for scene in result["scenes"]] == ["scene-1-adjacent", "scene-2"]
 
 
 def test_private_mcp_registers_only_compact_geospatial_tools():

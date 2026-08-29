@@ -153,12 +153,24 @@ TASK_BACKEND = (
 BOUNDARY_BACKEND = (
     os.getenv("BOUNDARY_BACKEND", "geospatial" if IS_PRODUCTION else "fixture").strip().lower()
 )
+ANALYSIS_PIPELINE_BACKEND = (
+    os.getenv("ANALYSIS_PIPELINE_BACKEND", "sentinel" if IS_PRODUCTION else "disabled")
+    .strip()
+    .lower()
+)
+ANALYSIS_TARGET_SCENE_COUNT = env_int("ANALYSIS_TARGET_SCENE_COUNT", 6)
+ANALYSIS_MAX_DIMENSION = env_int("ANALYSIS_MAX_DIMENSION", 512)
 
 if IS_PRODUCTION and (
-    PERSISTENCE_BACKEND != "firestore" or ARTIFACT_BACKEND != "gcs" or TASK_BACKEND != "cloud_tasks"
+    PERSISTENCE_BACKEND != "firestore"
+    or ARTIFACT_BACKEND != "gcs"
+    or TASK_BACKEND != "cloud_tasks"
+    or BOUNDARY_BACKEND != "geospatial"
+    or ANALYSIS_PIPELINE_BACKEND != "sentinel"
 ):
     raise ImproperlyConfigured(
-        "Production requires Firestore, Cloud Storage and Cloud Tasks backends."
+        "Production requires Firestore, Cloud Storage, Cloud Tasks, geospatial boundaries "
+        "and the Sentinel analysis pipeline."
     )
 
 GOOGLE_CLOUD_PROJECT = os.getenv("GOOGLE_CLOUD_PROJECT", "").strip()

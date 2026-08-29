@@ -13,6 +13,7 @@ from agriculture.container import get_repository, reset_container
 from agriculture.fixture_loader import load_fixture
 from agriculture.internal.security import CLOUD_TASK_NAME_HEADER, TASK_SECRET_HEADER
 from agriculture.schemas import Analysis
+from geospatial.pipeline import PipelineOutcome
 
 TASK_SECRET = "task-secret-for-tests-with-at-least-32-characters"
 TASK_NAME = "projects/demo/locations/us-central1/queues/analysis/tasks/task-123"
@@ -112,6 +113,68 @@ def test_valid_delivery_is_csrf_exempt_idempotent_and_explicitly_not_processed(
     assert first.json() == replay.json() == expected
     assert first.headers["Cache-Control"] == "no-store"
     assert before == after == stored_analysis
+
+
+def test_valid_delivery_runs_the_configured_sentinel_pipeline(
+    monkeypatch,
+    client,
+    stored_analysis,
+):
+    calls: list[str] = []
+
+    class FakePipeline:
+        def run(self, analysis_id: str) -> PipelineOutcome:
+            calls.append(analysis_id)
+            return PipelineOutcome(
+                analysis_id=analysis_id,
+                status="completed",
+                scene_count=4,
+                zone_count=3,
+            )
+
+    monkeypatch.setattr(
+        "agriculture.internal.views.get_analysis_pipeline",
+        lambda: FakePipeline(),
+    )
+
+    response = _post(client, _payload(stored_analysis), **_delivery_headers())
+
+    assert response.status_code == 200
+    assert calls == [str(stored_analysis.id)]
+    assert response.json()["data"] == {
+        "analysis_id": str(stored_analysis.id),
+        "outcome": "completed",
+        "pipeline_implemented": True,
+        "scene_count": 4,
+        "zone_count": 3,
+        "error_code": None,
+        "retryable": False,
+    }
+
+
+def test_retryable_pipeline_failure_requests_cloud_tasks_retry(
+    monkeypatch,
+    client,
+    stored_analysis,
+):
+    class FakePipeline:
+        def run(self, analysis_id: str) -> PipelineOutcome:
+            return PipelineOutcome(
+                analysis_id=analysis_id,
+                status="failed",
+                error_code="EARTH_SEARCH_UNAVAILABLE",
+                retryable=True,
+            )
+
+    monkeypatch.setattr(
+        "agriculture.internal.views.get_analysis_pipeline",
+        lambda: FakePipeline(),
+    )
+
+    response = _post(client, _payload(stored_analysis), **_delivery_headers())
+
+    assert response.status_code == 503
+    assert response.json()["data"]["retryable"] is True
 
 
 def test_receiver_rejects_payload_that_does_not_match_stored_analysis(client, stored_analysis):
