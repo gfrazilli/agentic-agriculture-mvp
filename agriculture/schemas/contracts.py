@@ -302,7 +302,10 @@ class AnalysisScope(StrictContract):
 class AnalysisProvenance(StrictContract):
     """Auditable origin of every result shown in the demo."""
 
-    provider: Literal["Copernicus Data Space Ecosystem"]
+    provider: Literal[
+        "Copernicus Data Space Ecosystem",
+        "EU/ESA/Copernicus via Earth Search/AWS Open Data",
+    ]
     mission: Literal["Sentinel-2"]
     product_level: Literal["L2A"]
     bands: tuple[Annotated[str, PydanticField(min_length=2, max_length=8)], ...]

@@ -55,6 +55,7 @@ def get_task_queue() -> TaskQueue:
             shared_secret=settings.CLOUD_TASKS_SHARED_SECRET,
             oidc_service_account_email=settings.CLOUD_TASKS_SERVICE_ACCOUNT or None,
             oidc_audience=settings.CLOUD_TASKS_BASE_URL,
+            dispatch_deadline_seconds=settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS,
         )
     raise RuntimeError(f"Unsupported task backend: {settings.TASK_BACKEND}")
 
@@ -71,6 +72,26 @@ def get_boundary_provider() -> BoundaryProvider | None:
 
 
 @lru_cache(maxsize=1)
+def get_analysis_pipeline():
+    """Build the asynchronous Sentinel worker only when explicitly enabled."""
+
+    if settings.ANALYSIS_PIPELINE_BACKEND == "disabled":
+        return None
+    if settings.ANALYSIS_PIPELINE_BACKEND == "sentinel":
+        from geospatial.pipeline import AnalysisPipeline
+
+        return AnalysisPipeline(
+            get_repository(),
+            get_artifact_store(),
+            target_scene_count=settings.ANALYSIS_TARGET_SCENE_COUNT,
+            max_dimension=settings.ANALYSIS_MAX_DIMENSION,
+        )
+    raise RuntimeError(
+        f"Unsupported analysis pipeline backend: {settings.ANALYSIS_PIPELINE_BACKEND}"
+    )
+
+
+@lru_cache(maxsize=1)
 def get_agriculture_service() -> AgricultureService:
     return AgricultureService(
         get_repository(),
@@ -83,6 +104,7 @@ def reset_container() -> None:
     """Clear process-local singletons; intended for tests and settings overrides."""
 
     get_agriculture_service.cache_clear()
+    get_analysis_pipeline.cache_clear()
     get_boundary_provider.cache_clear()
     get_task_queue.cache_clear()
     get_artifact_store.cache_clear()

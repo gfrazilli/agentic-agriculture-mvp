@@ -95,12 +95,14 @@ class CloudTasksQueue:
         shared_secret: str = "",
         oidc_service_account_email: str | None = None,
         oidc_audience: str | None = None,
+        dispatch_deadline_seconds: int = 900,
         client: Any | None = None,
         clock: Callable[[], datetime] = _utc_now,
     ) -> None:
         tasks_v2 = load_google_module("google.cloud.tasks_v2", "google-cloud-tasks")
         api_exceptions = load_google_module("google.api_core.exceptions", "google-api-core")
         timestamp_pb2 = load_google_module("google.protobuf.timestamp_pb2", "protobuf")
+        duration_pb2 = load_google_module("google.protobuf.duration_pb2", "protobuf")
         required = {"project": project, "location": location, "queue": queue}
         if missing := [name for name, value in required.items() if not value.strip()]:
             raise ValueError(f"Missing Cloud Tasks configuration: {', '.join(missing)}")
@@ -110,6 +112,8 @@ class CloudTasksQueue:
             raise ValueError(
                 "shared_secret must contain at least 32 printable ASCII characters without spaces"
             )
+        if not 60 <= dispatch_deadline_seconds <= 1800:
+            raise ValueError("dispatch_deadline_seconds must be between 60 and 1800")
         self._client = client or tasks_v2.CloudTasksClient()
         self._parent = self._client.queue_path(project, location, queue)
         self._project = project
@@ -120,6 +124,8 @@ class CloudTasksQueue:
         self._oidc_service_account_email = oidc_service_account_email
         self._oidc_audience = oidc_audience
         self._timestamp_type = timestamp_pb2.Timestamp
+        self._duration_type = duration_pb2.Duration
+        self._dispatch_deadline_seconds = dispatch_deadline_seconds
         self._http_method_post = tasks_v2.HttpMethod.POST
         self._already_exists_error = api_exceptions.AlreadyExists
         self._clock = clock
@@ -157,6 +163,9 @@ class CloudTasksQueue:
             "name": self._client.task_path(self._project, self._location, self._queue, task_id),
             "http_request": http_request,
         }
+        dispatch_deadline = self._duration_type()
+        dispatch_deadline.FromSeconds(self._dispatch_deadline_seconds)
+        task["dispatch_deadline"] = dispatch_deadline
         normalized_schedule = schedule_at.astimezone(UTC) if schedule_at else None
         if normalized_schedule:
             timestamp = self._timestamp_type()

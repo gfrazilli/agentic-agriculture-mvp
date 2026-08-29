@@ -19,6 +19,7 @@ def test_readyz_reports_ready_with_valid_demo_credentials(client):
         "checks": {
             "demo_credentials": True,
             "backend_names": True,
+            "geospatial_processing": True,
             "firestore": True,
             "cloud_storage": True,
             "cloud_tasks": True,

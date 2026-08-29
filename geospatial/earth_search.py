@@ -11,7 +11,7 @@ import math
 import re
 import time
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, date, datetime, timedelta
 from datetime import time as datetime_time
 from email.utils import parsedate_to_datetime
@@ -75,6 +75,7 @@ class Sentinel2Scene:
     geometry: dict[str, Any] | None
     bbox: tuple[float, ...] | None
     properties: dict[str, Any]
+    asset_calibration: dict[str, tuple[float, float]] = field(default_factory=dict)
 
     @property
     def scene_id(self) -> str:
@@ -93,6 +94,11 @@ class Sentinel2Scene:
 
         return self.assets.get(name)
 
+    def calibration(self, name: str) -> tuple[float, float] | None:
+        """Return the STAC ``(scale, offset)`` pair for an asset, if supplied."""
+
+        return self.asset_calibration.get(name)
+
     def to_dict(self) -> dict[str, Any]:
         """Return a structure accepted directly by JSON encoders."""
 
@@ -101,6 +107,7 @@ class Sentinel2Scene:
             "captured_at": _format_datetime(self.captured_at),
             "cloud_cover": self.cloud_cover,
             "assets": dict(self.assets),
+            "asset_calibration": dict(self.asset_calibration),
             "geometry": self.geometry,
             "bbox": list(self.bbox) if self.bbox is not None else None,
             "properties": dict(self.properties),
@@ -462,7 +469,7 @@ def _parse_scene(feature: object) -> Sentinel2Scene:
     raw_assets = feature.get("assets")
     if not isinstance(raw_assets, Mapping):
         raise EarthSearchProtocolError(f"STAC feature {scene_id!r} has invalid assets.")
-    normalized_assets = _normalize_assets(raw_assets)
+    normalized_assets, asset_calibration = _normalize_assets(raw_assets)
     geometry = _parse_geometry(feature.get("geometry"), scene_id=scene_id)
     bbox = _parse_bbox(feature.get("bbox"), scene_id=scene_id)
 
@@ -474,6 +481,7 @@ def _parse_scene(feature: object) -> Sentinel2Scene:
         geometry=geometry,
         bbox=bbox,
         properties=dict(properties),
+        asset_calibration=asset_calibration,
     )
 
 
@@ -530,8 +538,11 @@ def _parse_scene_cloud_cover(value: object, *, scene_id: str) -> float | None:
     return normalized
 
 
-def _normalize_assets(raw_assets: Mapping[str, Any]) -> dict[str, str]:
+def _normalize_assets(
+    raw_assets: Mapping[str, Any],
+) -> tuple[dict[str, str], dict[str, tuple[float, float]]]:
     normalized: dict[str, str] = {}
+    calibration: dict[str, tuple[float, float]] = {}
     for canonical_name, aliases in _ASSET_ALIASES.items():
         for alias in aliases:
             raw_asset = raw_assets.get(alias)
@@ -540,8 +551,24 @@ def _normalize_assets(raw_assets: Mapping[str, Any]) -> dict[str, str]:
             href = raw_asset.get("href")
             if _is_public_http_url(href):
                 normalized[canonical_name] = href
+                raster_bands = raw_asset.get("raster:bands")
+                if _is_sequence(raster_bands) and raster_bands:
+                    raster_band = raster_bands[0]
+                    if isinstance(raster_band, Mapping):
+                        scale = raster_band.get("scale", 1.0)
+                        offset = raster_band.get("offset", 0.0)
+                        if (
+                            not isinstance(scale, bool)
+                            and isinstance(scale, (int, float))
+                            and math.isfinite(float(scale))
+                            and float(scale) > 0
+                            and not isinstance(offset, bool)
+                            and isinstance(offset, (int, float))
+                            and math.isfinite(float(offset))
+                        ):
+                            calibration[canonical_name] = (float(scale), float(offset))
                 break
-    return normalized
+    return normalized, calibration
 
 
 def _is_public_http_url(value: object) -> bool:

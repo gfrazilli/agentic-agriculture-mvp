@@ -2,8 +2,9 @@ from __future__ import annotations
 
 import numpy as np
 import pytest
+from shapely.geometry import shape
 
-from geospatial.boundary import suggest_boundaries
+from geospatial.boundary import _mask_to_geojson, suggest_boundaries
 
 
 def _synthetic_field() -> np.ndarray:
@@ -37,7 +38,7 @@ def test_returns_three_ranked_explainable_candidates() -> None:
     assert [candidate.rank for candidate in result.candidates] == [1, 2, 3]
     totals = [candidate.scores.total for candidate in result.candidates]
     assert totals == sorted(totals, reverse=True)
-    assert result.candidates[0].estimated_area_ha == pytest.approx(0.36)
+    assert result.candidates[0].estimated_area_ha == pytest.approx(0.36, rel=0.01)
 
     for candidate in result.candidates:
         assert candidate.editable is True
@@ -86,6 +87,7 @@ def test_constant_data_uses_one_editable_geometric_fallback() -> None:
     assert candidate.editable is True
     assert candidate.requires_confirmation is True
     assert candidate.boundary["coordinates"][0][0] == candidate.boundary["coordinates"][0][-1]
+    assert candidate.scores.total <= 0.20
 
 
 def test_empty_valid_mask_uses_fallback_without_numeric_warnings() -> None:
@@ -117,3 +119,23 @@ def test_validation_rejects_mismatched_mask_and_candidate_count() -> None:
             resolution_m=10.0,
             max_candidates=4,
         )
+
+
+def test_cross_mask_is_polygonised_without_convex_hull_and_area_matches_pixels() -> None:
+    mask = np.zeros((7, 7), dtype=bool)
+    mask[2:5, 3] = True
+    mask[3, 2:5] = True
+
+    boundary, area_ha = _mask_to_geojson(
+        mask,
+        transform=(10.0, 0.0, 500_000.0, 0.0, -10.0, 7_400_000.0),
+        crs="EPSG:32722",
+    )
+
+    polygon = shape(boundary)
+    assert polygon.is_valid
+    assert polygon.area < polygon.convex_hull.area
+    assert area_ha == pytest.approx(5 * 100 / 10_000, rel=0.02)
+    ring = boundary["coordinates"][0]
+    assert ring[0] == ring[-1]
+    assert len(ring) <= 200

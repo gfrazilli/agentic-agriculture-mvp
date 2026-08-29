@@ -10,9 +10,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from heapq import heappop, heappush
 from math import cos, exp, isfinite, log, pi, radians, sqrt
+from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from rasterio import Affine
+from rasterio.features import shapes
+from rasterio.warp import transform_geom
+from shapely.geometry import MultiPolygon, Polygon, mapping, shape
 
 FloatArray = NDArray[np.float64]
 BoolArray = NDArray[np.bool_]
@@ -69,15 +74,18 @@ def suggest_boundaries(
     estimated_area_ha: float | None = None,
     valid_mask: NDArray[np.bool_] | None = None,
     reference_pixel: Pixel | None = None,
+    transform: tuple[float, float, float, float, float, float] | None = None,
+    crs: str | None = None,
     max_candidates: int = 3,
 ) -> BoundarySuggestionResult:
     """Return up to three connected, spectrally coherent boundary candidates.
 
     ``spectral_grid`` may be an index image shaped ``(height, width)`` or a
     multiband composition shaped ``(height, width, bands)``. The reference
-    location is treated as the geographic centre of that grid. Region growing
-    starts at ``reference_pixel`` (the grid centre by default), so candidates
-    are connected and deterministic even when spectral values tie.
+    location is used only for the safe fallback when a real raster ``transform``
+    and ``crs`` are supplied. Region growing starts at ``reference_pixel`` (the
+    grid centre by default), so candidates are connected and deterministic even
+    when spectral values tie.
 
     Scores are evidence for *boundary selection*, not evidence of crop health or
     of any causal diagnosis.
@@ -94,6 +102,13 @@ def suggest_boundaries(
     )
     if not 1 <= max_candidates <= 3:
         raise ValueError("max_candidates must be between 1 and 3.")
+    raster_transform, raster_crs = _resolve_georeferencing(
+        shape=(height, width),
+        reference_location=(longitude, latitude),
+        resolution_m=resolution,
+        transform=transform,
+        crs=crs,
+    )
 
     finite_mask = np.all(np.isfinite(features), axis=2)
     if valid_mask is None:
@@ -149,7 +164,11 @@ def suggest_boundaries(
         mask = np.zeros((height, width), dtype=bool)
         selected = growth_order[:size]
         mask[tuple(zip(*selected, strict=True))] = True
-        area_ha = size * resolution * resolution / 10_000.0
+        boundary, area_ha = _mask_to_geojson(
+            mask,
+            transform=raster_transform,
+            crs=raster_crs,
+        )
         scores = _score_candidate(
             mask=mask,
             normalised=normalised,
@@ -162,11 +181,7 @@ def suggest_boundaries(
         candidates.append(
             BoundaryCandidate(
                 rank=0,
-                boundary=_mask_to_geojson(
-                    mask,
-                    reference_location=(longitude, latitude),
-                    resolution_m=resolution,
-                ),
+                boundary=boundary,
                 estimated_area_ha=round(area_ha, 6),
                 scores=scores,
                 source="spectral-region-growth",
@@ -396,61 +411,138 @@ def _rationale(
     )
 
 
+def _resolve_georeferencing(
+    *,
+    shape: tuple[int, int],
+    reference_location: LonLat,
+    resolution_m: float,
+    transform: tuple[float, float, float, float, float, float] | None,
+    crs: str | None,
+) -> tuple[tuple[float, float, float, float, float, float], str]:
+    if (transform is None) != (crs is None):
+        raise ValueError("transform and crs must be supplied together.")
+    if transform is not None and crs is not None:
+        if len(transform) != 6 or not all(isfinite(float(value)) for value in transform):
+            raise ValueError("transform must contain six finite affine coefficients.")
+        affine = Affine(*transform)
+        if abs(affine.determinant) <= 1e-12:
+            raise ValueError("transform must describe pixels with non-zero area.")
+        return tuple(float(value) for value in transform), crs
+
+    height, width = shape
+    longitude, latitude = reference_location
+    metres_per_degree_longitude = max(111_320.0 * abs(cos(radians(latitude))), 1_000.0)
+    x_resolution = resolution_m / metres_per_degree_longitude
+    y_resolution = resolution_m / 110_574.0
+    affine = Affine(
+        x_resolution,
+        0.0,
+        longitude - width * x_resolution / 2.0,
+        0.0,
+        -y_resolution,
+        latitude + height * y_resolution / 2.0,
+    )
+    return tuple(affine)[:6], "EPSG:4326"
+
+
 def _mask_to_geojson(
     mask: BoolArray,
     *,
-    reference_location: LonLat,
-    resolution_m: float,
-) -> dict[str, object]:
-    height, width = mask.shape
-    corner_points: set[tuple[float, float]] = set()
-    for row, column in np.argwhere(mask):
-        for row_corner, column_corner in (
-            (row, column),
-            (row, column + 1),
-            (row + 1, column),
-            (row + 1, column + 1),
-        ):
-            east_m = (float(column_corner) - width / 2.0) * resolution_m
-            north_m = (height / 2.0 - float(row_corner)) * resolution_m
-            corner_points.add((east_m, north_m))
-    hull = _convex_hull(corner_points)
-    if len(hull) > 96:
-        step = len(hull) / 96.0
-        hull = [hull[int(index * step)] for index in range(96)]
-    ring = [_metres_to_lon_lat(point, reference_location=reference_location) for point in hull]
-    ring.append(ring[0])
-    return {
-        "type": "Polygon",
-        "coordinates": [[list(coordinate) for coordinate in ring]],
-    }
+    transform: tuple[float, float, float, float, float, float],
+    crs: str,
+) -> tuple[dict[str, object], float]:
+    """Polygonise the selected pixels and measure the polygon actually returned."""
 
-
-def _convex_hull(points: set[tuple[float, float]]) -> list[tuple[float, float]]:
-    ordered = sorted(points)
-    if len(ordered) < 3:
-        raise ValueError("A boundary candidate needs at least three distinct corners.")
-
-    def cross(
-        origin: tuple[float, float],
-        first: tuple[float, float],
-        second: tuple[float, float],
-    ) -> float:
-        return (first[0] - origin[0]) * (second[1] - origin[1]) - (first[1] - origin[1]) * (
-            second[0] - origin[0]
+    affine = Affine(*transform)
+    geometries = [
+        shape(geometry)
+        for geometry, value in shapes(
+            mask.astype(np.uint8),
+            mask=mask,
+            transform=affine,
+            connectivity=4,
         )
+        if value == 1
+    ]
+    polygons = [polygon for geometry in geometries for polygon in _polygon_parts(geometry)]
+    if not polygons:
+        raise ValueError("A boundary candidate needs at least one selected pixel.")
+    source_polygon = max(polygons, key=lambda polygon: polygon.area)
+    # The public contract intentionally supports one exterior ring and no holes.
+    source_polygon = Polygon(source_polygon.exterior)
+    source_polygon = _limit_polygon_vertices(source_polygon, maximum=200)
 
-    lower: list[tuple[float, float]] = []
-    for point in ordered:
-        while len(lower) >= 2 and cross(lower[-2], lower[-1], point) <= 0:
-            lower.pop()
-        lower.append(point)
-    upper: list[tuple[float, float]] = []
-    for point in reversed(ordered):
-        while len(upper) >= 2 and cross(upper[-2], upper[-1], point) <= 0:
-            upper.pop()
-        upper.append(point)
-    return lower[:-1] + upper[:-1]
+    wgs84_geometry = transform_geom(
+        crs,
+        "EPSG:4326",
+        mapping(source_polygon),
+        precision=9,
+    )
+    wgs84_shape = shape(wgs84_geometry)
+    wgs84_parts = _polygon_parts(wgs84_shape)
+    if not wgs84_parts:
+        raise ValueError("The polygon could not be transformed to WGS84.")
+    wgs84_polygon = Polygon(max(wgs84_parts, key=lambda polygon: polygon.area).exterior)
+    wgs84_polygon = _limit_polygon_vertices(wgs84_polygon, maximum=200)
+    ring = _clean_ring(wgs84_polygon.exterior.coords)
+    if len(ring) > 200:
+        raise ValueError("The delivered boundary exceeds the 200-vertex contract.")
+
+    delivered = {"type": "Polygon", "coordinates": [[list(point) for point in ring]]}
+    equal_area_geometry = transform_geom(
+        "EPSG:4326",
+        "EPSG:6933",
+        delivered,
+        precision=-1,
+    )
+    area_ha = shape(equal_area_geometry).area / 10_000.0
+    if not isfinite(area_ha) or area_ha <= 0:
+        raise ValueError("The delivered boundary has no measurable area.")
+    return delivered, float(area_ha)
+
+
+def _polygon_parts(geometry: Any) -> list[Polygon]:
+    if isinstance(geometry, Polygon):
+        return [geometry]
+    if isinstance(geometry, MultiPolygon):
+        return list(geometry.geoms)
+    return []
+
+
+def _limit_polygon_vertices(polygon: Polygon, *, maximum: int) -> Polygon:
+    if len(polygon.exterior.coords) <= maximum:
+        return polygon
+    min_x, min_y, max_x, max_y = polygon.bounds
+    scale = max(max_x - min_x, max_y - min_y, 1e-12)
+    low = 0.0
+    high = scale
+    best: Polygon | None = None
+    for _ in range(32):
+        tolerance = (low + high) / 2.0
+        simplified = polygon.simplify(tolerance, preserve_topology=True)
+        parts = _polygon_parts(simplified)
+        candidate = Polygon(max(parts, key=lambda part: part.area).exterior) if parts else None
+        if candidate is not None and len(candidate.exterior.coords) <= maximum:
+            best = candidate
+            high = tolerance
+        else:
+            low = tolerance
+    if best is None or not best.is_valid or best.area <= 0:
+        raise ValueError("The boundary cannot be simplified to the public vertex limit.")
+    return best
+
+
+def _clean_ring(coordinates: Any) -> list[LonLat]:
+    ring: list[LonLat] = []
+    for raw_longitude, raw_latitude, *_rest in coordinates:
+        point = (round(float(raw_longitude), 9), round(float(raw_latitude), 9))
+        if not ring or point != ring[-1]:
+            ring.append(point)
+    if ring and ring[0] != ring[-1]:
+        ring.append(ring[0])
+    if len(ring) < 4 or len(set(ring[:-1])) < 3:
+        raise ValueError("The delivered boundary must have three distinct vertices.")
+    return ring
 
 
 def _metres_to_lon_lat(point: tuple[float, float], *, reference_location: LonLat) -> LonLat:
@@ -485,11 +577,11 @@ def _fallback_result(
         for point in corners_m
     ]
     scores = BoundaryCandidateScores(
-        proximity=1.0,
-        estimated_area=1.0 if estimated_area_ha is not None else 0.5,
+        proximity=0.2,
+        estimated_area=0.2 if estimated_area_ha is not None else 0.1,
         spectral_homogeneity=0.0,
         edge_strength=0.0,
-        total=0.6 if estimated_area_ha is not None else 0.45,
+        total=0.2 if estimated_area_ha is not None else 0.15,
     )
     candidate = BoundaryCandidate(
         rank=1,
