@@ -12,6 +12,7 @@ RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY pyproject.toml README.md manage.py ./
+COPY agentic_agriculture ./agentic_agriculture
 COPY agriculture ./agriculture
 COPY config ./config
 COPY core ./core
