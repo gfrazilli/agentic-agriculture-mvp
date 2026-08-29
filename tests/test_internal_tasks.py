@@ -177,6 +177,31 @@ def test_retryable_pipeline_failure_requests_cloud_tasks_retry(
     assert response.json()["data"]["retryable"] is True
 
 
+def test_active_pipeline_lease_requests_cloud_tasks_retry(
+    monkeypatch,
+    client,
+    stored_analysis,
+):
+    class FakePipeline:
+        def run(self, analysis_id: str) -> PipelineOutcome:
+            return PipelineOutcome(
+                analysis_id=analysis_id,
+                status="already_running",
+                retryable=True,
+            )
+
+    monkeypatch.setattr(
+        "agriculture.internal.views.get_analysis_pipeline",
+        lambda: FakePipeline(),
+    )
+
+    response = _post(client, _payload(stored_analysis), **_delivery_headers())
+
+    assert response.status_code == 503
+    assert response.json()["data"]["outcome"] == "already_running"
+    assert response.json()["data"]["retryable"] is True
+
+
 def test_receiver_rejects_payload_that_does_not_match_stored_analysis(client, stored_analysis):
     payload = _payload(stored_analysis)
     payload["field_id"] = str(uuid4())
@@ -219,6 +244,10 @@ def test_cloud_tasks_adapter_sends_secret_only_in_authenticated_header(monkeypat
         def FromDatetime(self, value):
             self.value = value
 
+    class FakeDuration:
+        def FromSeconds(self, value):
+            self.seconds = value
+
     class FakeAlreadyExists(Exception):
         pass
 
@@ -244,6 +273,7 @@ def test_cloud_tasks_adapter_sends_secret_only_in_authenticated_header(monkeypat
         ),
         "google.api_core.exceptions": SimpleNamespace(AlreadyExists=FakeAlreadyExists),
         "google.protobuf.timestamp_pb2": SimpleNamespace(Timestamp=FakeTimestamp),
+        "google.protobuf.duration_pb2": SimpleNamespace(Duration=FakeDuration),
     }
     monkeypatch.setattr(task_adapter, "load_google_module", lambda name, package: modules[name])
     client = FakeClient()
@@ -272,6 +302,7 @@ def test_cloud_tasks_adapter_sends_secret_only_in_authenticated_header(monkeypat
     assert json.loads(http_request["body"]) == {"analysis_id": "analysis-1"}
     assert TASK_SECRET not in repr(queued)
     assert CLOUD_TASK_NAME_HEADER not in http_request["headers"]
+    assert client.created_task["dispatch_deadline"].seconds == 900
 
 
 def test_cloud_tasks_readiness_requires_https_and_a_strong_secret_in_production(settings):
@@ -291,3 +322,6 @@ def test_cloud_tasks_readiness_requires_https_and_a_strong_secret_in_production(
 
     settings.CLOUD_TASKS_SHARED_SECRET = TASK_SECRET
     assert backend_configuration()["cloud_tasks"] is True
+
+    settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = 59
+    assert backend_configuration()["cloud_tasks"] is False

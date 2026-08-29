@@ -116,6 +116,7 @@ this automatically.
 | `CLOUD_TASKS_QUEUE` | Cloud Tasks | Queue name. |
 | `CLOUD_TASKS_BASE_URL` | Cloud Tasks | HTTPS base URL of the Cloud Run service. |
 | `CLOUD_TASKS_SERVICE_ACCOUNT` | Recommended | Service account used for OIDC task calls. |
+| `CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS` | Cloud Tasks | Worker request deadline; defaults to 900 and must be 60-1800. |
 | `CLOUD_TASKS_SHARED_SECRET` | Cloud Tasks | Random 32+ character secret used only for internal task delivery. |
 | `ANALYSIS_DAILY_LIMIT` | No | New analyses/regroupings per browser/day; defaults to 3. |
 | `API_MAX_REQUEST_BYTES` | No | JSON body ceiling; defaults to 256 KiB. |
@@ -127,6 +128,7 @@ this automatically.
 | `PORT` | No | HTTP port; defaults to `8080`, as expected by Cloud Run. |
 | `WEB_CONCURRENCY` | No | Gunicorn workers; use 1 with memory, 2+ with Firestore. |
 | `GUNICORN_THREADS` | No | Threads per worker; defaults to 4. |
+| `GUNICORN_TIMEOUT` | No | Worker timeout; defaults to 840 seconds for Sentinel tasks. |
 
 Production startup fails if `DJANGO_SECRET_KEY` or `DJANGO_ALLOWED_HOSTS` is absent, or if an
 in-memory agriculture backend is selected. The readiness probe returns `503` if credentials
@@ -206,6 +208,7 @@ GCS_BUCKET=<artifact bucket>
 CLOUD_TASKS_LOCATION=<queue region>
 CLOUD_TASKS_QUEUE=<queue name>
 CLOUD_TASKS_BASE_URL=https://<service host>
+CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS=900
 CLOUD_TASKS_SHARED_SECRET=<managed random secret of at least 32 characters>
 ```
 
@@ -213,6 +216,12 @@ The image runs as a non-root user, listens on `0.0.0.0:$PORT`, serves static ass
 WhiteNoise, and understands Cloud Run's `X-Forwarded-Proto` header. Prefer your cloud secret
 manager for the Django secret, password hash, and internal task secret rather than plain
 deployment arguments.
+
+Deploy the task receiver as a dedicated private Cloud Run service with a 900-second request
+timeout, `WEB_CONCURRENCY=1`, `GUNICORN_THREADS=1`, and `GUNICORN_TIMEOUT=840`. Its task deadline
+is 900 seconds and its processing lease is 20 minutes. A delivery received while that lease is
+active returns a retryable response; if a worker dies, a later retry resumes the analysis instead
+of acknowledging and losing the task.
 
 PR2's internal receiver authenticates and validates Cloud Tasks deliveries, then explicitly
 acknowledges them as `pipeline_implemented: false` without inventing a result. Sentinel and

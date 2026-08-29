@@ -26,6 +26,7 @@ def backend_configuration() -> dict[str, bool]:
         and settings.CLOUD_TASKS_LOCATION
         and settings.CLOUD_TASKS_QUEUE
         and settings.CLOUD_TASKS_BASE_URL
+        and 60 <= settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS <= 1800
         and (not settings.IS_PRODUCTION or settings.CLOUD_TASKS_BASE_URL.startswith("https://"))
         and task_secret_is_valid(settings.CLOUD_TASKS_SHARED_SECRET)
     )
@@ -96,7 +97,8 @@ def check_cloud_backends(app_configs, **kwargs):  # noqa: ARG001
             Error(
                 (
                     "Cloud Tasks requires project, location, queue, a secure handler URL and "
-                    "a shared secret of at least 32 characters."
+                    "a shared secret of at least 32 characters; its dispatch deadline must be "
+                    "between 60 and 1800 seconds."
                 ),
                 id="agriculture.E005",
             )

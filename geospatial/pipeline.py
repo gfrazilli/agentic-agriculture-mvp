@@ -45,6 +45,7 @@ from geospatial.zoning import (
 )
 
 PROVIDER_LABEL = "EU/ESA/Copernicus via Earth Search/AWS Open Data"
+RUNNING_LEASE_SECONDS = 20 * 60
 ZONE_COLORS = ("#b45309", "#d97706", "#65a30d", "#16a34a", "#0d9488", "#0284c7", "#4f46e5")
 
 
@@ -115,10 +116,11 @@ class AnalysisPipeline:
             )
         if analysis.status is AnalysisStatus.RUNNING:
             elapsed = self.clock() - analysis.updated_at
-            if elapsed.total_seconds() < 15 * 60:
+            if elapsed.total_seconds() < RUNNING_LEASE_SECONDS:
                 return PipelineOutcome(
                     analysis_id=str(analysis.id),
                     status="already_running",
+                    retryable=True,
                 )
 
         field = self.repository.get_field(str(analysis.field_id))

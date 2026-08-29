@@ -55,6 +55,7 @@ def get_task_queue() -> TaskQueue:
             shared_secret=settings.CLOUD_TASKS_SHARED_SECRET,
             oidc_service_account_email=settings.CLOUD_TASKS_SERVICE_ACCOUNT or None,
             oidc_audience=settings.CLOUD_TASKS_BASE_URL,
+            dispatch_deadline_seconds=settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS,
         )
     raise RuntimeError(f"Unsupported task backend: {settings.TASK_BACKEND}")
 

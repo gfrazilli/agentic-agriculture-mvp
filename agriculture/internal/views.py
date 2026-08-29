@@ -63,5 +63,5 @@ def receive_analysis_task(
             "error_code": outcome.error_code,
             "retryable": outcome.retryable,
         },
-        status=503 if outcome.status == "failed" and outcome.retryable else 200,
+        status=503 if outcome.retryable else 200,
     )

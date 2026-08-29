@@ -9,7 +9,7 @@ from agriculture.adapters import (
 )
 from agriculture.api.models import AnalysisCreateInput, FieldCreateInput, FieldPatchInput
 from agriculture.domain import AnalysisStatus
-from agriculture.schemas import GeoJSONPoint, GeoJSONPolygon
+from agriculture.schemas import AnalysisProgress, AnalysisStage, GeoJSONPoint, GeoJSONPolygon
 from agriculture.services.application import AgricultureService
 from agriculture.services.idempotency import IdempotencyContext
 from geospatial.cog import MultibandWindow, RasterWindow
@@ -186,3 +186,50 @@ def test_pipeline_persists_explicit_insufficient_data_failure():
     assert stored.status is AnalysisStatus.FAILED
     assert stored.error is not None
     assert stored.error.retryable is False
+
+
+def test_running_lease_retries_then_stale_work_is_recovered():
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    analysis_id = _queued_analysis(repository)
+    queued = repository.get_analysis(analysis_id)
+    assert queued is not None
+    running_progress = AnalysisProgress(
+        percent=10,
+        stage=AnalysisStage.ACQUIRING_SCENES,
+        message_pt="Buscando observações Sentinel-2 da safra.",
+        message_en="Finding Sentinel-2 observations for the season.",
+        updated_at=NOW,
+    )
+    running = queued.model_copy(
+        update={
+            "status": AnalysisStatus.RUNNING,
+            "progress": running_progress,
+            "updated_at": NOW,
+        }
+    )
+    repository.save_analysis(running)
+    scenes = _scenes()
+    clock = [NOW]
+    pipeline = AnalysisPipeline(
+        repository,
+        InMemoryArtifactStore(),
+        client=FakeClient(scenes),
+        reader=FakeReader(scenes),
+        clock=lambda: clock[0],
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    active = pipeline.run(analysis_id)
+
+    assert active.status == "already_running"
+    assert active.retryable is True
+
+    clock[0] = NOW + timedelta(minutes=21)
+
+    recovered = pipeline.run(analysis_id)
+
+    assert recovered.status == "completed"
+    stored = repository.get_analysis(analysis_id)
+    assert stored is not None
+    assert stored.status is AnalysisStatus.COMPLETED
