@@ -24,3 +24,22 @@ services:
       timeout: 3s
       retries: 5
       start_period: 10s
+
+  geospatial-mcp:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    command: ["python", "-m", "geospatial.mcp_server"]
+    env_file:
+      - .env
+    environment:
+      APP_ENV: ${APP_ENV:-development}
+      PORT: 8090
+      MCP_HOST: 0.0.0.0
+    ports:
+      - "8090:8090"
+    init: true
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp

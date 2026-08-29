@@ -15,6 +15,7 @@ COPY pyproject.toml README.md manage.py ./
 COPY agriculture ./agriculture
 COPY config ./config
 COPY core ./core
+COPY geospatial ./geospatial
 COPY templates ./templates
 COPY locale ./locale
 
