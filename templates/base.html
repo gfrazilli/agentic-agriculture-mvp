@@ -1,0 +1,46 @@
+{% load i18n static %}
+{% get_current_language as LANGUAGE_CODE %}
+<!doctype html>
+<html lang="{{ LANGUAGE_CODE }}">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="color-scheme" content="light">
+    <title>{% block title %}{{ PRODUCT_NAME }}{% endblock %}</title>
+    <link rel="stylesheet" href="{% static 'core/styles.css' %}">
+  </head>
+  <body>
+    <header class="site-header">
+      <a class="brand" href="{% url 'home' %}">
+        <span class="brand-mark" aria-hidden="true">A</span>
+        <span>{{ PRODUCT_NAME }}</span>
+      </a>
+      <form class="language-switcher" action="{% url 'set_language' %}" method="post">
+        {% csrf_token %}
+        <input type="hidden" name="next" value="{{ request.path }}">
+        <span class="sr-only">{% translate "Language" %}</span>
+        <button
+          type="submit"
+          name="language"
+          value="pt-br"
+          {% if LANGUAGE_CODE == "pt-br" %}aria-current="true"{% endif %}
+        >PT</button>
+        <span aria-hidden="true">/</span>
+        <button
+          type="submit"
+          name="language"
+          value="en"
+          {% if LANGUAGE_CODE == "en" %}aria-current="true"{% endif %}
+        >EN</button>
+      </form>
+    </header>
+
+    <main class="page-shell">
+      {% block content %}{% endblock %}
+    </main>
+
+    <footer class="site-footer">
+      <span>{% translate "A secure foundation for the MVP." %}</span>
+    </footer>
+  </body>
+</html>

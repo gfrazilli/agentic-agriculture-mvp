@@ -1,0 +1,77 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: agentic-agriculture-mvp 0.1.0\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2026-08-29 00:00-0300\n"
+"PO-Revision-Date: 2026-08-29 00:00-0300\n"
+"Last-Translator: Agentic Agriculture\n"
+"Language-Team: Portuguese (Brazil)\n"
+"Language: pt_BR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=(n > 1);\n"
+
+msgid "Language"
+msgstr "Idioma"
+
+msgid "A secure foundation for the MVP."
+msgstr "Uma base segura para o MVP."
+
+#, python-format
+msgid "Sign in · %(product_name)s"
+msgstr "Entrar · %(product_name)s"
+
+msgid "Demonstration access"
+msgstr "Acesso de demonstração"
+
+#, python-format
+msgid "Sign in to %(product_name)s"
+msgstr "Entre no %(product_name)s"
+
+msgid "Use the demonstration credentials configured for this environment."
+msgstr "Use as credenciais de demonstração configuradas para este ambiente."
+
+msgid "Invalid credentials. Try again."
+msgstr "Credenciais inválidas. Tente novamente."
+
+msgid "Demonstration access is not configured yet."
+msgstr "O acesso de demonstração ainda não foi configurado."
+
+msgid "Username"
+msgstr "Usuário"
+
+msgid "Password"
+msgstr "Senha"
+
+msgid "Continue"
+msgstr "Continuar"
+
+#, python-format
+msgid "Home · %(product_name)s"
+msgstr "Início · %(product_name)s"
+
+msgid "Operational foundation"
+msgstr "Base operacional"
+
+msgid "The MVP is ready to grow."
+msgstr "O MVP está pronto para crescer."
+
+#, python-format
+msgid "Welcome, %(username)s. Authentication, health checks and deployment foundations are active."
+msgstr "Boas-vindas, %(username)s. Autenticação, verificações de saúde e bases de implantação estão ativas."
+
+msgid "Bootstrap online"
+msgstr "Bootstrap online"
+
+msgid "No database is required."
+msgstr "Nenhum banco de dados é necessário."
+
+msgid "What comes next"
+msgstr "O que vem a seguir"
+
+msgid "Agricultural workflows will be added in a later delivery."
+msgstr "Os fluxos agrícolas serão adicionados em uma entrega posterior."
+
+msgid "Sign out"
+msgstr "Sair"

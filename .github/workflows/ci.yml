@@ -1,0 +1,48 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      APP_ENV: development
+      DJANGO_DEBUG: "false"
+      DJANGO_SECRET_KEY: ci-only-secret-key-that-is-never-used-in-production
+      DEMO_USERNAME: ci-demo
+      DEMO_PASSWORD_HASH: 'pbkdf2_sha256$1000000$1qKZJGP0Pz6Nm8RAdufViM$Y+jtY97vmFUs9uW/WjFWhPl9uoLw/u25kD6O0aiY4lw='
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install dependencies
+        run: python -m pip install --upgrade pip && python -m pip install -e ".[dev]"
+      - name: Ruff lint
+        run: ruff check .
+      - name: Ruff format
+        run: ruff format --check .
+      - name: Django checks
+        run: python manage.py check
+      - name: Tests
+        run: pytest
+
+  container:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build production image
+        run: docker build --tag agentic-agriculture-mvp:ci .
