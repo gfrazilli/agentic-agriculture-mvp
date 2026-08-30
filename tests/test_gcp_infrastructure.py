@@ -66,6 +66,7 @@ def test_deploy_uses_one_pinned_image_and_only_web_is_public():
     assert "TASK_SECRET_VERSION" in script
     assert '--region="$REGION"' in script
     assert "roles/run.invoker" in script
+    assert "MSYS_NO_PATHCONV=1" in script
 
 
 def test_worker_and_agent_limits_match_the_runtime_contract():

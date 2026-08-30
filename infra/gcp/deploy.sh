@@ -14,6 +14,9 @@ set -Eeuo pipefail
 IFS=$'\n\t'
 umask 077
 export LC_ALL=C
+# Git Bash on Windows otherwise rewrites Cloud Run URL paths such as
+# /healthz and /mcp into local C:/Program Files/Git paths.
+export MSYS_NO_PATHCONV=1
 
 readonly SCRIPT_NAME="${0##*/}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
@@ -148,12 +151,17 @@ if [[ "$SKIP_BUILD" == "true" ]]; then
     gcloud artifacts docker images describe "$IMAGE_URI" \
         --project="$PROJECT_ID" --format='value(image_summary.digest)' >/dev/null
 else
-    log "Building one immutable image for all service roles: $IMAGE_URI"
-    gcloud builds submit "$REPOSITORY_ROOT" \
-        --project="$PROJECT_ID" \
-        --region="$REGION" \
-        --tag="$IMAGE_URI" \
-        --quiet
+    if gcloud artifacts docker images describe "$IMAGE_URI" \
+        --project="$PROJECT_ID" --format='value(image_summary.digest)' >/dev/null 2>&1; then
+        log "Reusing existing immutable image: $IMAGE_URI"
+    else
+        log "Building one immutable image for all service roles: $IMAGE_URI"
+        gcloud builds submit "$REPOSITORY_ROOT" \
+            --project="$PROJECT_ID" \
+            --region="$REGION" \
+            --tag="$IMAGE_URI" \
+            --quiet
+    fi
 fi
 
 service_url() {
