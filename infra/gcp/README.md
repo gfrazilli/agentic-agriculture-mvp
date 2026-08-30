@@ -21,6 +21,9 @@ calls work without a VPC connector, but Cloud Run IAM denies unauthenticated inv
 The web service account is the only browser-facing gateway allowed to invoke ADK. Django mints
 a short-lived identity token server-side; neither that token nor the private agent origin is
 sent to the browser.
+The ADK identity can also enqueue the narrowly scoped, idempotent analysis action after the
+farmer confirms a field boundary. It can write the analysis record and enqueue Cloud Tasks, but
+the dedicated task-invoker identity remains the only caller allowed to execute the worker.
 
 ## First deployment
 

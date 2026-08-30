@@ -122,6 +122,10 @@ def test_builds_multi_agent_gemini_graph_without_network_calls() -> None:
         "get_sentinel_scene",
         "plan_field_observations",
     ]
+    assert "request_field_analysis" in {
+        tool.__name__ for tool in graph.temporal_analysis_specialist.tools if callable(tool)
+    }
+    assert "get_analysis_evidence" in graph.temporal_analysis_specialist.instruction
     assert boundary_mcp.connection_params.headers == {
         "Accept": "application/json, text/event-stream"
     }
@@ -141,7 +145,13 @@ def test_mcp_can_be_disabled_while_preserving_all_specialists() -> None:
     assert graph.mcp_toolsets == ()
     assert len(graph.root_agent.sub_agents) == 3
     assert len(graph.boundary_specialist.tools) == 1
-    assert len(graph.temporal_analysis_specialist.tools) == 3
+    assert len(graph.temporal_analysis_specialist.tools) == 4
+    assert [tool.__name__ for tool in graph.temporal_analysis_specialist.tools] == [
+        "get_field_context",
+        "request_field_analysis",
+        "get_analysis_evidence",
+        "list_field_analyses",
+    ]
 
 
 def test_installed_google_adk_builds_the_real_graph_without_external_calls() -> None:
