@@ -46,3 +46,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Build production image
         run: docker build --tag agentic-agriculture-mvp:ci .
+      - name: Verify geospatial runtime imports
+        run: >-
+          docker run --rm agentic-agriculture-mvp:ci
+          python -c "import rasterio; from geospatial.boundary_service import
+          EarthSearchBoundaryProvider; EarthSearchBoundaryProvider()"
