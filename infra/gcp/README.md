@@ -111,4 +111,3 @@ Useful official references:
 - [Firestore database management](https://cloud.google.com/firestore/docs/manage-databases)
 - [Cloud Run Secret Manager integration](https://cloud.google.com/run/docs/configuring/services/secrets)
 - [Cloud Billing budgets](https://cloud.google.com/billing/docs/how-to/budgets)
-
