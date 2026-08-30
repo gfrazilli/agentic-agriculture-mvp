@@ -200,6 +200,22 @@ def test_farmer_script_uses_real_contract_and_safe_dom_updates():
     assert "zoneGeometryPath(zone.boundary, projection)" in script
 
 
+def test_language_switch_restores_the_persisted_workflow_from_the_api():
+    script_path = Path(settings.BASE_DIR) / "core" / "static" / "core" / "farmer-app.js"
+    script = script_path.read_text(encoding="utf-8")
+
+    assert 'workflowRestoreKey = "agentic-agriculture:language-switch:v1"' in script
+    assert 'document.querySelector(".language-switcher")?.addEventListener(' in script
+    assert '"submit", saveWorkflowForLanguageSwitch' in script
+    assert "window.sessionStorage.setItem(workflowRestoreKey" in script
+    assert "window.sessionStorage.removeItem(workflowRestoreKey)" in script
+    assert "apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`)" in script
+    assert "apiRequest(`${copy.analysesUrl}${saved.analysisId}/`)" in script
+    assert 'if (analysis.status === "completed")' in script
+    assert "renderResult(analysis)" in script
+    assert "void restoreWorkflowAfterLanguageSwitch()" in script
+
+
 def test_agent_interface_keeps_private_cloud_identity_out_of_the_browser():
     script_path = Path(settings.BASE_DIR) / "core" / "static" / "core" / "farmer-app.js"
     template_path = Path(settings.BASE_DIR) / "templates" / "core" / "home.html"

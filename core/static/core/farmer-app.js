@@ -9,6 +9,9 @@
   const csrfToken = form.querySelector("[name='csrfmiddlewaretoken']").value;
   const language = document.documentElement.lang.toLowerCase().startsWith("pt") ? "pt" : "en";
   const svgNamespace = "http://www.w3.org/2000/svg";
+  const workflowRestoreKey = "agentic-agriculture:language-switch:v1";
+  const workflowRestoreLifetimeMs = 15 * 60 * 1000;
+  const uuidPattern = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   const copy = app.dataset;
   const runtimeCopy = language === "pt"
     ? {
@@ -156,6 +159,60 @@
       state.idempotencyKeys.set(action, crypto.randomUUID());
     }
     return state.idempotencyKeys.get(action);
+  }
+
+  function clearWorkflowRestore() {
+    try {
+      window.sessionStorage.removeItem(workflowRestoreKey);
+    } catch (_error) {
+      // Storage may be unavailable in privacy-restricted browser contexts.
+    }
+  }
+
+  function saveWorkflowForLanguageSwitch() {
+    const analysis = state.persistedAnalysis || state.analysis;
+    const fieldId = String(state.field?.id || "");
+    const analysisId = String(analysis?.id || "");
+    if (
+      !uuidPattern.test(fieldId)
+      || !uuidPattern.test(analysisId)
+      || String(analysis?.field_id || "") !== fieldId
+    ) return;
+
+    try {
+      window.sessionStorage.setItem(workflowRestoreKey, JSON.stringify({
+        fieldId,
+        analysisId,
+        savedAt: Date.now(),
+      }));
+    } catch (_error) {
+      // The language change must still work when storage is unavailable.
+    }
+  }
+
+  function readWorkflowRestore() {
+    let raw = null;
+    try {
+      raw = window.sessionStorage.getItem(workflowRestoreKey);
+    } catch (_error) {
+      return null;
+    }
+    if (!raw) return null;
+
+    try {
+      const saved = JSON.parse(raw);
+      const age = Date.now() - Number(saved.savedAt);
+      const isValid = uuidPattern.test(saved.fieldId)
+        && uuidPattern.test(saved.analysisId)
+        && Number.isFinite(age)
+        && age >= 0
+        && age <= workflowRestoreLifetimeMs;
+      if (isValid) return saved;
+    } catch (_error) {
+      // Invalid or obsolete state is discarded below.
+    }
+    clearWorkflowRestore();
+    return null;
   }
 
   async function apiRequest(url, options = {}) {
@@ -1024,6 +1081,45 @@
     throw new Error(copy.copyAnalysisPoll);
   }
 
+  async function restoreWorkflowAfterLanguageSwitch() {
+    const saved = readWorkflowRestore();
+    if (!saved) return;
+
+    try {
+      const [field, analysis] = await Promise.all([
+        apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`),
+        apiRequest(`${copy.analysesUrl}${saved.analysisId}/`),
+      ]);
+      if (String(analysis.field_id) !== String(field.id)) {
+        throw new Error("The saved analysis does not belong to the saved field.");
+      }
+
+      state.field = field;
+      state.analysis = analysis;
+      state.persistedAnalysis = analysis;
+      state.guidedResult = false;
+      state.agentSession = null;
+      state.agentSessionPromise = null;
+      populateFieldForm(field);
+      updateProgress(analysis);
+      clearWorkflowRestore();
+
+      if (analysis.status === "completed") {
+        renderResult(analysis);
+        return;
+      }
+      setStep(3);
+      if (analysis.status === "queued" || analysis.status === "running") {
+        await pollAnalysis(analysis.id);
+        return;
+      }
+      showAlert(analysis.error?.message || copy.copyAnalysisFailed);
+    } catch (error) {
+      clearWorkflowRestore();
+      showAlert(errorMessage(error));
+    }
+  }
+
   async function queueAnalysis() {
     const analysis = await apiRequest(copy.analysesUrl, {
       method: "POST",
@@ -1131,6 +1227,7 @@
   app.querySelector("#confirm-boundary").addEventListener("click", confirmBoundary);
   app.querySelector("#download-geojson").addEventListener("click", downloadGeoJson);
   app.querySelector("#restart-analysis").addEventListener("click", () => window.location.reload());
+  document.querySelector(".language-switcher")?.addEventListener("submit", saveWorkflowForLanguageSwitch);
   app.querySelectorAll("[data-back-to]").forEach((button) => {
     button.addEventListener("click", () => {
       const target = Number(button.dataset.backTo);
@@ -1141,4 +1238,5 @@
       setStep(target);
     });
   });
+  void restoreWorkflowAfterLanguageSwitch();
 })();
