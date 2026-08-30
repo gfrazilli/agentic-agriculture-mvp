@@ -20,6 +20,12 @@ from agriculture.ports.repositories import (
 )
 from agriculture.schemas import AgentSession, Analysis, Feedback, Field
 
+_CODEC_MARKER = "agentic_agriculture_firestore_codec"
+_CODEC_VERSION = "nested-arrays-v1"
+_SEQUENCE_MARKER = "agentic_agriculture_sequence_v1"
+_MAPPING_MARKER = "agentic_agriculture_mapping_v1"
+_RESERVED_CODEC_KEYS = frozenset({_CODEC_MARKER, _SEQUENCE_MARKER, _MAPPING_MARKER})
+
 
 def _utc_now() -> datetime:
     return datetime.now(UTC)
@@ -52,10 +58,93 @@ def _json_default(value: object) -> str:
     return str(value)
 
 
+def _encode_firestore_value(value: Any, *, inside_sequence: bool = False) -> Any:
+    """Encode only arrays that would otherwise be direct children of arrays."""
+
+    if isinstance(value, Mapping):
+        if any(not isinstance(key, str) for key in value):
+            raise ValueError("Firestore codec mappings require string keys.")
+        normalized = dict(value)
+        if _RESERVED_CODEC_KEYS.intersection(normalized):
+            return {
+                _MAPPING_MARKER: [
+                    {
+                        "key": key,
+                        "value": _encode_firestore_value(item),
+                    }
+                    for key, item in normalized.items()
+                ]
+            }
+        return {key: _encode_firestore_value(item) for key, item in normalized.items()}
+    if isinstance(value, (list, tuple)):
+        items = [_encode_firestore_value(item, inside_sequence=True) for item in value]
+        if inside_sequence:
+            return {_SEQUENCE_MARKER: items}
+        return items
+    return deepcopy(value)
+
+
+def _decode_firestore_value(value: Any) -> Any:
+    """Decode tagged arrays and escaped mappings from a versioned document."""
+
+    if isinstance(value, Mapping):
+        if _SEQUENCE_MARKER in value:
+            if len(value) != 1 or not isinstance(value[_SEQUENCE_MARKER], list):
+                raise ValueError("Firestore sequence envelope is invalid.")
+            return [_decode_firestore_value(item) for item in value[_SEQUENCE_MARKER]]
+        if _MAPPING_MARKER in value:
+            if len(value) != 1 or not isinstance(value[_MAPPING_MARKER], list):
+                raise ValueError("Firestore mapping envelope is invalid.")
+            decoded: dict[str, Any] = {}
+            for pair in value[_MAPPING_MARKER]:
+                if not isinstance(pair, Mapping) or set(pair) != {"key", "value"}:
+                    raise ValueError("Firestore mapping envelope entry is invalid.")
+                key = pair["key"]
+                if not isinstance(key, str) or key in decoded:
+                    raise ValueError("Firestore mapping envelope key is invalid.")
+                decoded[key] = _decode_firestore_value(pair["value"])
+            return decoded
+        if _RESERVED_CODEC_KEYS.intersection(value):
+            raise ValueError("Firestore codec envelope is invalid.")
+        return {str(key): _decode_firestore_value(item) for key, item in value.items()}
+    if isinstance(value, list):
+        return [_decode_firestore_value(item) for item in value]
+    return deepcopy(value)
+
+
+def _encode_firestore_document(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Return a versioned Firestore-safe document without mutating ``payload``."""
+
+    if any(not isinstance(key, str) for key in payload):
+        raise ValueError("Firestore documents require string keys.")
+    normalized = dict(payload)
+    if _RESERVED_CODEC_KEYS.intersection(normalized):
+        raise ValueError("Firestore document contains a reserved codec key.")
+    encoded = {key: _encode_firestore_value(item) for key, item in normalized.items()}
+    encoded[_CODEC_MARKER] = _CODEC_VERSION
+    return encoded
+
+
+def _decode_firestore_document(payload: Mapping[str, Any]) -> dict[str, Any]:
+    """Decode a versioned document and leave pre-codec documents unchanged."""
+
+    if _CODEC_MARKER not in payload:
+        return deepcopy(dict(payload))
+    version = payload[_CODEC_MARKER]
+    if version != _CODEC_VERSION:
+        raise ValueError(f"Unsupported Firestore codec version: {version!r}.")
+    return {
+        str(key): _decode_firestore_value(item)
+        for key, item in payload.items()
+        if key != _CODEC_MARKER
+    }
+
+
 def _deserialize[ModelT: BaseModel](model_type: type[ModelT], payload: Mapping[str, Any]) -> ModelT:
     # Strict Pydantic contracts intentionally reject Python UUID strings. JSON
     # validation is the correct boundary for documents stored using mode="json".
-    return model_type.model_validate_json(json.dumps(dict(payload), default=_json_default))
+    decoded = _decode_firestore_document(payload)
+    return model_type.model_validate_json(json.dumps(dict(decoded), default=_json_default))
 
 
 class FirestoreRepository:
@@ -93,7 +182,7 @@ class FirestoreRepository:
 
     def _save[ModelT: BaseModel](self, collection: str, entity: ModelT) -> ModelT:
         self._client.collection(collection).document(self._entity_id(entity)).set(
-            entity.model_dump(mode="json")
+            _encode_firestore_document(entity.model_dump(mode="json"))
         )
         return entity.model_copy(deep=True)
 
@@ -166,24 +255,30 @@ class FirestoreRepository:
 
     @staticmethod
     def _record(payload: Mapping[str, Any]) -> IdempotencyRecord:
+        decoded = _decode_firestore_document(payload)
+        response = deepcopy(decoded.get("response"))
+        if response is not None and not isinstance(response, Mapping):
+            raise ValueError("Firestore idempotency response must be a mapping.")
         return IdempotencyRecord(
-            key=str(payload["key"]),
-            request_digest=str(payload["request_digest"]),
-            expires_at=_as_utc(payload["expires_at"]),
-            response=deepcopy(payload.get("response")),
-            pending=bool(payload.get("pending", True)),
+            key=str(decoded["key"]),
+            request_digest=str(decoded["request_digest"]),
+            expires_at=_as_utc(decoded["expires_at"]),
+            response=response,
+            pending=bool(decoded.get("pending", True)),
         )
 
     @staticmethod
     def _record_payload(record: IdempotencyRecord, *, usage_count: int) -> dict[str, Any]:
-        return {
-            "key": record.key,
-            "request_digest": record.request_digest,
-            "expires_at": record.expires_at,
-            "response": deepcopy(record.response),
-            "pending": record.pending,
-            "usage_count": usage_count,
-        }
+        return _encode_firestore_document(
+            {
+                "key": record.key,
+                "request_digest": record.request_digest,
+                "expires_at": record.expires_at,
+                "response": deepcopy(record.response),
+                "pending": record.pending,
+                "usage_count": usage_count,
+            }
+        )
 
     def get_idempotency(self, key: str, *, now: datetime | None = None) -> IdempotencyRecord | None:
         key = _validate_text(key, "idempotency key")
