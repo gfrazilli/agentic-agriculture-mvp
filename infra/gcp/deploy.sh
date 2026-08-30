@@ -276,11 +276,20 @@ MCP_URL="${MCP_URL%/}"
 log "Deploying the private Gemini and Google ADK service."
 AGENT_ENV="^|^APP_ENV=production|DJANGO_DEBUG=false|DJANGO_ALLOWED_HOSTS=.run.app"
 AGENT_ENV+="|GOOGLE_CLOUD_PROJECT=${PROJECT_ID}|FIRESTORE_DATABASE=(default)"
-AGENT_ENV+="|PERSISTENCE_BACKEND=firestore|GOOGLE_GENAI_USE_VERTEXAI=true"
+AGENT_ENV+="|PERSISTENCE_BACKEND=firestore|ARTIFACT_BACKEND=gcs"
+AGENT_ENV+="|GCS_BUCKET=${ARTIFACT_BUCKET}|BOUNDARY_BACKEND=geospatial"
+AGENT_ENV+="|ANALYSIS_PIPELINE_BACKEND=sentinel|ANALYSIS_TARGET_SCENE_COUNT=6"
+AGENT_ENV+="|ANALYSIS_MAX_DIMENSION=512|GOOGLE_GENAI_USE_VERTEXAI=true"
 AGENT_ENV+="|GOOGLE_CLOUD_LOCATION=global|AGENT_MODEL=${AGENT_MODEL}"
 AGENT_ENV+="|AGENT_APP_NAME=agentic_agriculture|AGENT_MCP_ENABLED=true"
 AGENT_ENV+="|AGENT_MCP_URL=${MCP_URL}/mcp|AGENT_MCP_AUDIENCE=${MCP_URL}"
 AGENT_ENV+="|AGENT_MCP_TIMEOUT_SECONDS=15|AGENT_MCP_TOOL_CACHE_SECONDS=300"
+# The temporal specialist can enqueue exactly the same idempotent analysis
+# command as the web service after the farmer has confirmed the boundary.
+AGENT_ENV+="|TASK_BACKEND=cloud_tasks|CLOUD_TASKS_LOCATION=${REGION}"
+AGENT_ENV+="|CLOUD_TASKS_QUEUE=${TASK_QUEUE}|CLOUD_TASKS_BASE_URL=${WORKER_URL}"
+AGENT_ENV+="|CLOUD_TASKS_SERVICE_ACCOUNT=${TASK_INVOKER_SA}"
+AGENT_ENV+="|CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS=900|ANALYSIS_DAILY_LIMIT=3"
 gcloud run deploy "$AGENT_SERVICE" \
     --project="$PROJECT_ID" \
     --region="$REGION" \
@@ -300,7 +309,7 @@ gcloud run deploy "$AGENT_SERVICE" \
     --command=adk \
     --args="api_server,--host=0.0.0.0,--port=8080,--no-reload,--session_service_uri=memory://,--artifact_service_uri=gs://${ARTIFACT_BUCKET},--auto_create_session,agentic_agriculture" \
     --set-env-vars="$AGENT_ENV" \
-    --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION}" \
+    --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
     --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=36,tcpSocket.port=8080' \
     --labels='app=agentic-agriculture,component=agent,managed-by=infra-script' \
     --description='Private Gemini 3.5+ Google ADK multi-agent API' \

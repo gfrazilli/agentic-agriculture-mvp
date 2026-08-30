@@ -51,6 +51,10 @@ def test_bootstrap_provisions_private_regional_dependencies_and_oidc_iam():
     assert "TASKS_SERVICE_AGENT" in script
     assert "roles/storage.objectUser" in script
     assert "roles/aiplatform.user" in script
+    assert 'add_project_role "serviceAccount:${AGENT_SA}" roles/datastore.user' in script
+    assert 'add_project_role "serviceAccount:${AGENT_SA}" roles/cloudtasks.enqueuer' in script
+    assert '"$TASK_INVOKER_SA" "serviceAccount:${AGENT_SA}" roles/iam.serviceAccountUser' in script
+    assert 'add_secret_role "$TASK_SECRET_ID" "$AGENT_SA"' in script
     assert "--data-file=-" in script
 
 
@@ -90,6 +94,12 @@ def test_worker_and_agent_limits_match_the_runtime_contract():
     assert "--auto_create_session" in agent_block
     assert "AGENT_MCP_URL=${MCP_URL}/mcp" in script
     assert "AGENT_MCP_AUDIENCE=${MCP_URL}" in script
+    assert "TASK_BACKEND=cloud_tasks" in script
+    assert "ARTIFACT_BACKEND=gcs" in script
+    assert "GCS_BUCKET=${ARTIFACT_BUCKET}" in script
+    assert "CLOUD_TASKS_BASE_URL=${WORKER_URL}" in script
+    assert "CLOUD_TASKS_SERVICE_ACCOUNT=${TASK_INVOKER_SA}" in script
+    assert "CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" in agent_block
 
 
 def test_web_is_the_only_gateway_allowed_to_invoke_the_private_agent():

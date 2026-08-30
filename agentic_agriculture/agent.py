@@ -21,7 +21,12 @@ from agentic_agriculture.prompts import (
     TEMPORAL_ANALYSIS_DESCRIPTION,
     TEMPORAL_ANALYSIS_INSTRUCTION,
 )
-from agentic_agriculture.tools import ReadOnlyAgricultureTools, RepositoryProvider
+from agentic_agriculture.tools import (
+    AgricultureActionTools,
+    ReadOnlyAgricultureTools,
+    RepositoryProvider,
+    ServiceProvider,
+)
 
 BOUNDARY_MCP_TOOLS = ("search_sentinel_scenes", "get_sentinel_scene")
 TEMPORAL_MCP_TOOLS = (
@@ -117,6 +122,7 @@ def build_agent_graph(
     config: AgenticConfig | None = None,
     *,
     repository_provider: RepositoryProvider | None = None,
+    service_provider: ServiceProvider | None = None,
     bindings: ADKBindings | None = None,
     token_fetcher: IDTokenFetcher = fetch_google_id_token,
 ) -> AgentGraph:
@@ -128,6 +134,11 @@ def build_agent_graph(
         ReadOnlyAgricultureTools(repository_provider)
         if repository_provider is not None
         else ReadOnlyAgricultureTools()
+    )
+    action_tools = (
+        AgricultureActionTools(service_provider)
+        if service_provider is not None
+        else AgricultureActionTools()
     )
 
     boundary_mcp = None
@@ -149,6 +160,7 @@ def build_agent_graph(
     boundary_tools: list[Any] = [read_tools.get_field_context]
     temporal_tools: list[Any] = [
         read_tools.get_field_context,
+        action_tools.request_field_analysis,
         read_tools.get_analysis_evidence,
         read_tools.list_field_analyses,
     ]

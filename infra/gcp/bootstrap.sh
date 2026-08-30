@@ -265,11 +265,14 @@ log "Applying least-privilege runtime IAM bindings."
 add_project_role "serviceAccount:${WEB_SA}" roles/datastore.user
 add_project_role "serviceAccount:${WEB_SA}" roles/cloudtasks.enqueuer
 add_project_role "serviceAccount:${WORKER_SA}" roles/datastore.user
-add_project_role "serviceAccount:${AGENT_SA}" roles/datastore.viewer
+add_project_role "serviceAccount:${AGENT_SA}" roles/datastore.user
+add_project_role "serviceAccount:${AGENT_SA}" roles/cloudtasks.enqueuer
 add_project_role "serviceAccount:${AGENT_SA}" roles/aiplatform.user
 add_project_role "serviceAccount:${TASKS_SERVICE_AGENT}" roles/cloudtasks.serviceAgent
 add_service_account_role \
     "$TASK_INVOKER_SA" "serviceAccount:${WEB_SA}" roles/iam.serviceAccountUser
+add_service_account_role \
+    "$TASK_INVOKER_SA" "serviceAccount:${AGENT_SA}" roles/iam.serviceAccountUser
 add_service_account_role \
     "$TASK_INVOKER_SA" "serviceAccount:${TASKS_SERVICE_AGENT}" roles/iam.serviceAccountUser
 add_bucket_role "serviceAccount:${WORKER_SA}" roles/storage.objectUser
@@ -440,6 +443,7 @@ add_secret_role "$TASK_SECRET_ID" "$WEB_SA"
 add_secret_role "$DJANGO_SECRET_ID" "$WORKER_SA"
 add_secret_role "$TASK_SECRET_ID" "$WORKER_SA"
 add_secret_role "$DJANGO_SECRET_ID" "$AGENT_SA"
+add_secret_role "$TASK_SECRET_ID" "$AGENT_SA"
 
 log "Bootstrap complete. No secret values were printed."
 printf '%s\n' \
