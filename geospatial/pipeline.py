@@ -204,17 +204,6 @@ class AnalysisPipeline:
                 start=field.season_start,
                 end=field.season_end,
             )
-            audit_event(
-                logger,
-                "sentinel_pipeline.scenes_selected",
-                component="worker",
-                execution_id=str(analysis.id),
-                analysis_id=str(analysis.id),
-                field_id=str(analysis.field_id),
-                status="selected",
-                scene_count=len(observations),
-                scene_ids=tuple(item.scene.id for item in observations),
-            )
             analysis = self._advance(
                 analysis,
                 stage=AnalysisStage.COMPUTING_INDICES,
@@ -237,6 +226,46 @@ class AnalysisPipeline:
                 field_mask=field_mask,
             )
             indices = compute_spectral_indices(bands, valid_mask=observation_mask)
+            observations, indices, observation_mask, discarded_scene_ids = (
+                _stabilize_usable_observations(
+                    observations,
+                    indices,
+                    observation_mask,
+                )
+            )
+            if discarded_scene_ids:
+                audit_event(
+                    logger,
+                    "sentinel_pipeline.scenes_discarded",
+                    level=logging.WARNING,
+                    component="worker",
+                    execution_id=str(analysis.id),
+                    analysis_id=str(analysis.id),
+                    field_id=str(analysis.field_id),
+                    status="discarded",
+                    stage=AnalysisStage.COMPUTING_INDICES.value,
+                    scene_count=len(discarded_scene_ids),
+                    scene_ids=discarded_scene_ids,
+                )
+            if len(observations) < 2:
+                raise InsufficientDataError(
+                    "Fewer than two scenes contribute finite index values to pixels with at "
+                    "least two observations."
+                )
+
+            scene_ids = tuple(item.scene.id for item in observations)
+            audit_event(
+                logger,
+                "sentinel_pipeline.scenes_selected",
+                component="worker",
+                execution_id=str(analysis.id),
+                analysis_id=str(analysis.id),
+                field_id=str(analysis.field_id),
+                status="selected",
+                scene_count=len(observations),
+                scene_ids=scene_ids,
+            )
+            reference_window = observations[0].window.bands["B04"]
             analysis = self._advance(
                 analysis,
                 stage=AnalysisStage.CLUSTERING_ZONES,
@@ -248,18 +277,18 @@ class AnalysisPipeline:
                 indices=indices,
                 field_mask=field_mask,
                 requested_zone_count=analysis.requested_zone_count,
-                scene_ids=tuple(item.scene.id for item in observations),
+                scene_ids=scene_ids,
                 pixel_area_m2=_pixel_area_m2(
-                    first_window.transform,
-                    first_window.crs,
-                    first_window.data.shape,
+                    reference_window.transform,
+                    reference_window.crs,
+                    reference_window.data.shape,
                 ),
                 transform=PixelTransform(
-                    origin_x=first_window.transform[2],
-                    origin_y=first_window.transform[5],
-                    pixel_width=first_window.transform[0],
-                    pixel_height=first_window.transform[4],
-                    crs=first_window.crs,
+                    origin_x=reference_window.transform[2],
+                    origin_y=reference_window.transform[5],
+                    pixel_width=reference_window.transform[0],
+                    pixel_height=reference_window.transform[4],
+                    crs=reference_window.crs,
                 ),
             )
             analysis = self._advance(
@@ -275,7 +304,7 @@ class AnalysisPipeline:
                 indices=indices,
                 observation_mask=observation_mask,
                 zoning=zoning,
-                source_crs=first_window.crs,
+                source_crs=reference_window.crs,
             )
             completed_at = self.clock()
             completed = Analysis(
@@ -641,6 +670,65 @@ def _stack_bands(observations: tuple[LoadedObservation, ...]) -> dict[str, np.nd
     return {
         name: np.stack([item.window.bands[name].data for item in observations]) for name in names
     }
+
+
+def _stabilize_usable_observations(
+    observations: tuple[LoadedObservation, ...],
+    indices: dict[str, np.ndarray],
+    observation_mask: np.ndarray,
+) -> tuple[
+    tuple[LoadedObservation, ...],
+    dict[str, np.ndarray],
+    np.ndarray,
+    tuple[str, ...],
+]:
+    """Drop scenes that cannot contribute to the shared temporal pixel set.
+
+    A useful pixel has finite NDVI, NDRE and NDMI in at least two observations.  A
+    retained scene must contribute all three finite indices to at least one such
+    pixel.  The support is recomputed after every deterministic batch removal so
+    observations, index arrays and masks remain aligned even if the rule evolves.
+    """
+
+    required_indices = ("NDVI", "NDRE", "NDMI")
+    missing = [name for name in required_indices if name not in indices]
+    if missing:
+        raise ValueError(f"Missing required indices: {', '.join(missing)}.")
+
+    current_observations = observations
+    current_indices = {name: np.asarray(values) for name, values in indices.items()}
+    current_mask = np.asarray(observation_mask, dtype=bool)
+    if current_mask.ndim != 3:
+        raise ValueError("observation_mask must use (time, row, column) order.")
+    if current_mask.shape[0] != len(current_observations):
+        raise ValueError("observations and observation_mask must have the same time dimension.")
+    if any(values.shape != current_mask.shape for values in current_indices.values()):
+        raise ValueError("indices and observation_mask must have identical shapes.")
+
+    discarded: list[str] = []
+    while current_observations:
+        observation_valid = current_mask & np.logical_and.reduce(
+            [np.isfinite(current_indices[name]) for name in required_indices]
+        )
+        shared_pixels = observation_valid.sum(axis=0) >= 2
+        contributes = np.any(
+            observation_valid & shared_pixels[np.newaxis, :, :],
+            axis=(1, 2),
+        )
+        if bool(contributes.all()):
+            break
+
+        discarded.extend(
+            observation.scene.id
+            for observation, keep in zip(current_observations, contributes, strict=True)
+            if not bool(keep)
+        )
+        keep_indices = np.flatnonzero(contributes)
+        current_observations = tuple(current_observations[int(index)] for index in keep_indices)
+        current_indices = {name: values[keep_indices] for name, values in current_indices.items()}
+        current_mask = current_mask[keep_indices]
+
+    return current_observations, current_indices, current_mask, tuple(discarded)
 
 
 def _pixel_area_m2(
