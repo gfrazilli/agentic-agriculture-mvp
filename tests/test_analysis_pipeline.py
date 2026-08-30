@@ -92,6 +92,59 @@ class FakeReader:
         )
 
 
+class MaskedFakeReader(FakeReader):
+    def __init__(self, scenes, masks_by_scene):
+        super().__init__(scenes)
+        self.masks_by_scene = dict(masks_by_scene)
+
+    def read_required_bands(self, assets, **kwargs):
+        scene_id = next(name for name in self.time_by_scene if name in assets["red"])
+        window = super().read_required_bands(assets, **kwargs)
+        supplied_mask = self.masks_by_scene.get(scene_id)
+        if supplied_mask is None:
+            return window
+        mask = np.asarray(supplied_mask, dtype=bool)
+        if mask.shape != window.shape:
+            raise ValueError("The test validity mask must match the raster shape.")
+        return MultibandWindow(
+            bands={
+                name: RasterWindow(
+                    data=(np.where(mask, band.data, 9.0) if name == "SCL" else band.data),
+                    valid_mask=band.valid_mask,
+                    transform=band.transform,
+                    crs=band.crs,
+                    nodata=band.nodata,
+                )
+                for name, band in window.bands.items()
+            }
+        )
+
+
+class NonFiniteIndexFakeReader(FakeReader):
+    def __init__(self, scenes, target_scene_id):
+        super().__init__(scenes)
+        self.target_scene_id = target_scene_id
+
+    def read_required_bands(self, assets, **kwargs):
+        scene_id = next(name for name in self.time_by_scene if name in assets["red"])
+        window = super().read_required_bands(assets, **kwargs)
+        if scene_id != self.target_scene_id:
+            return window
+        nir = window.bands["B08"].data
+        return MultibandWindow(
+            bands={
+                name: RasterWindow(
+                    data=(-nir if name in {"B04", "B05", "B11"} else band.data),
+                    valid_mask=band.valid_mask,
+                    transform=band.transform,
+                    crs=band.crs,
+                    nodata=band.nodata,
+                )
+                for name, band in window.bands.items()
+            }
+        )
+
+
 def _queued_analysis(repository):
     service = AgricultureService(
         repository,
@@ -194,6 +247,177 @@ def test_pipeline_completes_with_real_contract_and_auditable_artifacts(caplog, m
     )
     assert selected["scene_ids"] == [scene.id for scene in scenes]
     assert "coordinates" not in caplog.text
+
+
+def test_pipeline_discards_unusable_scenes_and_keeps_outputs_aligned(caplog, monkeypatch):
+    caplog.set_level("INFO", logger="geospatial.pipeline")
+    monkeypatch.setattr(logging.getLogger("geospatial.pipeline"), "propagate", True)
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    artifacts = InMemoryArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(5)
+    empty_mask = np.zeros((12, 16), dtype=bool)
+    isolated_mask = np.zeros((12, 16), dtype=bool)
+    isolated_mask[:, :4] = True
+    shared_mask = np.zeros((12, 16), dtype=bool)
+    shared_mask[:, 4:] = True
+    discarded = (scenes[1], scenes[3])
+    retained = (scenes[0], scenes[2], scenes[4])
+    pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=MaskedFakeReader(
+            scenes,
+            {
+                scenes[0].id: shared_mask,
+                scenes[1].id: isolated_mask,
+                scenes[2].id: shared_mask,
+                scenes[3].id: empty_mask,
+                scenes[4].id: shared_mask,
+            },
+        ),
+        clock=lambda: NOW,
+        target_scene_count=5,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+
+    assert outcome.status == "completed"
+    assert outcome.scene_count == len(retained)
+    assert stored is not None
+    assert stored.status is AnalysisStatus.COMPLETED
+    assert stored.result is not None
+    retained_ids = tuple(scene.id for scene in retained)
+    assert tuple(scene.scene_id for scene in stored.result.scenes) == retained_ids
+    assert stored.result.provenance.scene_ids == retained_ids
+    assert all(
+        tuple(point.scene_id for point in zone.trajectory) == retained_ids
+        for zone in stored.result.zones
+    )
+
+    for scene in retained:
+        assert artifacts.exists(f"analyses/{analysis_id}/scenes/{scene.id}-ndvi.svg")
+    for scene in discarded:
+        assert not artifacts.exists(f"analyses/{analysis_id}/scenes/{scene.id}-ndvi.svg")
+    report = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/processing-report.json"))
+    assert report["scene_ids"] == list(retained_ids)
+    zones = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+    assert len(zones["features"]) == stored.result.selected_zone_count
+
+    events = [
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if record.name == "geospatial.pipeline"
+    ]
+    discarded_event = next(
+        event for event in events if event["event"] == "sentinel_pipeline.scenes_discarded"
+    )
+    assert discarded_event["status"] == "discarded"
+    assert discarded_event["scene_count"] == len(discarded)
+    assert discarded_event["scene_ids"] == [scene.id for scene in discarded]
+    selected_event = next(
+        event for event in events if event["event"] == "sentinel_pipeline.scenes_selected"
+    )
+    assert selected_event["scene_count"] == len(retained)
+    assert selected_event["scene_ids"] == list(retained_ids)
+    assert "coordinates" not in caplog.text
+
+
+def test_pipeline_fails_when_finite_scenes_share_no_temporally_usable_pixels(
+    caplog,
+    monkeypatch,
+):
+    caplog.set_level("INFO", logger="geospatial.pipeline")
+    monkeypatch.setattr(logging.getLogger("geospatial.pipeline"), "propagate", True)
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    artifacts = InMemoryArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(2)
+    left_only = np.zeros((12, 16), dtype=bool)
+    left_only[:, :8] = True
+    right_only = np.zeros((12, 16), dtype=bool)
+    right_only[:, 8:] = True
+    pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=MaskedFakeReader(
+            scenes,
+            {
+                scenes[0].id: left_only,
+                scenes[1].id: right_only,
+            },
+        ),
+        clock=lambda: NOW,
+        target_scene_count=2,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+
+    assert outcome.status == "failed"
+    assert outcome.error_code == "INSUFFICIENT_SATELLITE_DATA"
+    assert stored is not None
+    assert stored.status is AnalysisStatus.FAILED
+    assert stored.result is None
+    assert stored.error is not None
+    assert stored.error.retryable is False
+    assert "Fewer than two scenes" in stored.error.message
+    assert not artifacts.exists(f"analyses/{analysis_id}/zones.geojson")
+    assert not artifacts.exists(f"analyses/{analysis_id}/zone-map.svg")
+    assert not artifacts.exists(f"analyses/{analysis_id}/processing-report.json")
+    assert all(
+        not artifacts.exists(f"analyses/{analysis_id}/scenes/{scene.id}-ndvi.svg")
+        for scene in scenes
+    )
+
+    events = [
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if record.name == "geospatial.pipeline"
+    ]
+    discarded_event = next(
+        event for event in events if event["event"] == "sentinel_pipeline.scenes_discarded"
+    )
+    assert discarded_event["scene_count"] == 2
+    assert discarded_event["scene_ids"] == [scene.id for scene in scenes]
+    assert not any(event["event"] == "sentinel_pipeline.scenes_selected" for event in events)
+    assert "coordinates" not in caplog.text
+
+
+def test_pipeline_discards_nonfinite_index_scene_and_completes_with_exactly_two():
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    artifacts = InMemoryArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(3)
+    pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=NonFiniteIndexFakeReader(scenes, scenes[1].id),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+
+    assert outcome.status == "completed"
+    assert outcome.scene_count == 2
+    assert stored is not None and stored.result is not None
+    retained_ids = (scenes[0].id, scenes[2].id)
+    assert tuple(scene.scene_id for scene in stored.result.scenes) == retained_ids
+    assert stored.result.provenance.scene_ids == retained_ids
+    assert all(
+        tuple(point.scene_id for point in zone.trajectory) == retained_ids
+        for zone in stored.result.zones
+    )
+    assert not artifacts.exists(f"analyses/{analysis_id}/scenes/{scenes[1].id}-ndvi.svg")
 
 
 def test_pipeline_persists_explicit_insufficient_data_failure():
