@@ -1,3 +1,4 @@
+import hashlib
 from pathlib import Path
 
 from django.urls import reverse
@@ -66,6 +67,22 @@ def test_landing_contact_form_has_server_backed_controls(client):
 def test_brand_assets_are_versioned_with_the_application():
     brand = ROOT / "core" / "static" / "core" / "brand"
 
-    assert (brand / "favicon.svg").stat().st_size > 100
-    assert (brand / "og-card.svg").stat().st_size > 500
+    source = brand / "1415-agri-logo-source.jpg"
+    assert hashlib.sha256(source.read_bytes()).hexdigest() == (
+        "542c6444db8b9eb5d46660dc25818c84df521901028e595566ed292fb824de79"
+    )
+    assert (brand / "1415-agri-logo.png").stat().st_size > 50_000
+    assert (brand / "1415-agri-mark.png").stat().st_size > 25_000
+    assert (brand / "favicon.png").stat().st_size > 5_000
+    assert (brand / "apple-touch-icon.png").stat().st_size > 5_000
     assert (brand / "og-card.png").stat().st_size > 10_000
+
+
+def test_official_brand_assets_are_used_in_every_logo_placement(client):
+    content = client.get(reverse("home")).content.decode()
+    landing_css = (ROOT / "core" / "static" / "core" / "landing.css").read_text(encoding="utf-8")
+
+    assert content.count("core/brand/1415-agri-logo") == 3
+    assert content.count("core/brand/1415-agri-mark") == 1
+    assert "landing-brand-mark" not in content
+    assert "product-preview-logo::before" not in landing_css

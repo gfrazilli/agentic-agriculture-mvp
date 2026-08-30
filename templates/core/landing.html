@@ -32,15 +32,7 @@
     <header class="landing-header" data-landing-header>
       <div class="landing-container landing-header-inner">
         <a class="landing-brand" href="#top" aria-label="{% translate '1415 Agri home' %}">
-          <svg class="landing-brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-            <circle cx="22" cy="22" r="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="76 16" transform="rotate(-32 22 22)" />
-            <path d="M21.9 29.4V19.1" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-            <path d="M21.8 21.8c-5.7.1-8.8-2.7-9.5-7.4 5.3-.1 8.8 2.4 9.5 7.4Z" fill="currentColor" />
-            <path d="M22.1 20.2c5.6.1 8.6-2.7 9.3-7.2-5.2-.1-8.6 2.3-9.3 7.2Z" fill="currentColor" opacity=".78" />
-            <path d="M8.4 31.2c4.3-3.6 8.8-5.3 13.5-5.1-2.9 6.2-6.5 8.7-10.8 7.4" fill="currentColor" opacity=".72" />
-            <path d="M22.2 31.9c4.3-4.4 8.7-6.5 13.3-6.3-2.1 6.5-6.5 9.2-13.3 8.8" fill="currentColor" />
-          </svg>
-          <span class="landing-brand-name"><strong>1415</strong> Agri</span>
+          <img class="landing-brand-logo" src="{% static 'core/brand/1415-agri-logo.png' %}" alt="1415 Agri">
         </a>
 
         <button
@@ -114,7 +106,7 @@
           <div class="product-preview" aria-label="{% translate '1415 Agri analysis preview showing crop variability and a Gemini explanation' %}">
             <div class="product-preview-bar">
               <div class="product-preview-brand">
-                <span class="product-preview-logo" aria-hidden="true"></span>
+                <img class="product-preview-logo" src="{% static 'core/brand/1415-agri-mark.png' %}" alt="">
                 <strong>1415 Agri</strong>
               </div>
               <span class="product-preview-status"><span aria-hidden="true"></span>{% translate "Analysis complete" %}</span>
@@ -455,15 +447,7 @@
         <div class="landing-footer-main">
           <div class="landing-footer-brand">
             <a class="landing-brand landing-brand-footer" href="#top">
-              <svg class="landing-brand-mark" viewBox="0 0 44 44" aria-hidden="true">
-                <circle cx="22" cy="22" r="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="76 16" transform="rotate(-32 22 22)" />
-                <path d="M21.9 29.4V19.1" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
-                <path d="M21.8 21.8c-5.7.1-8.8-2.7-9.5-7.4 5.3-.1 8.8 2.4 9.5 7.4Z" fill="currentColor" />
-                <path d="M22.1 20.2c5.6.1 8.6-2.7 9.3-7.2-5.2-.1-8.6 2.3-9.3 7.2Z" fill="currentColor" opacity=".78" />
-                <path d="M8.4 31.2c4.3-3.6 8.8-5.3 13.5-5.1-2.9 6.2-6.5 8.7-10.8 7.4" fill="currentColor" opacity=".72" />
-                <path d="M22.2 31.9c4.3-4.4 8.7-6.5 13.3-6.3-2.1 6.5-6.5 9.2-13.3 8.8" fill="currentColor" />
-              </svg>
-              <span class="landing-brand-name"><strong>1415</strong> Agri</span>
+              <img class="landing-brand-logo landing-brand-logo-footer" src="{% static 'core/brand/1415-agri-logo.png' %}" alt="1415 Agri">
             </a>
             <p>{% translate "Clear satellite insights for growers." %}</p>
           </div>

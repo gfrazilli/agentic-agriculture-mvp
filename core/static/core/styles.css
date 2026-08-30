@@ -54,20 +54,15 @@ a {
 .brand {
   display: inline-flex;
   align-items: center;
-  gap: 0.75rem;
   color: var(--ink);
-  font-weight: 750;
   text-decoration: none;
 }
 
-.brand-mark {
-  width: 2rem;
-  height: 2rem;
-  display: grid;
-  place-items: center;
-  border-radius: 0.7rem 0.7rem 0.25rem;
-  color: white;
-  background: var(--brand);
+.brand-logo {
+  width: auto;
+  height: 4.25rem;
+  display: block;
+  object-fit: contain;
 }
 
 .language-switcher {

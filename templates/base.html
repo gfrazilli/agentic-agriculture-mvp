@@ -7,15 +7,15 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="color-scheme" content="light">
     <title>{% block title %}{{ PRODUCT_NAME }}{% endblock %}</title>
-    <link rel="icon" href="{% static 'core/brand/favicon.svg' %}" type="image/svg+xml">
+    <link rel="icon" href="{% static 'core/brand/favicon.png' %}" type="image/png">
+    <link rel="apple-touch-icon" href="{% static 'core/brand/apple-touch-icon.png' %}">
     <link rel="stylesheet" href="{% static 'core/styles.css' %}">
     {% block extra_head %}{% endblock %}
   </head>
   <body>
     <header class="site-header">
       <a class="brand" href="{% url 'home' %}">
-        <span class="brand-mark" aria-hidden="true">A</span>
-        <span>{{ PRODUCT_NAME }}</span>
+        <img class="brand-logo" src="{% static 'core/brand/1415-agri-logo.png' %}" alt="{{ PRODUCT_NAME }}">
       </a>
       <form class="language-switcher" action="{% url 'set_language' %}" method="post">
         {% csrf_token %}
