@@ -1,5 +1,11 @@
 # Cloud Run deployment guide
 
+The checked-in [`infra/gcp`](../infra/gcp/README.md) scripts are the canonical deployment path.
+Use `bootstrap.sh` once (and safely again after configuration changes), `budget.sh` for the
+project-scoped monthly alert, `deploy.sh` for the four services, and `smoke.sh` for live
+verification. The remainder of this document explains the architecture and operational choices
+implemented by those scripts.
+
 PR4-PR7 use one container image with four Cloud Run service roles. This keeps dependencies
 and source revisions identical while allowing separate commands, identities, scaling, and IAM.
 

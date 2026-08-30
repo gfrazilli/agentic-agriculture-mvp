@@ -1,0 +1,12 @@
+# Files excluded from the Cloud Build upload context.
+.gcloudignore
+.git/
+.github/
+gha-creds-*.json
+
+#!include:.gitignore
+
+# The production Dockerfile does not copy these paths.
+docs/
+infra/
+tests/

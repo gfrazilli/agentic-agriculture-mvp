@@ -215,8 +215,11 @@ persistent integration testing can use the Firestore emulator.
 
 ## Cloud Run
 
-Build and deploy the same `Dockerfile`. Configure at least these runtime variables in the
-Cloud Run service:
+The reproducible infrastructure lives in [`infra/gcp`](infra/gcp/README.md). Its idempotent
+scripts provision Firestore, Cloud Storage, Cloud Tasks, Artifact Registry, Secret Manager,
+least-privilege service accounts, a monthly budget alert, and four Cloud Run services from one
+commit-tagged image. Build and deploy the same `Dockerfile`. Configure at least these runtime
+variables in the Cloud Run service:
 
 ```text
 APP_ENV=production
