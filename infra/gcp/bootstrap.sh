@@ -212,7 +212,9 @@ queue_flags=(
     "--location=$REGION"
     --max-concurrent-dispatches=1
     --max-dispatches-per-second=1
-    --max-attempts=5
+    # Leave a retry after the 20-minute analysis lease can expire. With the
+    # configured backoff, five attempts can all land inside the active lease.
+    --max-attempts=7
     --min-backoff=60s
     --max-backoff=600s
     --max-doublings=3

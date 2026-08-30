@@ -41,6 +41,7 @@ def backend_configuration() -> dict[str, bool]:
     pipeline_limits_valid = (
         2 <= settings.ANALYSIS_TARGET_SCENE_COUNT <= 12
         and 64 <= settings.ANALYSIS_MAX_DIMENSION <= 1024
+        and 60 <= settings.ANALYSIS_LEASE_SECONDS <= 20 * 60
     )
 
     firestore_ready = settings.PERSISTENCE_BACKEND != "firestore" or bool(
@@ -58,6 +59,7 @@ def backend_configuration() -> dict[str, bool]:
             require_https=settings.IS_PRODUCTION,
         )
         and 60 <= settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS <= 1800
+        and settings.ANALYSIS_LEASE_SECONDS >= settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS + 300
         and (
             not settings.IS_PRODUCTION
             or _service_account_email_is_valid(settings.CLOUD_TASKS_SERVICE_ACCOUNT)
@@ -133,7 +135,7 @@ def check_cloud_backends(app_configs, **kwargs):  # noqa: ARG001
                     "Cloud Tasks requires project, location, queue, a secure handler URL and "
                     "a shared secret of at least 32 characters; production also requires an "
                     "OIDC service account. Its dispatch deadline must be between 60 and 1800 "
-                    "seconds."
+                    "seconds, and the analysis lease must exceed it by at least 300 seconds."
                 ),
                 id="agriculture.E005",
             )
@@ -144,7 +146,8 @@ def check_cloud_backends(app_configs, **kwargs):  # noqa: ARG001
                 "Geospatial processing settings are invalid.",
                 hint=(
                     "Use fixture/geospatial for BOUNDARY_BACKEND, disabled/sentinel for "
-                    "ANALYSIS_PIPELINE_BACKEND, 2-12 scenes and a 64-1024 pixel dimension."
+                    "ANALYSIS_PIPELINE_BACKEND, 2-12 scenes, a 64-1024 pixel dimension and "
+                    "a 60-1200 second analysis lease."
                 ),
                 id="agriculture.E006",
             )

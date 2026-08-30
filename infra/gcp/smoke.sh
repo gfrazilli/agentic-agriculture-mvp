@@ -190,6 +190,20 @@ queue_state="$(
         --project="$PROJECT_ID" --location="$REGION" --format='value(state)'
 )"
 [[ "$queue_state" == "RUNNING" ]] || die "Cloud Tasks queue is not RUNNING: $queue_state"
+queue_max_attempts="$(
+    gcloud tasks queues describe "$TASK_QUEUE" \
+        --project="$PROJECT_ID" --location="$REGION" \
+        --format='value(retryConfig.maxAttempts)'
+)"
+[[ "$queue_max_attempts" =~ ^[0-9]+$ && "$queue_max_attempts" -ge 7 ]] || \
+    die "Cloud Tasks queue must allow at least 7 attempts: $queue_max_attempts"
+queue_max_retry_duration="$(
+    gcloud tasks queues describe "$TASK_QUEUE" \
+        --project="$PROJECT_ID" --location="$REGION" \
+        --format='value(retryConfig.maxRetryDuration)'
+)"
+[[ "$queue_max_retry_duration" == "14400s" ]] || \
+    die "Cloud Tasks queue retry duration must be 14400s: $queue_max_retry_duration"
 
 gcloud storage buckets describe "gs://${ARTIFACT_BUCKET}" \
     --project="$PROJECT_ID" --format=json >"$TEMP_DIR/bucket.json"

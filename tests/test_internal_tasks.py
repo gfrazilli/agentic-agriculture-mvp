@@ -202,6 +202,33 @@ def test_active_pipeline_lease_requests_cloud_tasks_retry(
     assert response.json()["data"]["retryable"] is True
 
 
+def test_lost_pipeline_lease_requests_cloud_tasks_retry(
+    monkeypatch,
+    client,
+    stored_analysis,
+):
+    class FakePipeline:
+        def run(self, analysis_id: str) -> PipelineOutcome:
+            return PipelineOutcome(
+                analysis_id=analysis_id,
+                status="lease_lost",
+                error_code="ANALYSIS_LEASE_LOST",
+                retryable=True,
+            )
+
+    monkeypatch.setattr(
+        "agriculture.internal.views.get_analysis_pipeline",
+        lambda: FakePipeline(),
+    )
+
+    response = _post(client, _payload(stored_analysis), **_delivery_headers())
+
+    assert response.status_code == 503
+    assert response.json()["data"]["outcome"] == "lease_lost"
+    assert response.json()["data"]["error_code"] == "ANALYSIS_LEASE_LOST"
+    assert response.json()["data"]["retryable"] is True
+
+
 def test_receiver_rejects_payload_that_does_not_match_stored_analysis(client, stored_analysis):
     payload = _payload(stored_analysis)
     payload["field_id"] = str(uuid4())
@@ -340,3 +367,13 @@ def test_cloud_tasks_readiness_requires_https_and_a_strong_secret_in_production(
     settings.CLOUD_TASKS_SERVICE_ACCOUNT = "tasks@demo-project.iam.gserviceaccount.com"
     settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = 59
     assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = 901
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = 900
+    settings.ANALYSIS_LEASE_SECONDS = 1199
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.ANALYSIS_LEASE_SECONDS = 1200
+    assert backend_configuration()["cloud_tasks"] is True

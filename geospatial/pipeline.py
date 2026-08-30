@@ -17,7 +17,12 @@ import numpy as np
 from agriculture.domain import AnalysisStatus
 from agriculture.observability import audit_event, get_audit_logger
 from agriculture.ports.artifacts import ArtifactStore
-from agriculture.ports.repositories import AgricultureRepository
+from agriculture.ports.repositories import (
+    DEFAULT_ANALYSIS_LEASE_SECONDS,
+    AgricultureRepository,
+    AnalysisLeaseHandle,
+    AnalysisLeaseLost,
+)
 from agriculture.schemas import (
     Analysis,
     AnalysisError,
@@ -49,7 +54,6 @@ from geospatial.zoning import (
 )
 
 PROVIDER_LABEL = "EU/ESA/Copernicus via Earth Search/AWS Open Data"
-RUNNING_LEASE_SECONDS = 20 * 60
 UNEXPECTED_PIPELINE_ERROR_MESSAGE = (
     "The analysis could not be completed because of an unexpected processing error."
 )
@@ -92,11 +96,14 @@ class AnalysisPipeline:
         clock=lambda: datetime.now(UTC),
         target_scene_count: int = 6,
         max_dimension: int = 512,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
     ) -> None:
         if not 2 <= target_scene_count <= 12:
             raise ValueError("target_scene_count must be between 2 and 12")
         if not 64 <= max_dimension <= 1024:
             raise ValueError("max_dimension must be between 64 and 1024")
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be greater than zero")
         self.repository = repository
         self.artifact_store = artifact_store
         self.client = client or EarthSearchClient()
@@ -104,22 +111,40 @@ class AnalysisPipeline:
         self.clock = clock
         self.target_scene_count = target_scene_count
         self.max_dimension = max_dimension
+        self.lease_seconds = lease_seconds
 
     def run(self, analysis_id: str) -> PipelineOutcome:
-        analysis = self.repository.get_analysis(str(analysis_id))
-        if analysis is None:
+        analysis_id = str(analysis_id)
+        claimed_at = self.clock()
+        initial_progress = AnalysisProgress(
+            percent=10,
+            stage=AnalysisStage.ACQUIRING_SCENES,
+            message_pt="Buscando observações Sentinel-2 da safra.",
+            message_en="Finding Sentinel-2 observations for the season.",
+            updated_at=claimed_at,
+        )
+        try:
+            claim = self.repository.claim_analysis_work(
+                analysis_id,
+                initial_progress,
+                lease_seconds=self.lease_seconds,
+                now=claimed_at,
+            )
+        except KeyError:
             audit_event(
                 logger,
                 "sentinel_pipeline.not_found",
                 level=logging.WARNING,
                 component="worker",
-                execution_id=str(analysis_id),
-                analysis_id=str(analysis_id),
+                execution_id=analysis_id,
+                analysis_id=analysis_id,
                 status="not_found",
                 error_code="ANALYSIS_NOT_FOUND",
             )
-            raise KeyError(f"Analysis {analysis_id!r} does not exist.")
-        if analysis.status is AnalysisStatus.COMPLETED:
+            raise KeyError(f"Analysis {analysis_id!r} does not exist.") from None
+
+        analysis = claim.analysis
+        if claim.outcome == "completed":
             audit_event(
                 logger,
                 "sentinel_pipeline.skipped",
@@ -137,9 +162,7 @@ class AnalysisPipeline:
                 scene_count=len(analysis.result.scenes) if analysis.result else 0,
                 zone_count=analysis.result.selected_zone_count if analysis.result else 0,
             )
-        if analysis.status is AnalysisStatus.FAILED and not (
-            analysis.error and analysis.error.retryable
-        ):
+        if claim.outcome == "failed":
             audit_event(
                 logger,
                 "sentinel_pipeline.skipped",
@@ -156,25 +179,27 @@ class AnalysisPipeline:
                 status="already_failed",
                 error_code=analysis.error.code if analysis.error else None,
             )
-        if analysis.status is AnalysisStatus.RUNNING:
-            elapsed = self.clock() - analysis.updated_at
-            if elapsed.total_seconds() < RUNNING_LEASE_SECONDS:
-                audit_event(
-                    logger,
-                    "sentinel_pipeline.skipped",
-                    component="worker",
-                    execution_id=str(analysis.id),
-                    analysis_id=str(analysis.id),
-                    field_id=str(analysis.field_id),
-                    status="already_running",
-                    stage=analysis.progress.stage.value,
-                    retryable=True,
-                )
-                return PipelineOutcome(
-                    analysis_id=str(analysis.id),
-                    status="already_running",
-                    retryable=True,
-                )
+        if claim.outcome == "busy":
+            audit_event(
+                logger,
+                "sentinel_pipeline.skipped",
+                component="worker",
+                execution_id=str(analysis.id),
+                analysis_id=str(analysis.id),
+                field_id=str(analysis.field_id),
+                status="already_running",
+                stage=analysis.progress.stage.value,
+                retryable=True,
+            )
+            return PipelineOutcome(
+                analysis_id=str(analysis.id),
+                status="already_running",
+                retryable=True,
+            )
+
+        lease = claim.lease
+        if claim.outcome != "acquired" or lease is None:
+            raise RuntimeError("Repository returned an invalid analysis work claim.")
 
         audit_event(
             logger,
@@ -187,218 +212,257 @@ class AnalysisPipeline:
                 str(analysis.parent_analysis_id) if analysis.parent_analysis_id else None
             ),
             requested_zone_count=analysis.requested_zone_count,
+            attempt_id=lease.attempt_id,
+            lease_generation=lease.generation,
+            recovered=claim.recovered,
             status="started",
         )
-        field = self.repository.get_field(str(analysis.field_id))
-        if field is None or not field.boundary_confirmed or field.boundary is None:
-            return self._fail(
-                analysis,
-                code="FIELD_BOUNDARY_UNAVAILABLE",
-                message="A confirmed field boundary is required for processing.",
-                retryable=False,
-            )
+        audit_event(
+            logger,
+            "sentinel_pipeline.stage",
+            component="worker",
+            execution_id=str(analysis.id),
+            analysis_id=str(analysis.id),
+            field_id=str(analysis.field_id),
+            status="running",
+            stage=analysis.progress.stage.value,
+            percent=analysis.progress.percent,
+            attempt_id=lease.attempt_id,
+            lease_generation=lease.generation,
+            lease_revision=lease.revision,
+        )
 
         try:
-            analysis = self._advance(
-                analysis,
-                stage=AnalysisStage.ACQUIRING_SCENES,
-                percent=10,
-                message_pt="Buscando observações Sentinel-2 da safra.",
-                message_en="Finding Sentinel-2 observations for the season.",
-            )
-            observations = self._load_observations(
-                polygon=field.boundary.model_dump(mode="json"),
-                start=field.season_start,
-                end=field.season_end,
-            )
-            analysis = self._advance(
-                analysis,
-                stage=AnalysisStage.COMPUTING_INDICES,
-                percent=45,
-                message_pt="Calculando NDVI, NDRE e NDMI com máscara de nuvens.",
-                message_en="Computing NDVI, NDRE and NDMI with cloud masking.",
-            )
-            bands = _stack_bands(observations)
-            first_window = observations[0].window.bands["B04"]
-            field_mask = _rasterize_field(
-                field.boundary.model_dump(mode="json"),
-                shape=first_window.data.shape,
-                transform=first_window.transform,
-                crs=first_window.crs,
-            )
-            scl = bands.pop("SCL")
-            observation_mask = build_valid_observation_mask(
-                bands,
-                scl=scl,
-                field_mask=field_mask,
-            )
-            indices = compute_spectral_indices(bands, valid_mask=observation_mask)
-            observations, indices, observation_mask, discarded_scene_ids = (
-                _stabilize_usable_observations(
-                    observations,
-                    indices,
-                    observation_mask,
+            try:
+                field = self.repository.get_field(str(analysis.field_id))
+                if field is None or not field.boundary_confirmed or field.boundary is None:
+                    return self._fail(
+                        analysis,
+                        lease,
+                        code="FIELD_BOUNDARY_UNAVAILABLE",
+                        message="A confirmed field boundary is required for processing.",
+                        retryable=False,
+                    )
+
+                observations = self._load_observations(
+                    polygon=field.boundary.model_dump(mode="json"),
+                    start=field.season_start,
+                    end=field.season_end,
                 )
-            )
-            if discarded_scene_ids:
+                analysis, lease = self._advance(
+                    analysis,
+                    lease,
+                    stage=AnalysisStage.COMPUTING_INDICES,
+                    percent=45,
+                    message_pt="Calculando NDVI, NDRE e NDMI com máscara de nuvens.",
+                    message_en="Computing NDVI, NDRE and NDMI with cloud masking.",
+                )
+                bands = _stack_bands(observations)
+                first_window = observations[0].window.bands["B04"]
+                field_mask = _rasterize_field(
+                    field.boundary.model_dump(mode="json"),
+                    shape=first_window.data.shape,
+                    transform=first_window.transform,
+                    crs=first_window.crs,
+                )
+                scl = bands.pop("SCL")
+                observation_mask = build_valid_observation_mask(
+                    bands,
+                    scl=scl,
+                    field_mask=field_mask,
+                )
+                indices = compute_spectral_indices(bands, valid_mask=observation_mask)
+                observations, indices, observation_mask, discarded_scene_ids = (
+                    _stabilize_usable_observations(
+                        observations,
+                        indices,
+                        observation_mask,
+                    )
+                )
+                if discarded_scene_ids:
+                    _audit_discarded_scenes(
+                        analysis,
+                        discarded_scene_ids,
+                        stage=AnalysisStage.COMPUTING_INDICES,
+                    )
+                # All observations are aligned to the first acquired grid. Keep
+                # that reference even when its own scene is later discarded.
+                reference_window = first_window
+                if len(observations) < 2:
+                    raise InsufficientDataError(
+                        "Fewer than two scenes contribute finite index values to pixels with at "
+                        "least two observations."
+                    )
+                analysis, lease = self._advance(
+                    analysis,
+                    lease,
+                    stage=AnalysisStage.CLUSTERING_ZONES,
+                    percent=70,
+                    message_pt="Agrupando trajetórias espectrais relativas.",
+                    message_en="Grouping relative spectral trajectories.",
+                )
+                while True:
+                    if len(observations) < 2:
+                        raise InsufficientDataError(
+                            "Fewer than two scenes support complete trajectories across every "
+                            "selected zone."
+                        )
+                    scene_ids = tuple(item.scene.id for item in observations)
+                    try:
+                        zoning = analyze_temporal_zones(
+                            indices=indices,
+                            field_mask=field_mask,
+                            requested_zone_count=analysis.requested_zone_count,
+                            scene_ids=scene_ids,
+                            pixel_area_m2=_pixel_area_m2(
+                                reference_window.transform,
+                                reference_window.crs,
+                                reference_window.data.shape,
+                            ),
+                            transform=PixelTransform(
+                                origin_x=reference_window.transform[2],
+                                origin_y=reference_window.transform[5],
+                                pixel_width=reference_window.transform[0],
+                                pixel_height=reference_window.transform[4],
+                                crs=reference_window.crs,
+                            ),
+                        )
+                    except ZoneObservationGapError as exc:
+                        rejected_ids = tuple(scene_ids[index] for index in exc.scene_indices)
+                        observations, indices, observation_mask = _drop_observations(
+                            observations,
+                            indices,
+                            observation_mask,
+                            exc.scene_indices,
+                        )
+                        observations, indices, observation_mask, cascaded_ids = (
+                            _stabilize_usable_observations(
+                                observations,
+                                indices,
+                                observation_mask,
+                            )
+                        )
+                        _audit_discarded_scenes(
+                            analysis,
+                            rejected_ids + cascaded_ids,
+                            stage=AnalysisStage.CLUSTERING_ZONES,
+                        )
+                        continue
+                    break
+
                 audit_event(
                     logger,
-                    "sentinel_pipeline.scenes_discarded",
-                    level=logging.WARNING,
+                    "sentinel_pipeline.scenes_selected",
                     component="worker",
                     execution_id=str(analysis.id),
                     analysis_id=str(analysis.id),
                     field_id=str(analysis.field_id),
-                    status="discarded",
-                    stage=AnalysisStage.COMPUTING_INDICES.value,
-                    scene_count=len(discarded_scene_ids),
-                    scene_ids=discarded_scene_ids,
+                    status="selected",
+                    scene_count=len(observations),
+                    scene_ids=scene_ids,
                 )
-            # Every observation is aligned to the first acquired grid. Keep that
-            # immutable reference even if the corresponding scene is later rejected.
-            reference_window = first_window
-            if len(observations) < 2:
-                raise InsufficientDataError(
-                    "Fewer than two scenes contribute finite index values to pixels with at "
-                    "least two observations."
+                analysis, lease = self._advance(
+                    analysis,
+                    lease,
+                    stage=AnalysisStage.GENERATING_EXPLANATION,
+                    percent=90,
+                    message_pt="Gerando evidências e artefatos auditáveis.",
+                    message_en="Generating auditable evidence and artifacts.",
                 )
-            analysis = self._advance(
-                analysis,
-                stage=AnalysisStage.CLUSTERING_ZONES,
-                percent=70,
-                message_pt="Agrupando trajetórias espectrais relativas.",
-                message_en="Grouping relative spectral trajectories.",
-            )
-            while True:
-                if len(observations) < 2:
-                    raise InsufficientDataError(
-                        "Fewer than two scenes support complete trajectories across every "
-                        "selected zone."
-                    )
-                scene_ids = tuple(item.scene.id for item in observations)
-                try:
-                    zoning = analyze_temporal_zones(
-                        indices=indices,
-                        field_mask=field_mask,
-                        requested_zone_count=analysis.requested_zone_count,
-                        scene_ids=scene_ids,
-                        pixel_area_m2=_pixel_area_m2(
-                            reference_window.transform,
-                            reference_window.crs,
-                            reference_window.data.shape,
-                        ),
-                        transform=PixelTransform(
-                            origin_x=reference_window.transform[2],
-                            origin_y=reference_window.transform[5],
-                            pixel_width=reference_window.transform[0],
-                            pixel_height=reference_window.transform[4],
-                            crs=reference_window.crs,
-                        ),
-                    )
-                except ZoneObservationGapError as exc:
-                    rejected_ids = tuple(scene_ids[index] for index in exc.scene_indices)
-                    observations, indices, observation_mask = _drop_observations(
-                        observations,
-                        indices,
-                        observation_mask,
-                        exc.scene_indices,
-                    )
-                    observations, indices, observation_mask, cascaded_ids = (
-                        _stabilize_usable_observations(
-                            observations,
-                            indices,
-                            observation_mask,
-                        )
-                    )
-                    _audit_discarded_scenes(
-                        analysis,
-                        rejected_ids + cascaded_ids,
-                        stage=AnalysisStage.CLUSTERING_ZONES,
-                    )
-                    continue
-                break
-
+                result = self._build_result(
+                    analysis=analysis,
+                    attempt_id=lease.attempt_id,
+                    observations=observations,
+                    indices=indices,
+                    observation_mask=observation_mask,
+                    zoning=zoning,
+                    source_crs=reference_window.crs,
+                )
+                completed_at = self.clock()
+                completed = Analysis(
+                    id=analysis.id,
+                    field_id=analysis.field_id,
+                    parent_analysis_id=analysis.parent_analysis_id,
+                    status=AnalysisStatus.COMPLETED,
+                    requested_zone_count=analysis.requested_zone_count,
+                    progress=AnalysisProgress(
+                        percent=100,
+                        stage=AnalysisStage.COMPLETED,
+                        message_pt="Análise concluída.",
+                        message_en="Analysis completed.",
+                        updated_at=completed_at,
+                    ),
+                    result=result,
+                    error=None,
+                    created_at=analysis.created_at,
+                    updated_at=completed_at,
+                )
+                completed = self.repository.finalize_analysis_work(
+                    completed,
+                    lease,
+                    now=completed_at,
+                )
+                audit_event(
+                    logger,
+                    "sentinel_pipeline.completed",
+                    component="worker",
+                    execution_id=str(completed.id),
+                    analysis_id=str(completed.id),
+                    field_id=str(completed.field_id),
+                    attempt_id=lease.attempt_id,
+                    lease_generation=lease.generation,
+                    status="completed",
+                    stage=AnalysisStage.COMPLETED.value,
+                    percent=100,
+                    scene_count=len(result.scenes),
+                    scene_ids=tuple(scene.scene_id for scene in result.scenes),
+                    zone_count=result.selected_zone_count,
+                )
+                return PipelineOutcome(
+                    analysis_id=str(completed.id),
+                    status="completed",
+                    scene_count=len(result.scenes),
+                    zone_count=result.selected_zone_count,
+                )
+            except AnalysisLeaseLost:
+                raise
+            except InsufficientDataError as exc:
+                return self._fail(
+                    analysis,
+                    lease,
+                    code="INSUFFICIENT_SATELLITE_DATA",
+                    message=str(exc),
+                    retryable=False,
+                    error_type=type(exc).__name__,
+                )
+            except Exception as exc:  # noqa: BLE001 - persist a safe retryable failure
+                return self._fail(
+                    analysis,
+                    lease,
+                    code="ANALYSIS_PIPELINE_FAILED",
+                    message=UNEXPECTED_PIPELINE_ERROR_MESSAGE,
+                    retryable=True,
+                    error_type=type(exc).__name__,
+                )
+        except AnalysisLeaseLost:
             audit_event(
                 logger,
-                "sentinel_pipeline.scenes_selected",
+                "sentinel_pipeline.lease_lost",
+                level=logging.WARNING,
                 component="worker",
                 execution_id=str(analysis.id),
                 analysis_id=str(analysis.id),
                 field_id=str(analysis.field_id),
-                status="selected",
-                scene_count=len(observations),
-                scene_ids=scene_ids,
-            )
-            analysis = self._advance(
-                analysis,
-                stage=AnalysisStage.GENERATING_EXPLANATION,
-                percent=90,
-                message_pt="Gerando evidências e artefatos auditáveis.",
-                message_en="Generating auditable evidence and artifacts.",
-            )
-            result = self._build_result(
-                analysis=analysis,
-                observations=observations,
-                indices=indices,
-                observation_mask=observation_mask,
-                zoning=zoning,
-                source_crs=reference_window.crs,
-            )
-            completed_at = self.clock()
-            completed = Analysis(
-                id=analysis.id,
-                field_id=analysis.field_id,
-                parent_analysis_id=analysis.parent_analysis_id,
-                status=AnalysisStatus.COMPLETED,
-                requested_zone_count=analysis.requested_zone_count,
-                progress=AnalysisProgress(
-                    percent=100,
-                    stage=AnalysisStage.COMPLETED,
-                    message_pt="Análise concluída.",
-                    message_en="Analysis completed.",
-                    updated_at=completed_at,
-                ),
-                result=result,
-                error=None,
-                created_at=analysis.created_at,
-                updated_at=completed_at,
-            )
-            self.repository.save_analysis(completed)
-            audit_event(
-                logger,
-                "sentinel_pipeline.completed",
-                component="worker",
-                execution_id=str(completed.id),
-                analysis_id=str(completed.id),
-                field_id=str(completed.field_id),
-                status="completed",
-                stage=AnalysisStage.COMPLETED.value,
-                percent=100,
-                scene_count=len(result.scenes),
-                scene_ids=tuple(scene.scene_id for scene in result.scenes),
-                zone_count=result.selected_zone_count,
+                attempt_id=lease.attempt_id,
+                lease_generation=lease.generation,
+                status="lease_lost",
+                retryable=True,
             )
             return PipelineOutcome(
-                analysis_id=str(completed.id),
-                status="completed",
-                scene_count=len(result.scenes),
-                zone_count=result.selected_zone_count,
-            )
-        except InsufficientDataError as exc:
-            return self._fail(
-                analysis,
-                code="INSUFFICIENT_SATELLITE_DATA",
-                message=str(exc),
-                retryable=False,
-                error_type=type(exc).__name__,
-            )
-        except Exception as exc:  # noqa: BLE001 - task state must be persisted before returning
-            return self._fail(
-                analysis,
-                code="ANALYSIS_PIPELINE_FAILED",
-                message=UNEXPECTED_PIPELINE_ERROR_MESSAGE,
+                analysis_id=str(analysis.id),
+                status="lease_lost",
+                error_code="ANALYSIS_LEASE_LOST",
                 retryable=True,
-                error_type=type(exc).__name__,
             )
 
     def _load_observations(
@@ -465,12 +529,13 @@ class AnalysisPipeline:
     def _advance(
         self,
         analysis: Analysis,
+        lease: AnalysisLeaseHandle,
         *,
         stage: AnalysisStage,
         percent: int,
         message_pt: str,
         message_en: str,
-    ) -> Analysis:
+    ) -> tuple[Analysis, AnalysisLeaseHandle]:
         now = self.clock()
         running = Analysis(
             id=analysis.id,
@@ -490,7 +555,12 @@ class AnalysisPipeline:
             created_at=analysis.created_at,
             updated_at=now,
         )
-        saved = self.repository.save_analysis(running)
+        saved, renewed_lease = self.repository.checkpoint_analysis_work(
+            running,
+            lease,
+            lease_seconds=self.lease_seconds,
+            now=now,
+        )
         audit_event(
             logger,
             "sentinel_pipeline.stage",
@@ -501,12 +571,16 @@ class AnalysisPipeline:
             status="running",
             stage=stage.value,
             percent=percent,
+            attempt_id=renewed_lease.attempt_id,
+            lease_generation=renewed_lease.generation,
+            lease_revision=renewed_lease.revision,
         )
-        return saved
+        return saved, renewed_lease
 
     def _fail(
         self,
         analysis: Analysis,
+        lease: AnalysisLeaseHandle,
         *,
         code: str,
         message: str,
@@ -537,7 +611,7 @@ class AnalysisPipeline:
             created_at=analysis.created_at,
             updated_at=now,
         )
-        self.repository.save_analysis(failed)
+        failed = self.repository.finalize_analysis_work(failed, lease, now=now)
         audit_event(
             logger,
             "sentinel_pipeline.failed",
@@ -552,6 +626,8 @@ class AnalysisPipeline:
             error_code=code,
             error_type=error_type,
             retryable=retryable,
+            attempt_id=lease.attempt_id,
+            lease_generation=lease.generation,
         )
         return PipelineOutcome(
             analysis_id=str(failed.id),
@@ -564,13 +640,14 @@ class AnalysisPipeline:
         self,
         *,
         analysis: Analysis,
+        attempt_id: str,
         observations: tuple[LoadedObservation, ...],
         indices: dict[str, np.ndarray],
         observation_mask: np.ndarray,
         zoning: ZoningResult,
         source_crs: str,
     ) -> AnalysisResult:
-        prefix = f"analyses/{analysis.id}"
+        prefix = f"analyses/{analysis.id}/attempts/{attempt_id}"
         api_scenes: list[SentinelScene] = []
         for time_index, observation in enumerate(observations):
             means = _index_means(indices, observation_mask, time_index)

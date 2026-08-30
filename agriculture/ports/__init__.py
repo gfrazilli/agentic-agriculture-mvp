@@ -3,6 +3,10 @@
 from agriculture.ports.artifacts import ArtifactRef, ArtifactStore
 from agriculture.ports.repositories import (
     AgricultureRepository,
+    AnalysisLeaseActive,
+    AnalysisLeaseHandle,
+    AnalysisLeaseLost,
+    AnalysisWorkClaim,
     DailyUsageLimitExceeded,
     IdempotencyClaim,
     IdempotencyConflict,
@@ -13,6 +17,10 @@ from agriculture.ports.tasks import QueuedTask, TaskQueue
 
 __all__ = [
     "AgricultureRepository",
+    "AnalysisLeaseActive",
+    "AnalysisLeaseHandle",
+    "AnalysisLeaseLost",
+    "AnalysisWorkClaim",
     "ArtifactRef",
     "ArtifactStore",
     "DailyUsageLimitExceeded",

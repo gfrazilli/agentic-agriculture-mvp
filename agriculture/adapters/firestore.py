@@ -2,29 +2,38 @@
 
 import hashlib
 import json
+import secrets
 from collections.abc import Mapping
 from copy import deepcopy
 from datetime import UTC, date, datetime, timedelta
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel
 
 from agriculture.adapters.optional import load_google_module
+from agriculture.domain import AnalysisStateMachine, AnalysisStatus
 from agriculture.ports.repositories import (
+    DEFAULT_ANALYSIS_LEASE_SECONDS,
     DEFAULT_IDEMPOTENCY_TTL_SECONDS,
+    AnalysisLeaseActive,
+    AnalysisLeaseHandle,
+    AnalysisLeaseLost,
+    AnalysisWorkClaim,
     DailyUsageLimitExceeded,
     IdempotencyClaim,
     IdempotencyConflict,
     IdempotencyRecord,
     RequestClaim,
 )
-from agriculture.schemas import AgentSession, Analysis, Feedback, Field
+from agriculture.schemas import AgentSession, Analysis, AnalysisProgress, Feedback, Field
 
 _CODEC_MARKER = "agentic_agriculture_firestore_codec"
 _CODEC_VERSION = "nested-arrays-v1"
 _SEQUENCE_MARKER = "agentic_agriculture_sequence_v1"
 _MAPPING_MARKER = "agentic_agriculture_mapping_v1"
 _RESERVED_CODEC_KEYS = frozenset({_CODEC_MARKER, _SEQUENCE_MARKER, _MAPPING_MARKER})
+_ANALYSIS_TRANSACTION_MAX_ATTEMPTS = 20
 
 
 def _utc_now() -> datetime:
@@ -156,6 +165,7 @@ class FirestoreRepository:
     FEEDBACK = "feedback"
     IDEMPOTENCY = "idempotency_keys"
     DAILY_USAGE = "daily_usage"
+    ANALYSIS_WORK_LEASES = "analysis_work_leases"
 
     def __init__(
         self,
@@ -214,7 +224,248 @@ class FirestoreRepository:
         return self._list(self.FIELDS, Field)
 
     def save_analysis(self, analysis: Analysis) -> Analysis:
-        return self._save(self.ANALYSES, analysis)
+        """Persist an analysis unless a worker currently owns its write lease."""
+
+        analysis_id = self._entity_id(analysis)
+        analysis_ref = self._analysis_ref(analysis_id)
+        lease_ref = self._analysis_lease_ref(analysis_id)
+        transaction = self._client.transaction(max_attempts=_ANALYSIS_TRANSACTION_MAX_ATTEMPTS)
+
+        @self._firestore.transactional
+        def save(transaction):
+            lease_snapshot = lease_ref.get(transaction=transaction)
+            if lease_snapshot.exists:
+                lease_record = self._analysis_lease_record(lease_snapshot.to_dict())
+                if lease_record["released_at"] is None:
+                    raise AnalysisLeaseActive(
+                        f"Analysis {analysis_id!r} has an unreleased processing lease."
+                    )
+            transaction.set(
+                analysis_ref,
+                _encode_firestore_document(analysis.model_dump(mode="json")),
+            )
+            return analysis.model_copy(deep=True)
+
+        return save(transaction)
+
+    def claim_analysis_work(
+        self,
+        analysis_id: str,
+        initial_progress: AnalysisProgress,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> AnalysisWorkClaim:
+        """Atomically acquire or replay the processing state for one analysis."""
+
+        analysis_id = _validate_text(str(analysis_id), "analysis_id")
+        self._validate_analysis_lease_seconds(lease_seconds)
+        instant = _normalized_now(now)
+        analysis_ref = self._analysis_ref(analysis_id)
+        lease_ref = self._analysis_lease_ref(analysis_id)
+        transaction = self._client.transaction(max_attempts=_ANALYSIS_TRANSACTION_MAX_ATTEMPTS)
+
+        @self._firestore.transactional
+        def claim(transaction):
+            analysis_snapshot, lease_snapshot = self._analysis_transaction_snapshots(
+                transaction,
+                analysis_ref,
+                lease_ref,
+            )
+            if not analysis_snapshot.exists:
+                raise KeyError(f"Analysis {analysis_id!r} does not exist.")
+            current = _deserialize(Analysis, analysis_snapshot.to_dict())
+
+            # Terminal state always wins over a leftover lease document. This
+            # makes task redelivery a read-only replay after a successful final write.
+            if current.status is AnalysisStatus.COMPLETED:
+                return AnalysisWorkClaim("completed", current)
+            if current.status is AnalysisStatus.FAILED and not (
+                current.error is not None and current.error.retryable
+            ):
+                return AnalysisWorkClaim("failed", current)
+
+            lease_record = (
+                self._analysis_lease_record(lease_snapshot.to_dict())
+                if lease_snapshot.exists
+                else None
+            )
+            if lease_record is not None and str(lease_record["analysis_id"]) != analysis_id:
+                raise ValueError("Firestore analysis lease belongs to another analysis.")
+
+            if lease_record is not None and self._analysis_lease_is_active(lease_record, instant):
+                return AnalysisWorkClaim("busy", current)
+            if current.status is AnalysisStatus.RUNNING:
+                if (
+                    lease_record is None
+                    and current.updated_at + timedelta(seconds=lease_seconds) > instant
+                ):
+                    # Compatibility for RUNNING documents created before the
+                    # separate lease collection existed.
+                    return AnalysisWorkClaim("busy", current)
+
+            generation = int(lease_record["generation"]) + 1 if lease_record else 1
+            token = secrets.token_urlsafe(32)
+            handle = AnalysisLeaseHandle(
+                analysis_id=analysis_id,
+                attempt_id=str(uuid4()),
+                generation=generation,
+                revision=0,
+                acquired_at=instant,
+                expires_at=instant + timedelta(seconds=lease_seconds),
+                token=token,
+            )
+            progress = AnalysisProgress(
+                percent=initial_progress.percent,
+                stage=initial_progress.stage,
+                message_pt=initial_progress.message_pt,
+                message_en=initial_progress.message_en,
+                updated_at=instant,
+            )
+            running = Analysis(
+                id=current.id,
+                field_id=current.field_id,
+                parent_analysis_id=current.parent_analysis_id,
+                status=AnalysisStatus.RUNNING,
+                requested_zone_count=current.requested_zone_count,
+                progress=progress,
+                result=None,
+                error=None,
+                created_at=current.created_at,
+                updated_at=instant,
+            )
+            transaction.set(
+                analysis_ref,
+                _encode_firestore_document(running.model_dump(mode="json")),
+            )
+            transaction.set(
+                lease_ref,
+                self._analysis_lease_payload(
+                    handle,
+                    token_digest=self._analysis_token_digest(token),
+                    released_at=None,
+                ),
+            )
+            return AnalysisWorkClaim(
+                "acquired",
+                running.model_copy(deep=True),
+                lease=handle,
+                recovered=current.status is not AnalysisStatus.QUEUED or lease_record is not None,
+            )
+
+        return claim(transaction)
+
+    def checkpoint_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> tuple[Analysis, AnalysisLeaseHandle]:
+        """Persist RUNNING progress and renew a lease using revision fencing."""
+
+        self._validate_analysis_lease_seconds(lease_seconds)
+        instant = _normalized_now(now)
+        analysis_id = self._entity_id(analysis)
+        self._validate_analysis_handle_id(analysis_id, lease)
+        analysis_ref = self._analysis_ref(analysis_id)
+        lease_ref = self._analysis_lease_ref(analysis_id)
+        transaction = self._client.transaction(max_attempts=_ANALYSIS_TRANSACTION_MAX_ATTEMPTS)
+
+        @self._firestore.transactional
+        def checkpoint(transaction):
+            analysis_snapshot, lease_snapshot = self._analysis_transaction_snapshots(
+                transaction,
+                analysis_ref,
+                lease_ref,
+            )
+            if not analysis_snapshot.exists or not lease_snapshot.exists:
+                raise AnalysisLeaseLost(f"Analysis lease for {analysis_id!r} no longer exists.")
+            current = _deserialize(Analysis, analysis_snapshot.to_dict())
+            lease_record = self._analysis_lease_record(lease_snapshot.to_dict())
+            self._validate_analysis_lease_owner(lease, lease_record, instant)
+            self._validate_analysis_update(current, analysis, final=False)
+
+            renewed = AnalysisLeaseHandle(
+                analysis_id=lease.analysis_id,
+                attempt_id=lease.attempt_id,
+                generation=lease.generation,
+                revision=lease.revision + 1,
+                acquired_at=lease_record["acquired_at"],
+                expires_at=instant + timedelta(seconds=lease_seconds),
+                token=lease.token,
+            )
+            transaction.set(
+                analysis_ref,
+                _encode_firestore_document(analysis.model_dump(mode="json")),
+            )
+            transaction.set(
+                lease_ref,
+                self._analysis_lease_payload(
+                    renewed,
+                    token_digest=str(lease_record["token_digest"]),
+                    released_at=None,
+                ),
+            )
+            return analysis.model_copy(deep=True), renewed
+
+        return checkpoint(transaction)
+
+    def finalize_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        now: datetime | None = None,
+    ) -> Analysis:
+        """Atomically publish a terminal analysis and release its worker lease."""
+
+        instant = _normalized_now(now)
+        analysis_id = self._entity_id(analysis)
+        self._validate_analysis_handle_id(analysis_id, lease)
+        analysis_ref = self._analysis_ref(analysis_id)
+        lease_ref = self._analysis_lease_ref(analysis_id)
+        transaction = self._client.transaction(max_attempts=_ANALYSIS_TRANSACTION_MAX_ATTEMPTS)
+
+        @self._firestore.transactional
+        def finalize(transaction):
+            analysis_snapshot, lease_snapshot = self._analysis_transaction_snapshots(
+                transaction,
+                analysis_ref,
+                lease_ref,
+            )
+            if not analysis_snapshot.exists or not lease_snapshot.exists:
+                raise AnalysisLeaseLost(f"Analysis lease for {analysis_id!r} no longer exists.")
+            current = _deserialize(Analysis, analysis_snapshot.to_dict())
+            lease_record = self._analysis_lease_record(lease_snapshot.to_dict())
+            self._validate_analysis_lease_owner(lease, lease_record, instant)
+            self._validate_analysis_update(current, analysis, final=True)
+
+            released = AnalysisLeaseHandle(
+                analysis_id=lease.analysis_id,
+                attempt_id=lease.attempt_id,
+                generation=lease.generation,
+                revision=lease.revision + 1,
+                acquired_at=lease_record["acquired_at"],
+                expires_at=lease_record["expires_at"],
+                token=lease.token,
+            )
+            transaction.set(
+                analysis_ref,
+                _encode_firestore_document(analysis.model_dump(mode="json")),
+            )
+            transaction.set(
+                lease_ref,
+                self._analysis_lease_payload(
+                    released,
+                    token_digest=str(lease_record["token_digest"]),
+                    released_at=instant,
+                ),
+            )
+            return analysis.model_copy(deep=True)
+
+        return finalize(transaction)
 
     def get_analysis(self, analysis_id: str) -> Analysis | None:
         return self._get(self.ANALYSES, analysis_id, Analysis)
@@ -224,6 +475,132 @@ class FirestoreRepository:
         if field_id is None:
             return analyses
         return [analysis for analysis in analyses if str(analysis.field_id) == str(field_id)]
+
+    def _analysis_ref(self, analysis_id: str):
+        return self._client.collection(self.ANALYSES).document(str(analysis_id))
+
+    def _analysis_lease_ref(self, analysis_id: str):
+        return self._client.collection(self.ANALYSIS_WORK_LEASES).document(str(analysis_id))
+
+    @staticmethod
+    def _analysis_transaction_snapshots(transaction, analysis_ref, lease_ref):
+        """Read both fenced documents in one RPC to avoid lock-order contention."""
+
+        snapshots = {
+            snapshot.reference.path: snapshot
+            for snapshot in transaction.get_all([analysis_ref, lease_ref])
+        }
+        return snapshots[analysis_ref.path], snapshots[lease_ref.path]
+
+    @staticmethod
+    def _validate_analysis_lease_seconds(lease_seconds: int) -> None:
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be greater than zero")
+
+    @staticmethod
+    def _analysis_token_digest(token: str) -> str:
+        return hashlib.sha256(token.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _analysis_lease_record(payload: Mapping[str, Any]) -> dict[str, Any]:
+        decoded = _decode_firestore_document(payload)
+        released_at = decoded.get("released_at")
+        generation = int(decoded["generation"])
+        revision = int(decoded["revision"])
+        if generation <= 0 or revision < 0:
+            raise ValueError("Firestore analysis lease fencing values are invalid.")
+        return {
+            "analysis_id": _validate_text(str(decoded["analysis_id"]), "analysis_id"),
+            "attempt_id": _validate_text(str(decoded["attempt_id"]), "attempt_id"),
+            "token_digest": _validate_text(str(decoded["token_digest"]), "token_digest"),
+            "generation": generation,
+            "revision": revision,
+            "acquired_at": _as_utc(decoded["acquired_at"]),
+            "expires_at": _as_utc(decoded["expires_at"]),
+            "released_at": _as_utc(released_at) if released_at is not None else None,
+        }
+
+    @staticmethod
+    def _analysis_lease_is_active(record: Mapping[str, Any], instant: datetime) -> bool:
+        return record["released_at"] is None and record["expires_at"] > instant
+
+    @staticmethod
+    def _analysis_lease_payload(
+        handle: AnalysisLeaseHandle,
+        *,
+        token_digest: str,
+        released_at: datetime | None,
+    ) -> dict[str, Any]:
+        return _encode_firestore_document(
+            {
+                "analysis_id": handle.analysis_id,
+                "attempt_id": handle.attempt_id,
+                "token_digest": token_digest,
+                "generation": handle.generation,
+                "revision": handle.revision,
+                "acquired_at": handle.acquired_at,
+                "expires_at": handle.expires_at,
+                "released_at": released_at,
+            }
+        )
+
+    @staticmethod
+    def _validate_analysis_handle_id(analysis_id: str, lease: AnalysisLeaseHandle) -> None:
+        if lease.analysis_id != analysis_id:
+            raise AnalysisLeaseLost("Analysis lease does not belong to the submitted analysis.")
+
+    @classmethod
+    def _validate_analysis_lease_owner(
+        cls,
+        handle: AnalysisLeaseHandle,
+        record: Mapping[str, Any],
+        instant: datetime,
+    ) -> None:
+        matches = (
+            str(record["analysis_id"]) == handle.analysis_id
+            and str(record["attempt_id"]) == handle.attempt_id
+            and int(record["generation"]) == handle.generation
+            and int(record["revision"]) == handle.revision
+            and secrets.compare_digest(
+                str(record["token_digest"]), cls._analysis_token_digest(handle.token)
+            )
+        )
+        if not matches or not cls._analysis_lease_is_active(record, instant):
+            raise AnalysisLeaseLost(f"Analysis lease for {handle.analysis_id!r} was lost.")
+
+    @staticmethod
+    def _validate_analysis_update(
+        current: Analysis,
+        candidate: Analysis,
+        *,
+        final: bool,
+    ) -> None:
+        immutable_fields = (
+            "id",
+            "field_id",
+            "parent_analysis_id",
+            "requested_zone_count",
+            "created_at",
+        )
+        if any(getattr(current, name) != getattr(candidate, name) for name in immutable_fields):
+            raise ValueError(
+                "Analysis identity and request fields are immutable during processing."
+            )
+        if final:
+            if candidate.status not in {AnalysisStatus.COMPLETED, AnalysisStatus.FAILED}:
+                raise ValueError("Final analysis status must be completed or failed.")
+        elif candidate.status is not AnalysisStatus.RUNNING:
+            raise ValueError("Analysis checkpoints must remain in running status.")
+        if candidate.updated_at < current.updated_at:
+            raise ValueError("Analysis updated_at cannot move backwards.")
+        if candidate.updated_at != candidate.progress.updated_at:
+            raise ValueError("Analysis and progress timestamps must match.")
+        AnalysisStateMachine.validate_transition(
+            current.status,
+            current.progress.percent,
+            candidate.status,
+            candidate.progress.percent,
+        )
 
     def save_agent_session(self, session: AgentSession) -> AgentSession:
         return self._save(self.AGENT_SESSIONS, session)
