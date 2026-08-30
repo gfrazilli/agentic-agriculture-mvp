@@ -15,8 +15,9 @@ IFS=$'\n\t'
 umask 077
 export LC_ALL=C
 # Git Bash on Windows otherwise rewrites Cloud Run URL paths such as
-# /healthz and /mcp into local C:/Program Files/Git paths.
-export MSYS_NO_PATHCONV=1
+# /healthz and /mcp into local C:/Program Files/Git paths. Exclude only the
+# affected gcloud arguments so its own bundled-Python path still converts.
+export MSYS2_ARG_CONV_EXCL='--startup-probe=;--args=;--set-env-vars=;--update-env-vars='
 
 readonly SCRIPT_NAME="${0##*/}"
 readonly SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)"
