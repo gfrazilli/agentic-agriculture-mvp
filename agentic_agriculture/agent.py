@@ -20,6 +20,7 @@ from agentic_agriculture.prompts import (
     EXPLAINER_INSTRUCTION,
     TEMPORAL_ANALYSIS_DESCRIPTION,
     TEMPORAL_ANALYSIS_INSTRUCTION,
+    session_instruction,
 )
 from agentic_agriculture.tools import (
     AgricultureActionTools,
@@ -173,28 +174,28 @@ def build_agent_graph(
         name="boundary_specialist",
         model=_gemini(bindings, config),
         description=BOUNDARY_DESCRIPTION,
-        instruction=BOUNDARY_INSTRUCTION,
+        instruction=session_instruction(BOUNDARY_INSTRUCTION),
         tools=boundary_tools,
     )
     temporal_analysis_specialist = bindings.Agent(
         name="temporal_analysis_specialist",
         model=_gemini(bindings, config),
         description=TEMPORAL_ANALYSIS_DESCRIPTION,
-        instruction=TEMPORAL_ANALYSIS_INSTRUCTION,
+        instruction=session_instruction(TEMPORAL_ANALYSIS_INSTRUCTION),
         tools=temporal_tools,
     )
     evidence_explainer = bindings.Agent(
         name="evidence_explainer",
         model=_gemini(bindings, config),
         description=EXPLAINER_DESCRIPTION,
-        instruction=EXPLAINER_INSTRUCTION,
+        instruction=session_instruction(EXPLAINER_INSTRUCTION),
         tools=[read_tools.get_analysis_evidence, read_tools.get_zone_evidence],
     )
     root_agent = bindings.Agent(
         name="agriculture_coordinator",
         model=_gemini(bindings, config),
         description="Coordena a conversa e delega cada intenção ao especialista adequado.",
-        instruction=COORDINATOR_INSTRUCTION,
+        instruction=session_instruction(COORDINATOR_INSTRUCTION),
         sub_agents=[
             boundary_specialist,
             temporal_analysis_specialist,

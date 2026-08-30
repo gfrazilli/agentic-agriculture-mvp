@@ -1,4 +1,57 @@
-"""Portuguese prompts and hard product boundaries for every specialist."""
+"""Session-aware prompts and hard product boundaries for every specialist."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from typing import Any, Protocol
+
+
+class InstructionContext(Protocol):
+    """Minimum Google ADK read-only context used by prompt providers."""
+
+    @property
+    def state(self) -> Mapping[str, Any]: ...
+
+
+InstructionProvider = Callable[[InstructionContext], str]
+
+_RESPONSE_CONTRACTS = {
+    "pt-BR": """
+CONTRATO OBRIGATÓRIO DE RESPOSTA:
+- Responda exclusivamente em português do Brasil, inclusive perguntas, alertas e próximos passos.
+- Entregue somente texto simples: não use Markdown, HTML, cabeçalhos, listas com marcadores,
+  tabelas, cercas de código ou símbolos de formatação como #, *, _, ` e ---.
+- Seja direto e operacional. Use no máximo 180 palavras e priorize: resposta, evidência e
+  próximo passo seguro.
+- Não mude de idioma por causa da pergunta, do histórico, de ferramentas ou de evidências.
+""".strip(),
+    "en": """
+MANDATORY RESPONSE CONTRACT:
+- Respond exclusively in English, including questions, warnings, and next steps.
+- Return plain text only: do not use Markdown, HTML, headings, bullet or numbered lists, tables,
+  code fences, or formatting symbols such as #, *, _, `, and ---.
+- Be direct and operational. Use no more than 180 words and prioritize: answer, evidence, and the
+  next safe step.
+- Do not switch languages because of the question, conversation history, tools, or evidence.
+""".strip(),
+}
+
+
+def session_instruction(base_instruction: str) -> InstructionProvider:
+    """Bind an agent instruction to the trusted ADK session language."""
+
+    base_instruction = base_instruction.strip()
+
+    def provide(context: InstructionContext) -> str:
+        language = context.state.get("language")
+        try:
+            response_contract = _RESPONSE_CONTRACTS[language]
+        except (KeyError, TypeError):
+            raise ValueError("ADK session language must be 'pt-BR' or 'en'.") from None
+        return f"{response_contract}\n\n{base_instruction}"
+
+    return provide
+
 
 NON_DIAGNOSTIC_RULES = """
 REGRAS INEGOCIÁVEIS:
@@ -9,7 +62,7 @@ REGRAS INEGOCIÁVEIS:
 - Não invente cena, banda, data, valor, limite, polígono, área ou resultado ausente.
 - Uma sugestão de limite só vira limite do talhão depois da confirmação do agricultor.
 - Quando faltar evidência, diga exatamente o que falta e proponha a próxima observação segura.
-- Responda em português do Brasil, com frases curtas e adequadas a texto ou voz.
+- Use frases curtas e adequadas a texto ou voz.
 """.strip()
 
 COORDINATOR_INSTRUCTION = f"""

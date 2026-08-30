@@ -158,6 +158,51 @@ def test_client_reuses_existing_session_without_creating_it() -> None:
     assert methods == ["GET", "POST"]
 
 
+def test_client_propagates_english_contract_in_state_and_turn_context() -> None:
+    requests: list[httpx.Request] = []
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        requests.append(request)
+        if request.method == "GET":
+            return httpx.Response(200, json={"id": SESSION_ID})
+        return httpx.Response(200, json=_final_events())
+
+    context = AgentTurnContext(
+        execution_id=EXECUTION_ID,
+        session_id=SESSION_ID,
+        actor_id="demo-user",
+        language="en",
+        channel="text",
+        field_id=FIELD_ID,
+        analysis_id=ANALYSIS_ID,
+    )
+    with AgentAPIClient(
+        AgentAPIConfig(base_url="http://agent:8080"),
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        client.run_turn("Which zone should I inspect first?", context)
+
+    run_payload = json.loads(requests[-1].content)
+    assert run_payload["state_delta"]["language"] == "en"
+    trusted_context = run_payload["new_message"]["parts"][0]["text"]
+    assert "Respond exclusively in English" in trusted_context
+    assert "plain text only" in trusted_context
+    assert "no more than 180 words" in trusted_context
+    assert "responda exclusivamente" not in trusted_context.lower()
+    assert run_payload["new_message"]["parts"][1] == {"text": "Which zone should I inspect first?"}
+
+
+def test_turn_context_rejects_an_unsupported_language() -> None:
+    with pytest.raises(AgentAPIConfigurationError, match="pt-BR.*en"):
+        AgentTurnContext(
+            execution_id=EXECUTION_ID,
+            session_id=SESSION_ID,
+            actor_id="demo-user",
+            language="es",  # type: ignore[arg-type]
+            channel="text",
+        )
+
+
 def test_client_recovers_from_a_concurrent_session_create() -> None:
     calls = 0
 
@@ -180,6 +225,49 @@ def test_client_recovers_from_a_concurrent_session_create() -> None:
 
     assert calls == 4
     assert reply.text.startswith("A zona 2")
+
+
+def test_client_normalizes_common_markdown_into_plain_text() -> None:
+    events = [
+        {
+            "author": "evidence_explainer",
+            "content": {
+                "role": "model",
+                "parts": [
+                    {
+                        "text": (
+                            "### Summary\n\n**Zone 2** needs inspection.\n"
+                            "* Evidence is [available](https://example.test/evidence).\n"
+                            "2025. Observation: 0.72\n"
+                            "10) NDVI remains evidence.\n"
+                            "https://example.test/_private_/scene\n"
+                            "ABC__DEF__GHI\n---"
+                        )
+                    }
+                ],
+            },
+        }
+    ]
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        if request.method == "GET":
+            return httpx.Response(200, json={"id": SESSION_ID})
+        return httpx.Response(200, json=events)
+
+    with AgentAPIClient(
+        AgentAPIConfig(base_url="http://agent:8080"),
+        transport=httpx.MockTransport(handler),
+    ) as client:
+        reply = client.run_turn("Explain.", _context())
+
+    assert reply.text == (
+        "Summary\n\nZone 2 needs inspection.\n"
+        "Evidence is available (https://example.test/evidence).\n"
+        "2025. Observation: 0.72\n"
+        "10) NDVI remains evidence.\n"
+        "https://example.test/_private_/scene\n"
+        "ABC__DEF__GHI"
+    )
 
 
 @pytest.mark.parametrize(
