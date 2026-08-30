@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <rect width="1200" height="630" fill="#f7faf8"/>
+  <circle cx="1065" cy="90" r="210" fill="#edf5ef"/>
+  <circle cx="1120" cy="20" r="22" fill="#77b82a"/>
+  <g transform="translate(74 70)">
+    <g transform="scale(1.25)" fill="none" stroke="#0b5533" stroke-linecap="round" stroke-linejoin="round">
+      <circle cx="32" cy="32" r="24" stroke-width="2.8" stroke-dasharray="96 24" transform="rotate(-32 32 32)"/>
+      <path d="M32 44V28" stroke-width="3.2"/>
+      <path d="M32 32c-9 0-14-4-15-12 8 0 14 4 15 12Z" fill="#77b82a" stroke="none"/>
+      <path d="M32 30c9 0 14-4 15-12-8 0-14 4-15 12Z" fill="#4d9c2d" stroke="none"/>
+      <path d="M12 46c8-7 15-9 22-8-5 9-11 12-18 10Z" fill="#77b82a" stroke="none"/>
+      <path d="M32 47c8-8 15-11 22-10-4 10-11 14-22 14Z" fill="#0b5533" stroke="none"/>
+    </g>
+    <text x="96" y="53" fill="#092b1d" font-family="Georgia, serif" font-size="42">1415 <tspan fill="#4d9c2d">Agri</tspan></text>
+  </g>
+  <text x="74" y="252" fill="#092b1d" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" letter-spacing="-2">
+    <tspan x="74" dy="0">Know where your field</tspan>
+    <tspan x="74" dy="76">deserves attention.</tspan>
+  </text>
+  <text x="74" y="438" fill="#5f6f68" font-family="Arial, Helvetica, sans-serif" font-size="27">
+    Sentinel-2 evidence connected and explained by Gemini.
+  </text>
+  <g transform="translate(760 178)">
+    <rect width="358" height="340" rx="28" fill="#fff" stroke="#dce5df" stroke-width="2"/>
+    <rect x="26" y="26" width="306" height="190" rx="18" fill="#edf1ec"/>
+    <g transform="translate(83 50)">
+      <path d="M28 8 171 0l59 43-4 97-53 48-147-12L0 119 8 42Z" fill="#f8faf7" stroke="#315d48" stroke-width="3"/>
+      <path d="M8 43 28 9l66-4 8 77-53 18-48 18Z" fill="#aed6a8"/>
+      <path d="M94 5 170 1l58 43-2 45-124-7Z" fill="#79ad74"/>
+      <path d="m102 82 124 7v50l-53 48-72-6Z" fill="#d8e8c8"/>
+      <path d="M1 118 49 100l53-18-1 99-75-6Z" fill="#e7c874"/>
+      <path d="M28 8 171 0l59 43-4 97-53 48-147-12L0 119 8 42Z" fill="none" stroke="#315d48" stroke-width="3"/>
+    </g>
+    <g transform="translate(28 246)">
+      <path d="M15 0c.7 8 5 12.3 13 13-8 .7-12.3 5-13 13C14.3 18 10 13.7 2 13 10 12.3 14.3 8 15 0Z" fill="#4c81de"/>
+      <text x="42" y="14" fill="#092b1d" font-family="Arial, Helvetica, sans-serif" font-size="18" font-weight="700">Gemini</text>
+      <text x="0" y="58" fill="#173127" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700">Zone 4 deserves a closer look</text>
+    </g>
+  </g>
+</svg>

@@ -31,6 +31,7 @@ def authenticated_client(client: Client) -> Client:
         {"username": TEST_USERNAME, "password": TEST_PASSWORD},
     )
     assert response.status_code == 302
+    assert response.url == reverse("demo")
     return client
 
 

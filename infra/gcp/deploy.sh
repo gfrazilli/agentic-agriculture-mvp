@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Build one immutable image and deploy all four Agentic Agriculture Cloud Run roles.
+# Build one immutable image and deploy all four 1415 Agri Cloud Run roles.
 # Long-lived resources and secrets must already exist; run bootstrap.sh first.
 #
 # Required:
@@ -70,20 +70,27 @@ TASK_INVOKER_SA_ID="${AA_TASK_INVOKER_SERVICE_ACCOUNT_ID:-aa-task-invoker}"
 DJANGO_SECRET_ID="${AA_DJANGO_SECRET_ID:-agentic-agriculture-django-secret-key}"
 DEMO_PASSWORD_SECRET_ID="${AA_DEMO_PASSWORD_SECRET_ID:-agentic-agriculture-demo-password-hash}"
 TASK_SECRET_ID="${AA_TASK_SECRET_ID:-agentic-agriculture-task-shared-secret}"
+RESEND_SECRET_ID="${AA_RESEND_SECRET_ID:-agentic-agriculture-resend-api-key}"
+TURNSTILE_SECRET_ID="${AA_TURNSTILE_SECRET_ID:-agentic-agriculture-turnstile-secret-key}"
+CONTACT_RECIPIENT_SECRET_ID="${AA_CONTACT_RECIPIENT_SECRET_ID:-agentic-agriculture-contact-to-email}"
 
 DEMO_USERNAME="${AA_DEMO_USERNAME:-demo}"
-PRODUCT_NAME="${AA_PRODUCT_NAME:-Agentic Agriculture}"
+PRODUCT_NAME="${AA_PRODUCT_NAME:-1415 Agri}"
 AGENT_MODEL="${AA_AGENT_MODEL:-gemini-3.5-flash}"
 SKIP_BUILD="${AA_SKIP_BUILD:-false}"
 PREPARED_DEMO_FIELD_ID="${AA_PREPARED_DEMO_FIELD_ID:-}"
 PREPARED_DEMO_ANALYSIS_ID="${AA_PREPARED_DEMO_ANALYSIS_ID:-}"
 CUSTOM_DOMAINS_RAW="${AA_CUSTOM_DOMAINS:-}"
+TURNSTILE_SITE_KEY="${AA_CONTACT_TURNSTILE_SITE_KEY:-}"
 
 [[ -n "$PROJECT_ID" ]] || die "Set GCP_PROJECT_ID before running this script."
 [[ "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "GCP_PROJECT_ID is invalid."
 [[ "$REGION" =~ ^[a-z]+[a-z0-9-]*[0-9]$ ]] || die "GCP_REGION is invalid."
 [[ "$SKIP_BUILD" == "true" || "$SKIP_BUILD" == "false" ]] || \
     die "AA_SKIP_BUILD must be true or false."
+[[ -n "$TURNSTILE_SITE_KEY" ]] || die "Set AA_CONTACT_TURNSTILE_SITE_KEY before deploying."
+[[ "$TURNSTILE_SITE_KEY" != *'|'* && "$TURNSTILE_SITE_KEY" != *','* && "$TURNSTILE_SITE_KEY" != *$'\n'* ]] || \
+    die "AA_CONTACT_TURNSTILE_SITE_KEY contains unsupported characters."
 if [[ -n "$PREPARED_DEMO_FIELD_ID" || -n "$PREPARED_DEMO_ANALYSIS_ID" ]]; then
     [[ -n "$PREPARED_DEMO_FIELD_ID" && -n "$PREPARED_DEMO_ANALYSIS_ID" ]] || \
         die "AA_PREPARED_DEMO_FIELD_ID and AA_PREPARED_DEMO_ANALYSIS_ID must be set together."
@@ -200,6 +207,9 @@ secret_version_number() {
 DJANGO_SECRET_VERSION="$(secret_version_number "$DJANGO_SECRET_ID")"
 DEMO_PASSWORD_SECRET_VERSION="$(secret_version_number "$DEMO_PASSWORD_SECRET_ID")"
 TASK_SECRET_VERSION="$(secret_version_number "$TASK_SECRET_ID")"
+RESEND_SECRET_VERSION="$(secret_version_number "$RESEND_SECRET_ID")"
+TURNSTILE_SECRET_VERSION="$(secret_version_number "$TURNSTILE_SECRET_ID")"
+CONTACT_RECIPIENT_SECRET_VERSION="$(secret_version_number "$CONTACT_RECIPIENT_SECRET_ID")"
 
 if [[ -n "${AA_IMAGE_URI:-}" ]]; then
     IMAGE_URI="$AA_IMAGE_URI"
@@ -387,6 +397,7 @@ AGENT_URL="${AGENT_URL%/}"
 
 log "Deploying the public, login-protected web service."
 WEB_ENV="${COMMON_DJANGO_ENV}|DEMO_USERNAME=${DEMO_USERNAME}"
+WEB_ENV+="|CONTACT_TURNSTILE_ENABLED=true|CONTACT_TURNSTILE_SITE_KEY=${TURNSTILE_SITE_KEY}"
 if [[ -n "$PREPARED_DEMO_FIELD_ID" ]]; then
     WEB_ENV+="|AA_PREPARED_DEMO_FIELD_ID=${PREPARED_DEMO_FIELD_ID}"
     WEB_ENV+="|AA_PREPARED_DEMO_ANALYSIS_ID=${PREPARED_DEMO_ANALYSIS_ID}"
@@ -411,10 +422,10 @@ gcloud run deploy "$WEB_SERVICE" \
     --ingress=all \
     --no-invoker-iam-check \
     --set-env-vars="${WEB_ENV}|WEB_CONCURRENCY=2|GUNICORN_THREADS=4|GUNICORN_TIMEOUT=840" \
-    --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},DEMO_PASSWORD_HASH=${DEMO_PASSWORD_SECRET_ID}:${DEMO_PASSWORD_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
+    --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},DEMO_PASSWORD_HASH=${DEMO_PASSWORD_SECRET_ID}:${DEMO_PASSWORD_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION},CONTACT_RESEND_API_KEY=${RESEND_SECRET_ID}:${RESEND_SECRET_VERSION},CONTACT_TURNSTILE_SECRET_KEY=${TURNSTILE_SECRET_ID}:${TURNSTILE_SECRET_VERSION},CONTACT_TO_EMAIL=${CONTACT_RECIPIENT_SECRET_ID}:${CONTACT_RECIPIENT_SECRET_VERSION}" \
     --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,tcpSocket.port=8080' \
     --labels='app=agentic-agriculture,component=web,managed-by=infra-script' \
-    --description='Public Agentic Agriculture demonstration web application' \
+    --description='Public 1415 Agri landing page and protected demonstration' \
     --deploy-health-check \
     --quiet
 
@@ -433,7 +444,7 @@ done
 gcloud run services update "$WEB_SERVICE" \
     --project="$PROJECT_ID" \
     --region="$REGION" \
-    --update-env-vars="^|^DJANGO_ALLOWED_HOSTS=${WEB_ALLOWED_HOSTS}|DJANGO_CSRF_TRUSTED_ORIGINS=${WEB_CSRF_TRUSTED_ORIGINS}|CLOUD_TASKS_BASE_URL=${WORKER_URL}" \
+    --update-env-vars="^|^DJANGO_ALLOWED_HOSTS=${WEB_ALLOWED_HOSTS}|DJANGO_CSRF_TRUSTED_ORIGINS=${WEB_CSRF_TRUSTED_ORIGINS}|CLOUD_TASKS_BASE_URL=${WORKER_URL}|CONTACT_TURNSTILE_HOSTNAMES=${WEB_ALLOWED_HOSTS}" \
     --quiet >/dev/null
 
 log "Applying Cloud Run service-to-service invocation boundaries."

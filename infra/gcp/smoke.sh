@@ -224,7 +224,9 @@ if uniform is not True or prevention != "enforced":
     raise SystemExit("bucket must enforce uniform access and public access prevention")
 PY
 
-log "Checking the public login surface and readiness."
+log "Checking the public landing page, login surface, and readiness."
+landing_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$WEB_URL/")"
+[[ "$landing_status" == "200" ]] || die "Public landing page returned HTTP $landing_status."
 login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$WEB_URL/login/")"
 [[ "$login_status" == "200" ]] || die "Public login returned HTTP $login_status."
 curl --fail --silent --show-error "$WEB_URL/ready" >"$TEMP_DIR/ready.json"

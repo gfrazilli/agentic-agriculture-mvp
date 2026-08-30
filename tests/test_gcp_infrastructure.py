@@ -55,6 +55,12 @@ def test_bootstrap_provisions_private_regional_dependencies_and_oidc_iam():
     assert 'add_project_role "serviceAccount:${AGENT_SA}" roles/cloudtasks.enqueuer' in script
     assert '"$TASK_INVOKER_SA" "serviceAccount:${AGENT_SA}" roles/iam.serviceAccountUser' in script
     assert 'add_secret_role "$TASK_SECRET_ID" "$AGENT_SA"' in script
+    assert 'add_secret_role "$RESEND_SECRET_ID" "$WEB_SA"' in script
+    assert 'add_secret_role "$TURNSTILE_SECRET_ID" "$WEB_SA"' in script
+    assert 'add_secret_role "$CONTACT_RECIPIENT_SECRET_ID" "$WEB_SA"' in script
+    assert 'add_secret_role "$RESEND_SECRET_ID" "$WORKER_SA"' not in script
+    assert 'add_secret_role "$TURNSTILE_SECRET_ID" "$AGENT_SA"' not in script
+    assert 'add_secret_role "$CONTACT_RECIPIENT_SECRET_ID" "$WORKER_SA"' not in script
     assert "--data-file=-" in script
 
 
@@ -69,6 +75,11 @@ def test_deploy_uses_one_pinned_image_and_only_web_is_public():
     assert "DJANGO_SECRET_VERSION" in script
     assert "DEMO_PASSWORD_SECRET_VERSION" in script
     assert "TASK_SECRET_VERSION" in script
+    assert "RESEND_SECRET_VERSION" in script
+    assert "TURNSTILE_SECRET_VERSION" in script
+    assert "CONTACT_RECIPIENT_SECRET_VERSION" in script
+    assert "CONTACT_TURNSTILE_ENABLED=true" in script
+    assert "CONTACT_TO_EMAIL=${CONTACT_RECIPIENT_SECRET_ID}:" in script
     assert '--region="$REGION"' in script
     assert "roles/run.invoker" in script
     assert "MSYS2_ARG_CONV_EXCL" in script
@@ -124,6 +135,7 @@ def test_custom_domains_are_strictly_validated_and_only_added_to_the_web_revisio
     assert 'WEB_CSRF_TRUSTED_ORIGINS+=",https://${custom_domain}"' in script
     assert "DJANGO_ALLOWED_HOSTS=${WEB_ALLOWED_HOSTS}" in script
     assert "DJANGO_CSRF_TRUSTED_ORIGINS=${WEB_CSRF_TRUSTED_ORIGINS}" in script
+    assert "CONTACT_TURNSTILE_HOSTNAMES=${WEB_ALLOWED_HOSTS}" in script
 
     private_runtime_block = script.split('log "Deploying the private Sentinel worker."', 1)[
         1
@@ -202,6 +214,7 @@ def test_smoke_accepts_cloud_run_private_route_hiding():
     assert 'status_code" == "404"' in script
     assert "service_is_public" in script
     assert "run.googleapis.com/invoker-iam-disabled" in script
+    assert '"$WEB_URL/"' in script
     assert '"$WEB_URL/login/"' in script
 
 
