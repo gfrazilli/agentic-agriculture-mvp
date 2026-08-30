@@ -1,3 +1,5 @@
+import json
+import logging
 from datetime import UTC, date, datetime, timedelta
 
 import numpy as np
@@ -54,6 +56,11 @@ class FakeClient:
 
     def search_scenes(self, **kwargs):  # noqa: ARG002
         return self.scenes
+
+
+class FailingClient:
+    def search_scenes(self, **kwargs):  # noqa: ARG002
+        raise RuntimeError("Bearer private-worker-token geometry=-48.9,-23.9")
 
 
 class FakeReader:
@@ -125,7 +132,9 @@ def _queued_analysis(repository):
     return queued.data["id"]
 
 
-def test_pipeline_completes_with_real_contract_and_auditable_artifacts():
+def test_pipeline_completes_with_real_contract_and_auditable_artifacts(caplog, monkeypatch):
+    caplog.set_level("INFO", logger="geospatial.pipeline")
+    monkeypatch.setattr(logging.getLogger("geospatial.pipeline"), "propagate", True)
     repository = InMemoryAgricultureRepository(clock=lambda: NOW)
     artifacts = InMemoryArtifactStore()
     analysis_id = _queued_analysis(repository)
@@ -162,6 +171,30 @@ def test_pipeline_completes_with_real_contract_and_auditable_artifacts():
     replay = pipeline.run(analysis_id)
     assert replay.status == "already_completed"
 
+    messages = dict.fromkeys(
+        record.getMessage() for record in caplog.records if record.name == "geospatial.pipeline"
+    )
+    events = [json.loads(message) for message in messages]
+    assert {event["event"] for event in events} >= {
+        "sentinel_pipeline.started",
+        "sentinel_pipeline.stage",
+        "sentinel_pipeline.scenes_selected",
+        "sentinel_pipeline.completed",
+        "sentinel_pipeline.skipped",
+    }
+    assert all(event["execution_id"] == analysis_id for event in events)
+    assert [event["stage"] for event in events if event["event"] == "sentinel_pipeline.stage"] == [
+        "acquiring_scenes",
+        "computing_indices",
+        "clustering_zones",
+        "generating_explanation",
+    ]
+    selected = next(
+        event for event in events if event["event"] == "sentinel_pipeline.scenes_selected"
+    )
+    assert selected["scene_ids"] == [scene.id for scene in scenes]
+    assert "coordinates" not in caplog.text
+
 
 def test_pipeline_persists_explicit_insufficient_data_failure():
     repository = InMemoryAgricultureRepository(clock=lambda: NOW)
@@ -186,6 +219,37 @@ def test_pipeline_persists_explicit_insufficient_data_failure():
     assert stored.status is AnalysisStatus.FAILED
     assert stored.error is not None
     assert stored.error.retryable is False
+
+
+def test_pipeline_failure_log_excludes_exception_message_and_geometry(caplog, monkeypatch):
+    caplog.set_level("INFO", logger="geospatial.pipeline")
+    monkeypatch.setattr(logging.getLogger("geospatial.pipeline"), "propagate", True)
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    analysis_id = _queued_analysis(repository)
+    pipeline = AnalysisPipeline(
+        repository,
+        InMemoryArtifactStore(),
+        client=FailingClient(),
+        reader=FakeReader(_scenes()),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+
+    assert outcome.status == "failed"
+    failure = next(
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if "sentinel_pipeline.failed" in record.getMessage()
+    )
+    assert failure["execution_id"] == analysis_id
+    assert failure["error_code"] == "ANALYSIS_PIPELINE_FAILED"
+    assert failure["error_type"] == "RuntimeError"
+    assert failure["retryable"] is True
+    assert "private-worker-token" not in caplog.text
+    assert "-48.9" not in caplog.text
 
 
 def test_running_lease_retries_then_stale_work_is_recovered():

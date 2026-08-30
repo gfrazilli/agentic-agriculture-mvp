@@ -18,10 +18,12 @@ from agriculture.adapters.agent_api import (
 SESSION_ID = "61b9320f-f798-432f-ab17-f5ba36c084a1"
 FIELD_ID = "a9046858-0202-4244-8723-ad94be3da692"
 ANALYSIS_ID = "bcdf40a5-bb82-4c5c-aa0b-2e91cd757538"
+EXECUTION_ID = "6a358ec8-92af-4c94-94ef-7c4676ec597e"
 
 
 def _context() -> AgentTurnContext:
     return AgentTurnContext(
+        execution_id=EXECUTION_ID,
         session_id=SESSION_ID,
         actor_id="demo-user",
         language="pt-BR",
@@ -123,6 +125,10 @@ def test_client_creates_session_authenticates_and_runs_exact_adk_protocol() -> N
     run_payload = json.loads(requests[2].content)
     assert run_payload["app_name"] == "agentic_agriculture"
     assert run_payload["session_id"] == SESSION_ID
+    assert run_payload["custom_metadata"] == {
+        "channel": "django-web",
+        "execution_id": EXECUTION_ID,
+    }
     assert run_payload["streaming"] is False
     assert run_payload["state_delta"] == create_payload["state"]
     assert run_payload["new_message"]["role"] == "user"

@@ -118,6 +118,7 @@ class AgentAPIConfig:
 class AgentTurnContext:
     """Trusted identifiers supplied by Django, never by the turn request body."""
 
+    execution_id: str
     session_id: str
     actor_id: str
     language: str
@@ -212,7 +213,10 @@ class AgentAPIClient:
             },
             "streaming": False,
             "state_delta": state,
-            "custom_metadata": {"channel": "django-web"},
+            "custom_metadata": {
+                "channel": "django-web",
+                "execution_id": context.execution_id,
+            },
         }
         response = self._request("POST", "run", json_payload=payload)
         events = _decode_json(response, expected="array")

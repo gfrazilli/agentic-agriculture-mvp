@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import logging
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import UTC, date, datetime
@@ -14,6 +15,7 @@ from typing import Any
 import numpy as np
 
 from agriculture.domain import AnalysisStatus
+from agriculture.observability import audit_event, get_audit_logger
 from agriculture.ports.artifacts import ArtifactStore
 from agriculture.ports.repositories import AgricultureRepository
 from agriculture.schemas import (
@@ -47,6 +49,7 @@ from geospatial.zoning import (
 PROVIDER_LABEL = "EU/ESA/Copernicus via Earth Search/AWS Open Data"
 RUNNING_LEASE_SECONDS = 20 * 60
 ZONE_COLORS = ("#b45309", "#d97706", "#65a30d", "#16a34a", "#0d9488", "#0284c7", "#4f46e5")
+logger = get_audit_logger(__name__)
 
 
 @dataclass(frozen=True, slots=True)
@@ -98,8 +101,29 @@ class AnalysisPipeline:
     def run(self, analysis_id: str) -> PipelineOutcome:
         analysis = self.repository.get_analysis(str(analysis_id))
         if analysis is None:
+            audit_event(
+                logger,
+                "sentinel_pipeline.not_found",
+                level=logging.WARNING,
+                component="worker",
+                execution_id=str(analysis_id),
+                analysis_id=str(analysis_id),
+                status="not_found",
+                error_code="ANALYSIS_NOT_FOUND",
+            )
             raise KeyError(f"Analysis {analysis_id!r} does not exist.")
         if analysis.status is AnalysisStatus.COMPLETED:
+            audit_event(
+                logger,
+                "sentinel_pipeline.skipped",
+                component="worker",
+                execution_id=str(analysis.id),
+                analysis_id=str(analysis.id),
+                field_id=str(analysis.field_id),
+                status="already_completed",
+                scene_count=len(analysis.result.scenes) if analysis.result else 0,
+                zone_count=analysis.result.selected_zone_count if analysis.result else 0,
+            )
             return PipelineOutcome(
                 analysis_id=str(analysis.id),
                 status="already_completed",
@@ -109,6 +133,17 @@ class AnalysisPipeline:
         if analysis.status is AnalysisStatus.FAILED and not (
             analysis.error and analysis.error.retryable
         ):
+            audit_event(
+                logger,
+                "sentinel_pipeline.skipped",
+                component="worker",
+                execution_id=str(analysis.id),
+                analysis_id=str(analysis.id),
+                field_id=str(analysis.field_id),
+                status="already_failed",
+                error_code=analysis.error.code if analysis.error else None,
+                retryable=False,
+            )
             return PipelineOutcome(
                 analysis_id=str(analysis.id),
                 status="already_failed",
@@ -117,12 +152,36 @@ class AnalysisPipeline:
         if analysis.status is AnalysisStatus.RUNNING:
             elapsed = self.clock() - analysis.updated_at
             if elapsed.total_seconds() < RUNNING_LEASE_SECONDS:
+                audit_event(
+                    logger,
+                    "sentinel_pipeline.skipped",
+                    component="worker",
+                    execution_id=str(analysis.id),
+                    analysis_id=str(analysis.id),
+                    field_id=str(analysis.field_id),
+                    status="already_running",
+                    stage=analysis.progress.stage.value,
+                    retryable=True,
+                )
                 return PipelineOutcome(
                     analysis_id=str(analysis.id),
                     status="already_running",
                     retryable=True,
                 )
 
+        audit_event(
+            logger,
+            "sentinel_pipeline.started",
+            component="worker",
+            execution_id=str(analysis.id),
+            analysis_id=str(analysis.id),
+            field_id=str(analysis.field_id),
+            parent_analysis_id=(
+                str(analysis.parent_analysis_id) if analysis.parent_analysis_id else None
+            ),
+            requested_zone_count=analysis.requested_zone_count,
+            status="started",
+        )
         field = self.repository.get_field(str(analysis.field_id))
         if field is None or not field.boundary_confirmed or field.boundary is None:
             return self._fail(
@@ -144,6 +203,17 @@ class AnalysisPipeline:
                 polygon=field.boundary.model_dump(mode="json"),
                 start=field.season_start,
                 end=field.season_end,
+            )
+            audit_event(
+                logger,
+                "sentinel_pipeline.scenes_selected",
+                component="worker",
+                execution_id=str(analysis.id),
+                analysis_id=str(analysis.id),
+                field_id=str(analysis.field_id),
+                status="selected",
+                scene_count=len(observations),
+                scene_ids=tuple(item.scene.id for item in observations),
             )
             analysis = self._advance(
                 analysis,
@@ -227,6 +297,20 @@ class AnalysisPipeline:
                 updated_at=completed_at,
             )
             self.repository.save_analysis(completed)
+            audit_event(
+                logger,
+                "sentinel_pipeline.completed",
+                component="worker",
+                execution_id=str(completed.id),
+                analysis_id=str(completed.id),
+                field_id=str(completed.field_id),
+                status="completed",
+                stage=AnalysisStage.COMPLETED.value,
+                percent=100,
+                scene_count=len(result.scenes),
+                scene_ids=tuple(scene.scene_id for scene in result.scenes),
+                zone_count=result.selected_zone_count,
+            )
             return PipelineOutcome(
                 analysis_id=str(completed.id),
                 status="completed",
@@ -239,6 +323,7 @@ class AnalysisPipeline:
                 code="INSUFFICIENT_SATELLITE_DATA",
                 message=str(exc),
                 retryable=False,
+                error_type=type(exc).__name__,
             )
         except Exception as exc:  # noqa: BLE001 - task state must be persisted before returning
             return self._fail(
@@ -246,6 +331,7 @@ class AnalysisPipeline:
                 code="ANALYSIS_PIPELINE_FAILED",
                 message=f"{type(exc).__name__}: {exc}",
                 retryable=True,
+                error_type=type(exc).__name__,
             )
 
     def _load_observations(
@@ -337,7 +423,19 @@ class AnalysisPipeline:
             created_at=analysis.created_at,
             updated_at=now,
         )
-        return self.repository.save_analysis(running)
+        saved = self.repository.save_analysis(running)
+        audit_event(
+            logger,
+            "sentinel_pipeline.stage",
+            component="worker",
+            execution_id=str(saved.id),
+            analysis_id=str(saved.id),
+            field_id=str(saved.field_id),
+            status="running",
+            stage=stage.value,
+            percent=percent,
+        )
+        return saved
 
     def _fail(
         self,
@@ -346,6 +444,7 @@ class AnalysisPipeline:
         code: str,
         message: str,
         retryable: bool,
+        error_type: str | None = None,
     ) -> PipelineOutcome:
         now = self.clock()
         failed = Analysis(
@@ -372,6 +471,21 @@ class AnalysisPipeline:
             updated_at=now,
         )
         self.repository.save_analysis(failed)
+        audit_event(
+            logger,
+            "sentinel_pipeline.failed",
+            level=logging.ERROR,
+            component="worker",
+            execution_id=str(failed.id),
+            analysis_id=str(failed.id),
+            field_id=str(failed.field_id),
+            status="failed",
+            stage=AnalysisStage.FAILED.value,
+            percent=failed.progress.percent,
+            error_code=code,
+            error_type=error_type,
+            retryable=retryable,
+        )
         return PipelineOutcome(
             analysis_id=str(failed.id),
             status="failed",

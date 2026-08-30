@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import timedelta
 from types import SimpleNamespace
 
@@ -110,7 +111,10 @@ def _fake_gateway(*, exception: Exception | None = None):
 def test_turn_endpoint_uses_trusted_context_and_increments_only_after_success(
     authenticated_client: Client,
     monkeypatch,
+    caplog,
 ) -> None:
+    caplog.set_level("INFO", logger="agriculture.api.views")
+    monkeypatch.setattr(logging.getLogger("agriculture.api.views"), "propagate", True)
     field = _create_field(authenticated_client)
     session = _create_session(authenticated_client, field_id=str(field["id"]))
     gateway, calls = _fake_gateway()
@@ -144,6 +148,23 @@ def test_turn_endpoint_uses_trusted_context_and_increments_only_after_success(
     assert isinstance(context.actor_id, str) and len(context.actor_id) >= 16
     assert context.actor_id != TEST_USERNAME
     assert context.field_id == field["id"]
+
+    audit_messages = dict.fromkeys(
+        record.getMessage() for record in caplog.records if record.name == "agriculture.api.views"
+    )
+    audit_events = [json.loads(message) for message in audit_messages]
+    started, completed = [
+        event for event in audit_events if event["event"].startswith("agent_gateway.turn.")
+    ]
+    assert started["event"] == "agent_gateway.turn.started"
+    assert completed["event"] == "agent_gateway.turn.completed"
+    assert started["execution_id"] == completed["execution_id"] == context.execution_id
+    assert completed["session_id"] == session["id"]
+    assert completed["field_id"] == field["id"]
+    assert completed["turn_number"] == 1
+    assert completed["tools"] == ["get_analysis_evidence"]
+    assert "O que significa a zona 2?" not in caplog.text
+    assert "Resumo:" not in caplog.text
 
     stored = authenticated_client.get(
         reverse("agriculture_api:agent-session-detail", args=[session["id"]])
@@ -241,10 +262,13 @@ def test_turn_input_is_bounded_plain_text(
 def test_gateway_failures_are_safe_and_do_not_increment_turn_count(
     authenticated_client: Client,
     monkeypatch,
+    caplog,
     exception: Exception,
     status: int,
     code: str,
 ) -> None:
+    caplog.set_level("INFO", logger="agriculture.api.views")
+    monkeypatch.setattr(logging.getLogger("agriculture.api.views"), "propagate", True)
     session = _create_session(authenticated_client, suffix=f"failure-{status}-{code}")
     gateway, calls = _fake_gateway(exception=exception)
     monkeypatch.setattr("agriculture.api.views.get_agent_api_client", lambda: gateway)
@@ -261,6 +285,17 @@ def test_gateway_failures_are_safe_and_do_not_increment_turn_count(
     assert "secret" not in error["message"]
     assert "token" not in error["message"]
     assert len(calls) == 1
+    failure = next(
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if "agent_gateway.turn.failed" in record.getMessage()
+    )
+    assert failure["error_type"] == type(exception).__name__
+    assert failure["error_code"] == code
+    assert "secret configuration detail" not in caplog.text
+    assert "private URL and token detail" not in caplog.text
+    assert "private response detail" not in caplog.text
+    assert "Explique." not in caplog.text
     stored = authenticated_client.get(
         reverse("agriculture_api:agent-session-detail", args=[session["id"]])
     )
