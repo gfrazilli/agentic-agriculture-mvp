@@ -1,6 +1,8 @@
 import json
 import logging
+from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
+from threading import Event, Lock
 
 import numpy as np
 
@@ -20,6 +22,11 @@ from geospatial.pipeline import AnalysisPipeline, _geometry_vertex_count, _zone_
 
 NOW = datetime(2026, 8, 29, 12, tzinfo=UTC)
 TRANSFORM = (0.001, 0.0, -48.900, 0.0, -0.001, -23.970)
+
+
+def _memory_key(uri: str) -> str:
+    assert uri.startswith("memory:///")
+    return uri.removeprefix("memory:///")
 
 
 def _context(name: str) -> IdempotencyContext:
@@ -55,6 +62,23 @@ class FakeClient:
         self.scenes = tuple(scenes)
 
     def search_scenes(self, **kwargs):  # noqa: ARG002
+        return self.scenes
+
+
+class BlockingClient(FakeClient):
+    def __init__(self, scenes):
+        super().__init__(scenes)
+        self.started = Event()
+        self.release = Event()
+        self.calls = 0
+        self._lock = Lock()
+
+    def search_scenes(self, **kwargs):  # noqa: ARG002
+        with self._lock:
+            self.calls += 1
+        self.started.set()
+        if not self.release.wait(timeout=10):
+            raise TimeoutError("Blocking test client was not released.")
         return self.scenes
 
 
@@ -251,10 +275,13 @@ def test_pipeline_completes_with_real_contract_and_auditable_artifacts(caplog, m
         "higher_than_field",
     ]
     assert all(zone.boundary.type == "Polygon" for zone in stored.result.zones)
-    assert artifacts.exists(f"analyses/{analysis_id}/zones.geojson")
-    assert artifacts.exists(f"analyses/{analysis_id}/zone-map.svg")
-    assert artifacts.exists(f"analyses/{analysis_id}/processing-report.json")
-    feature_collection = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+    assert "/attempts/" in stored.result.artifacts.zone_geojson_uri
+    assert artifacts.exists(_memory_key(stored.result.artifacts.zone_geojson_uri))
+    assert artifacts.exists(_memory_key(stored.result.artifacts.map_preview_uri))
+    assert artifacts.exists(_memory_key(stored.result.artifacts.report_uri))
+    feature_collection = json.loads(
+        artifacts.get_bytes(_memory_key(stored.result.artifacts.zone_geojson_uri))
+    )
     assert feature_collection["type"] == "FeatureCollection"
     assert "crs" not in feature_collection["metadata"]
     assert [feature["geometry"] for feature in feature_collection["features"]] == [
@@ -343,12 +370,14 @@ def test_pipeline_discards_unusable_scenes_and_keeps_outputs_aligned(caplog, mon
     )
 
     for scene in retained:
-        assert artifacts.exists(f"analyses/{analysis_id}/scenes/{scene.id}-ndvi.svg")
+        stored_scene = next(item for item in stored.result.scenes if item.scene_id == scene.id)
+        assert artifacts.exists(_memory_key(stored_scene.preview_uri))
+    attempt_prefix = _memory_key(stored.result.artifacts.report_uri).rsplit("/", 1)[0]
     for scene in discarded:
-        assert not artifacts.exists(f"analyses/{analysis_id}/scenes/{scene.id}-ndvi.svg")
-    report = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/processing-report.json"))
+        assert not artifacts.exists(f"{attempt_prefix}/scenes/{scene.id}-ndvi.svg")
+    report = json.loads(artifacts.get_bytes(_memory_key(stored.result.artifacts.report_uri)))
     assert report["scene_ids"] == list(retained_ids)
-    zones = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+    zones = json.loads(artifacts.get_bytes(_memory_key(stored.result.artifacts.zone_geojson_uri)))
     assert len(zones["features"]) == stored.result.selected_zone_count
 
     events = [
@@ -623,7 +652,10 @@ def test_pipeline_writes_wgs84_geojson_from_projected_raster():
 
     outcome = pipeline.run(analysis_id)
     stored = repository.get_analysis(analysis_id)
-    artifact = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+    assert stored is not None and stored.result is not None
+    artifact = json.loads(
+        artifacts.get_bytes(_memory_key(stored.result.artifacts.zone_geojson_uri))
+    )
 
     assert outcome.status == "completed"
     assert stored is not None and stored.result is not None
@@ -755,3 +787,111 @@ def test_running_lease_retries_then_stale_work_is_recovered():
     stored = repository.get_analysis(analysis_id)
     assert stored is not None
     assert stored.status is AnalysisStatus.COMPLETED
+
+
+def test_concurrent_pipeline_delivery_runs_provider_work_only_once():
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes()
+    client = BlockingClient(scenes)
+    pipeline = AnalysisPipeline(
+        repository,
+        InMemoryArtifactStore(),
+        client=client,
+        reader=FakeReader(scenes),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        first_future = executor.submit(pipeline.run, analysis_id)
+        assert client.started.wait(timeout=5)
+        second = pipeline.run(analysis_id)
+        client.release.set()
+        first = first_future.result(timeout=10)
+
+    assert first.status == "completed"
+    assert second.status == "already_running"
+    assert second.retryable is True
+    assert client.calls == 1
+
+
+def test_stale_pipeline_cannot_overwrite_winner_after_writing_attempt_artifacts():
+    clock = [NOW]
+
+    class FinalizeGateRepository(InMemoryAgricultureRepository):
+        def __init__(self):
+            super().__init__(clock=lambda: clock[0])
+            self.first_finalize_started = Event()
+            self.release_first_finalize = Event()
+
+        def finalize_analysis_work(self, analysis, lease, *, now=None):
+            if lease.generation == 1 and analysis.status is AnalysisStatus.COMPLETED:
+                self.first_finalize_started.set()
+                if not self.release_first_finalize.wait(timeout=10):
+                    raise TimeoutError("Stale finalize test was not released.")
+            return super().finalize_analysis_work(analysis, lease, now=now)
+
+    class RecordingArtifactStore(InMemoryArtifactStore):
+        def __init__(self):
+            super().__init__()
+            self.written_keys: list[str] = []
+            self._record_lock = Lock()
+
+        def put_bytes(self, key, data, *, content_type):
+            result = super().put_bytes(key, data, content_type=content_type)
+            with self._record_lock:
+                self.written_keys.append(key)
+            return result
+
+    repository = FinalizeGateRepository()
+    artifacts = RecordingArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes()
+    old_pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=FakeReader(scenes),
+        clock=lambda: clock[0],
+        target_scene_count=3,
+        max_dimension=64,
+        lease_seconds=5,
+    )
+    winner_pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=FakeReader(scenes),
+        clock=lambda: clock[0],
+        target_scene_count=3,
+        max_dimension=64,
+        lease_seconds=5,
+    )
+
+    with ThreadPoolExecutor(max_workers=1) as executor:
+        stale_future = executor.submit(old_pipeline.run, analysis_id)
+        assert repository.first_finalize_started.wait(timeout=10)
+        clock[0] = NOW + timedelta(seconds=5)
+        winner = winner_pipeline.run(analysis_id)
+        repository.release_first_finalize.set()
+        stale = stale_future.result(timeout=10)
+
+    stored = repository.get_analysis(analysis_id)
+    assert winner.status == "completed"
+    assert stale.status == "lease_lost"
+    assert stale.retryable is True
+    assert stored is not None and stored.status is AnalysisStatus.COMPLETED
+    assert stored.result is not None
+    attempts = {
+        key.split("/attempts/", 1)[1].split("/", 1)[0]
+        for key in artifacts.written_keys
+        if "/attempts/" in key
+    }
+    winner_attempt = stored.result.artifacts.zone_geojson_uri.split("/attempts/", 1)[1].split(
+        "/", 1
+    )[0]
+    assert len(attempts) == 2
+    assert winner_attempt in attempts
+    assert sum(key.endswith("/zones.geojson") for key in artifacts.written_keys) == 2

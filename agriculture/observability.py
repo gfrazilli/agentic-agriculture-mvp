@@ -19,6 +19,7 @@ _ALLOWED_FIELDS = frozenset(
     {
         "agents",
         "analysis_id",
+        "attempt_id",
         "channel",
         "component",
         "duration_ms",
@@ -27,11 +28,14 @@ _ALLOWED_FIELDS = frozenset(
         "execution_id",
         "field_id",
         "language",
+        "lease_generation",
+        "lease_revision",
         "model",
         "parent_analysis_id",
         "percent",
         "replayed",
         "requested_zone_count",
+        "recovered",
         "retryable",
         "scene_count",
         "scene_ids",
@@ -49,6 +53,8 @@ _SEQUENCE_FIELDS = frozenset({"agents", "scene_ids", "tools"})
 _INTEGER_FIELDS = frozenset(
     {
         "duration_ms",
+        "lease_generation",
+        "lease_revision",
         "percent",
         "requested_zone_count",
         "scene_count",
@@ -56,7 +62,7 @@ _INTEGER_FIELDS = frozenset(
         "zone_count",
     }
 )
-_BOOLEAN_FIELDS = frozenset({"replayed", "retryable"})
+_BOOLEAN_FIELDS = frozenset({"recovered", "replayed", "retryable"})
 _DROP = object()
 _AUDIT_HANDLER_MARKER = "_agentic_agriculture_audit_handler"
 

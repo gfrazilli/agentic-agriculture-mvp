@@ -171,6 +171,17 @@ gcloud storage buckets describe "gs://${ARTIFACT_BUCKET}" \
 gcloud tasks queues describe "$TASK_QUEUE" \
     --project="$PROJECT_ID" --location="$REGION" --format='value(name)' >/dev/null || \
     die "Missing Cloud Tasks queue; run bootstrap.sh first."
+# Repeat deployments must also reconcile the retry horizon. Five attempts can
+# all arrive before a stale 20-minute analysis lease becomes claimable again.
+gcloud tasks queues update "$TASK_QUEUE" \
+    --project="$PROJECT_ID" \
+    --location="$REGION" \
+    --max-attempts=7 \
+    --min-backoff=60s \
+    --max-backoff=600s \
+    --max-doublings=3 \
+    --max-retry-duration=14400s \
+    --quiet >/dev/null
 secret_version_number() {
     local secret_id=$1
     enabled_version="$(
@@ -248,7 +259,8 @@ COMMON_DJANGO_ENV="^|^APP_ENV=production|DJANGO_DEBUG=false|DJANGO_ALLOWED_HOSTS
 COMMON_DJANGO_ENV+="|DJANGO_TIME_ZONE=America/Sao_Paulo|PRODUCT_NAME=${PRODUCT_NAME}"
 COMMON_DJANGO_ENV+="|PERSISTENCE_BACKEND=firestore|ARTIFACT_BACKEND=gcs|TASK_BACKEND=cloud_tasks"
 COMMON_DJANGO_ENV+="|BOUNDARY_BACKEND=geospatial|ANALYSIS_PIPELINE_BACKEND=sentinel"
-COMMON_DJANGO_ENV+="|ANALYSIS_TARGET_SCENE_COUNT=6|ANALYSIS_MAX_DIMENSION=512|ANALYSIS_DAILY_LIMIT=3"
+COMMON_DJANGO_ENV+="|ANALYSIS_TARGET_SCENE_COUNT=6|ANALYSIS_MAX_DIMENSION=512|ANALYSIS_LEASE_SECONDS=1200"
+COMMON_DJANGO_ENV+="|ANALYSIS_DAILY_LIMIT=3"
 COMMON_DJANGO_ENV+="|GOOGLE_CLOUD_PROJECT=${PROJECT_ID}|FIRESTORE_DATABASE=(default)"
 COMMON_DJANGO_ENV+="|GCS_BUCKET=${ARTIFACT_BUCKET}|CLOUD_TASKS_LOCATION=${REGION}"
 COMMON_DJANGO_ENV+="|CLOUD_TASKS_QUEUE=${TASK_QUEUE}|CLOUD_TASKS_BASE_URL=${worker_target_url}"

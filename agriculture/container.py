@@ -94,6 +94,7 @@ def get_analysis_pipeline():
             get_artifact_store(),
             target_scene_count=settings.ANALYSIS_TARGET_SCENE_COUNT,
             max_dimension=settings.ANALYSIS_MAX_DIMENSION,
+            lease_seconds=settings.ANALYSIS_LEASE_SECONDS,
         )
     raise RuntimeError(
         f"Unsupported analysis pipeline backend: {settings.ANALYSIS_PIPELINE_BACKEND}"

@@ -1,22 +1,33 @@
 """Thread-safe, process-local agriculture repository."""
 
+import hashlib
+import hmac
+import secrets
 from collections.abc import Callable, Mapping
 from copy import deepcopy
+from dataclasses import dataclass, replace
 from datetime import UTC, date, datetime, timedelta
 from threading import RLock
 from typing import Any
+from uuid import uuid4
 
 from pydantic import BaseModel
 
+from agriculture.domain import AnalysisStateMachine, AnalysisStatus
 from agriculture.ports.repositories import (
+    DEFAULT_ANALYSIS_LEASE_SECONDS,
     DEFAULT_IDEMPOTENCY_TTL_SECONDS,
+    AnalysisLeaseActive,
+    AnalysisLeaseHandle,
+    AnalysisLeaseLost,
+    AnalysisWorkClaim,
     DailyUsageLimitExceeded,
     IdempotencyClaim,
     IdempotencyConflict,
     IdempotencyRecord,
     RequestClaim,
 )
-from agriculture.schemas import AgentSession, Analysis, Feedback, Field
+from agriculture.schemas import AgentSession, Analysis, AnalysisProgress, Feedback, Field
 
 
 def _utc_now() -> datetime:
@@ -40,6 +51,22 @@ def _clone[ModelT: BaseModel](model: ModelT) -> ModelT:
     return model.model_copy(deep=True)
 
 
+def _token_digest(token: str) -> str:
+    return hashlib.sha256(token.encode()).hexdigest()
+
+
+@dataclass(frozen=True, slots=True)
+class _AnalysisLease:
+    analysis_id: str
+    attempt_id: str
+    token_digest: str
+    generation: int
+    revision: int
+    acquired_at: datetime
+    expires_at: datetime
+    released_at: datetime | None = None
+
+
 class InMemoryAgricultureRepository:
     """Development adapter with the same atomic request semantics as Firestore."""
 
@@ -48,6 +75,7 @@ class InMemoryAgricultureRepository:
         self._lock = RLock()
         self._fields: dict[str, Field] = {}
         self._analyses: dict[str, Analysis] = {}
+        self._analysis_leases: dict[str, _AnalysisLease] = {}
         self._agent_sessions: dict[str, AgentSession] = {}
         self._feedback: dict[str, Feedback] = {}
         self._idempotency: dict[str, tuple[IdempotencyRecord, int]] = {}
@@ -101,7 +129,215 @@ class InMemoryAgricultureRepository:
         return self._list(self._fields)
 
     def save_analysis(self, analysis: Analysis) -> Analysis:
-        return self._save(self._analyses, analysis)
+        analysis_id = _entity_id(analysis)
+        with self._lock:
+            lease = self._analysis_leases.get(analysis_id)
+            if lease is not None and lease.released_at is None:
+                raise AnalysisLeaseActive(
+                    f"Analysis {analysis_id!r} has an unreleased worker lease."
+                )
+            stored = _clone(analysis)
+            self._analyses[analysis_id] = stored
+            return _clone(stored)
+
+    def claim_analysis_work(
+        self,
+        analysis_id: str,
+        initial_progress: AnalysisProgress,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> AnalysisWorkClaim:
+        """Atomically transition an eligible analysis to a fenced running attempt."""
+
+        self._validate_ttl(lease_seconds)
+        analysis_id = str(analysis_id)
+        instant = self._now(now)
+        token = secrets.token_urlsafe(32)
+        attempt_id = str(uuid4())
+        with self._lock:
+            previous = self._analyses.get(analysis_id)
+            if previous is None:
+                raise KeyError(f"Analysis {analysis_id!r} does not exist.")
+            if previous.status is AnalysisStatus.COMPLETED:
+                return AnalysisWorkClaim("completed", _clone(previous))
+            if previous.status is AnalysisStatus.FAILED and not (
+                previous.error and previous.error.retryable
+            ):
+                return AnalysisWorkClaim("failed", _clone(previous))
+
+            previous_lease = self._analysis_leases.get(analysis_id)
+            if (
+                previous_lease is not None
+                and previous_lease.released_at is None
+                and previous_lease.expires_at > instant
+            ):
+                return AnalysisWorkClaim("busy", _clone(previous))
+            if (
+                previous.status is AnalysisStatus.RUNNING
+                and previous_lease is None
+                and previous.updated_at + timedelta(seconds=lease_seconds) > instant
+            ):
+                return AnalysisWorkClaim("busy", _clone(previous))
+
+            generation = previous_lease.generation + 1 if previous_lease is not None else 1
+            expires_at = instant + timedelta(seconds=lease_seconds)
+            running = self._running_attempt(previous, initial_progress, instant)
+            stored_lease = _AnalysisLease(
+                analysis_id=analysis_id,
+                attempt_id=attempt_id,
+                token_digest=_token_digest(token),
+                generation=generation,
+                revision=0,
+                acquired_at=instant,
+                expires_at=expires_at,
+            )
+            self._analyses[analysis_id] = _clone(running)
+            self._analysis_leases[analysis_id] = stored_lease
+            handle = self._lease_handle(stored_lease, token)
+            recovered = previous.status is not AnalysisStatus.QUEUED or previous_lease is not None
+            return AnalysisWorkClaim(
+                "acquired",
+                _clone(running),
+                lease=handle,
+                recovered=recovered,
+            )
+
+    def checkpoint_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> tuple[Analysis, AnalysisLeaseHandle]:
+        """Persist and renew a running analysis only for the current lease owner."""
+
+        self._validate_ttl(lease_seconds)
+        instant = self._now(now)
+        with self._lock:
+            previous, stored_lease = self._owned_analysis(analysis, lease, instant)
+            if analysis.status is not AnalysisStatus.RUNNING:
+                raise ValueError("Analysis checkpoints must remain in running status.")
+            self._validate_owned_update(previous, analysis)
+            renewed = replace(
+                stored_lease,
+                revision=stored_lease.revision + 1,
+                expires_at=instant + timedelta(seconds=lease_seconds),
+            )
+            saved = _clone(analysis)
+            self._analyses[str(saved.id)] = saved
+            self._analysis_leases[str(saved.id)] = renewed
+            return _clone(saved), self._lease_handle(renewed, lease.token)
+
+    def finalize_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        now: datetime | None = None,
+    ) -> Analysis:
+        """Commit COMPLETED/FAILED and release the lease in one critical section."""
+
+        instant = self._now(now)
+        with self._lock:
+            previous, stored_lease = self._owned_analysis(analysis, lease, instant)
+            if analysis.status not in {AnalysisStatus.COMPLETED, AnalysisStatus.FAILED}:
+                raise ValueError("A finalized analysis must be completed or failed.")
+            self._validate_owned_update(previous, analysis)
+            saved = _clone(analysis)
+            self._analyses[str(saved.id)] = saved
+            self._analysis_leases[str(saved.id)] = replace(
+                stored_lease,
+                revision=stored_lease.revision + 1,
+                released_at=instant,
+            )
+            return _clone(saved)
+
+    @staticmethod
+    def _running_attempt(
+        previous: Analysis,
+        initial_progress: AnalysisProgress,
+        instant: datetime,
+    ) -> Analysis:
+        progress = AnalysisProgress(
+            percent=initial_progress.percent,
+            stage=initial_progress.stage,
+            message_pt=initial_progress.message_pt,
+            message_en=initial_progress.message_en,
+            updated_at=instant,
+        )
+        return Analysis(
+            id=previous.id,
+            field_id=previous.field_id,
+            parent_analysis_id=previous.parent_analysis_id,
+            status=AnalysisStatus.RUNNING,
+            requested_zone_count=previous.requested_zone_count,
+            progress=progress,
+            result=None,
+            error=None,
+            created_at=previous.created_at,
+            updated_at=instant,
+        )
+
+    @staticmethod
+    def _lease_handle(lease: _AnalysisLease, token: str) -> AnalysisLeaseHandle:
+        return AnalysisLeaseHandle(
+            analysis_id=lease.analysis_id,
+            attempt_id=lease.attempt_id,
+            generation=lease.generation,
+            revision=lease.revision,
+            acquired_at=lease.acquired_at,
+            expires_at=lease.expires_at,
+            token=token,
+        )
+
+    def _owned_analysis(
+        self,
+        candidate: Analysis,
+        handle: AnalysisLeaseHandle,
+        instant: datetime,
+    ) -> tuple[Analysis, _AnalysisLease]:
+        analysis_id = str(candidate.id)
+        stored = self._analyses.get(analysis_id)
+        lease = self._analysis_leases.get(analysis_id)
+        owned = (
+            stored is not None
+            and lease is not None
+            and handle.analysis_id == analysis_id
+            and lease.analysis_id == analysis_id
+            and lease.released_at is None
+            and lease.expires_at > instant
+            and lease.attempt_id == handle.attempt_id
+            and lease.generation == handle.generation
+            and lease.revision == handle.revision
+            and hmac.compare_digest(lease.token_digest, _token_digest(handle.token))
+        )
+        if not owned:
+            raise AnalysisLeaseLost(f"Analysis {analysis_id!r} lease ownership was lost.")
+        return stored, lease
+
+    @staticmethod
+    def _validate_owned_update(previous: Analysis, candidate: Analysis) -> None:
+        immutable = (
+            candidate.id == previous.id
+            and candidate.field_id == previous.field_id
+            and candidate.parent_analysis_id == previous.parent_analysis_id
+            and candidate.requested_zone_count == previous.requested_zone_count
+            and candidate.created_at == previous.created_at
+        )
+        if not immutable:
+            raise ValueError("An owned analysis update cannot change immutable fields.")
+        if candidate.updated_at != candidate.progress.updated_at:
+            raise ValueError("Analysis and progress timestamps must match.")
+        if candidate.updated_at < previous.updated_at:
+            raise ValueError("Analysis updated_at cannot move backwards.")
+        AnalysisStateMachine.validate_transition(
+            previous.status,
+            previous.progress.percent,
+            candidate.status,
+            candidate.progress.percent,
+        )
 
     def get_analysis(self, analysis_id: str) -> Analysis | None:
         return self._get(self._analyses, analysis_id)

@@ -2,12 +2,14 @@
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from dataclasses import field as dataclass_field
 from datetime import date, datetime
-from typing import Any, Protocol
+from typing import Any, Literal, Protocol
 
-from agriculture.schemas import AgentSession, Analysis, Feedback, Field
+from agriculture.schemas import AgentSession, Analysis, AnalysisProgress, Feedback, Field
 
 DEFAULT_IDEMPOTENCY_TTL_SECONDS = 24 * 60 * 60
+DEFAULT_ANALYSIS_LEASE_SECONDS = 20 * 60
 
 
 class DailyUsageLimitExceeded(RuntimeError):
@@ -26,6 +28,14 @@ class IdempotencyConflict(RuntimeError):
     def __init__(self, key: str) -> None:
         self.key = key
         super().__init__(f"Idempotency key {key!r} is already bound to another request.")
+
+
+class AnalysisLeaseLost(RuntimeError):
+    """The worker no longer owns the analysis attempt it tried to mutate."""
+
+
+class AnalysisLeaseActive(RuntimeError):
+    """A generic write tried to bypass an active analysis worker lease."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +66,33 @@ class RequestClaim:
     usage_count: int
 
 
+@dataclass(frozen=True, slots=True)
+class AnalysisLeaseHandle:
+    """Unforgeable worker capability plus monotonic fencing metadata.
+
+    The plaintext token exists only in the worker process. Persistence adapters
+    store a digest and compare it while holding their atomic write primitive.
+    """
+
+    analysis_id: str
+    attempt_id: str
+    generation: int
+    revision: int
+    acquired_at: datetime
+    expires_at: datetime
+    token: str = dataclass_field(repr=False)
+
+
+@dataclass(frozen=True, slots=True)
+class AnalysisWorkClaim:
+    """Outcome of atomically claiming one analysis for processing."""
+
+    outcome: Literal["acquired", "busy", "completed", "failed"]
+    analysis: Analysis
+    lease: AnalysisLeaseHandle | None = None
+    recovered: bool = False
+
+
 class AgricultureRepository(Protocol):
     """Repository boundary shared by local and Google Cloud implementations."""
 
@@ -66,6 +103,32 @@ class AgricultureRepository(Protocol):
     def list_fields(self, subject_id: str | None = None) -> list[Field]: ...
 
     def save_analysis(self, analysis: Analysis) -> Analysis: ...
+
+    def claim_analysis_work(
+        self,
+        analysis_id: str,
+        initial_progress: AnalysisProgress,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> AnalysisWorkClaim: ...
+
+    def checkpoint_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        lease_seconds: int = DEFAULT_ANALYSIS_LEASE_SECONDS,
+        now: datetime | None = None,
+    ) -> tuple[Analysis, AnalysisLeaseHandle]: ...
+
+    def finalize_analysis_work(
+        self,
+        analysis: Analysis,
+        lease: AnalysisLeaseHandle,
+        *,
+        now: datetime | None = None,
+    ) -> Analysis: ...
 
     def get_analysis(self, analysis_id: str) -> Analysis | None: ...
 
