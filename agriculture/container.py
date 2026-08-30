@@ -3,6 +3,8 @@ from functools import lru_cache
 from django.conf import settings
 
 from agriculture.adapters import (
+    AgentAPIClient,
+    AgentAPIConfig,
     CloudTasksQueue,
     FirestoreRepository,
     GCSArtifactStore,
@@ -15,6 +17,13 @@ from agriculture.ports.boundaries import BoundaryProvider
 from agriculture.ports.repositories import AgricultureRepository
 from agriculture.ports.tasks import TaskQueue
 from agriculture.services.application import AgricultureService
+
+
+@lru_cache(maxsize=1)
+def get_agent_api_client() -> AgentAPIClient:
+    """Build the private ADK gateway lazily on the first conversational turn."""
+
+    return AgentAPIClient(AgentAPIConfig.from_django_settings())
 
 
 @lru_cache(maxsize=1)
@@ -103,6 +112,9 @@ def get_agriculture_service() -> AgricultureService:
 def reset_container() -> None:
     """Clear process-local singletons; intended for tests and settings overrides."""
 
+    if get_agent_api_client.cache_info().currsize:
+        get_agent_api_client().close()
+    get_agent_api_client.cache_clear()
     get_agriculture_service.cache_clear()
     get_analysis_pipeline.cache_clear()
     get_boundary_provider.cache_clear()

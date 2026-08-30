@@ -102,6 +102,8 @@ def test_farmer_interface_configures_only_real_versioned_api_routes(client):
         "/api/v1/fields/",
         "boundary-suggestions/",
         "/api/v1/analyses/",
+        "/api/v1/agent-sessions/",
+        "/api/v1/feedback/",
         "/api/v1/fixtures/field-draft/",
         "/api/v1/fixtures/boundary-suggestion/",
         "/api/v1/fixtures/analysis-running/",
@@ -131,6 +133,10 @@ def test_map_progress_and_results_are_accessible_regions(client):
     assert results_tag in {"section", "div"}
     assert results.get("role") == "region"
     assert results.get("aria-label") or results.get("aria-labelledby")
+
+    for element_id in ("zone-controls", "gemini-assistant", "feedback-panel"):
+        tag, _ = parser.attributes_for_id(element_id)
+        assert tag == "section"
 
 
 def test_farmer_interface_renders_in_portuguese_and_english(client):
@@ -183,6 +189,24 @@ def test_farmer_script_uses_real_contract_and_safe_dom_updates():
 
     assert "boundary-suggestions" in script
     assert "analyses" in script
+    assert "agentSessionsUrl" in script
+    assert "recluster/" in script
+    assert "feedback" in script
+    assert "SpeechRecognition" in script
+    assert 'format: "plain_text"' not in script
+
+
+def test_agent_interface_keeps_private_cloud_identity_out_of_the_browser():
+    script_path = Path(settings.BASE_DIR) / "core" / "static" / "core" / "farmer-app.js"
+    template_path = Path(settings.BASE_DIR) / "templates" / "core" / "home.html"
+    browser_source = script_path.read_text(encoding="utf-8") + template_path.read_text(
+        encoding="utf-8"
+    )
+
+    assert "AGENT_API_URL" not in browser_source
+    assert "AGENT_API_AUDIENCE" not in browser_source
+    assert "Authorization" not in browser_source
+    assert "identity token" not in browser_source.lower()
 
 
 def test_obsolete_donor_files_are_not_left_at_repository_root():

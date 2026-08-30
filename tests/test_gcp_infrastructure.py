@@ -92,6 +92,17 @@ def test_worker_and_agent_limits_match_the_runtime_contract():
     assert "AGENT_MCP_AUDIENCE=${MCP_URL}" in script
 
 
+def test_web_is_the_only_gateway_allowed_to_invoke_the_private_agent():
+    script = _read("deploy.sh")
+
+    web_block = script.split('gcloud run deploy "$WEB_SERVICE"', 1)[1]
+    assert "AGENT_API_URL=${AGENT_URL}" in script
+    assert "AGENT_API_AUDIENCE=${AGENT_URL}" in script
+    assert "AGENT_API_TIMEOUT_SECONDS=120" in script
+    assert 'add_run_invoker "$AGENT_SERVICE" "serviceAccount:${WEB_SA}"' in script
+    assert "--no-invoker-iam-check" in web_block
+
+
 def test_budget_is_scoped_and_deployment_upload_excludes_local_secrets():
     budget = _read("budget.sh")
     ignore = (ROOT / ".gcloudignore").read_text(encoding="utf-8")

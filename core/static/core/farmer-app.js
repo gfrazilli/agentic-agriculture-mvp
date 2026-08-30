@@ -27,6 +27,31 @@
         lower: "Desenvolvimento relativo menor",
         similar: "Desenvolvimento relativo semelhante",
         higher: "Desenvolvimento relativo maior",
+        regroupTitle: "Compare outro agrupamento",
+        regroupBody: "Use as mesmas imagens e veja o talhão dividido em outra quantidade de zonas.",
+        zoneCount: "Quantidade de zonas",
+        regroup: "Reagrupar zonas",
+        regroupBusy: "Reagrupando…",
+        regroupDemo: "O reagrupamento fica disponível no resultado processado e persistido.",
+        assistantTitle: "Pergunte ao Gemini",
+        assistantBody: "O coordenador do Google ADK consulta os especialistas e as evidências do talhão antes de responder.",
+        assistantWelcome: "Pergunte o que as diferenças significam ou qual zona merece uma visita de campo primeiro.",
+        assistantPlaceholder: "Ex.: qual zona devo inspecionar primeiro?",
+        send: "Enviar",
+        sending: "Consultando Gemini…",
+        listen: "Falar",
+        listening: "Ouvindo…",
+        you: "Você",
+        gemini: "Gemini",
+        trace: "Tecnologia usada nesta resposta",
+        assistantFailure: "Não foi possível consultar o Gemini agora. Tente novamente.",
+        feedbackTitle: "Esta explicação ajudou?",
+        feedbackBody: "Seu retorno fica vinculado à análise para melhorar a demonstração.",
+        helpful: "Ajudou",
+        unclear: "Ficou confuso",
+        notHelpful: "Não ajudou",
+        feedbackThanks: "Obrigado. O retorno foi registrado.",
+        feedbackBusy: "Registrando…",
         indices: {
           NDVI: "vigor e cobertura vegetal",
           NDRE: "clorofila e variações do dossel",
@@ -49,6 +74,31 @@
         lower: "Lower relative development",
         similar: "Similar relative development",
         higher: "Higher relative development",
+        regroupTitle: "Compare another grouping",
+        regroupBody: "Use the same images and view the field divided into a different number of zones.",
+        zoneCount: "Number of zones",
+        regroup: "Regroup zones",
+        regroupBusy: "Regrouping…",
+        regroupDemo: "Regrouping is available for a processed and persisted result.",
+        assistantTitle: "Ask Gemini",
+        assistantBody: "The Google ADK coordinator consults specialists and field evidence before answering.",
+        assistantWelcome: "Ask what the differences mean or which zone deserves a field visit first.",
+        assistantPlaceholder: "For example: which zone should I inspect first?",
+        send: "Send",
+        sending: "Consulting Gemini…",
+        listen: "Speak",
+        listening: "Listening…",
+        you: "You",
+        gemini: "Gemini",
+        trace: "Technology used for this response",
+        assistantFailure: "Gemini could not be reached right now. Please try again.",
+        feedbackTitle: "Was this explanation helpful?",
+        feedbackBody: "Your response is linked to the analysis to improve the demonstration.",
+        helpful: "Helpful",
+        unclear: "Unclear",
+        notHelpful: "Not helpful",
+        feedbackThanks: "Thank you. Your feedback was recorded.",
+        feedbackBusy: "Saving…",
         indices: {
           NDVI: "vegetation vigor and cover",
           NDRE: "chlorophyll and canopy variation",
@@ -61,6 +111,12 @@
     boundary: null,
     boundaryProjection: null,
     analysis: null,
+    persistedAnalysis: null,
+    guidedResult: false,
+    agentSession: null,
+    agentSessionPromise: null,
+    nextAgentChannel: "text",
+    resultInteractionsBuilt: false,
     idempotencyKeys: new Map(),
     draggingVertex: null,
   };
@@ -530,6 +586,330 @@
     app.querySelector("#result-provenance").textContent = `${runtimeCopy.source}: ${provenance.provider} · ${provenance.mission} ${provenance.product_level} · ${provenance.bands.join(", ")} · ${runtimeCopy.processing} ${provenance.processing_version}`;
   }
 
+  function appendChatMessage(role, text) {
+    const log = app.querySelector("#agent-chat-log");
+    const message = createElement("article", {
+      className: `chat-message chat-message-${role}`,
+    });
+    message.append(
+      createElement("strong", { text: role === "user" ? runtimeCopy.you : runtimeCopy.gemini }),
+      createElement("p", { text }),
+    );
+    log.append(message);
+    log.scrollTop = log.scrollHeight;
+  }
+
+  function renderAgentTrace(trace) {
+    const panel = app.querySelector("#agent-trace");
+    const list = app.querySelector("#agent-trace-list");
+    list.replaceChildren();
+    const values = [
+      trace?.provider && trace?.model ? `${trace.provider} · ${trace.model}` : null,
+      trace?.framework,
+      ...(trace?.agents || []).map((agent) => `Agent · ${agent}`),
+      ...(trace?.tools || []).map((tool) => `Tool · ${tool}`),
+    ].filter(Boolean);
+    [...new Set(values)].forEach((value) => {
+      list.append(createElement("span", { text: value }));
+    });
+    panel.hidden = values.length === 0;
+  }
+
+  function agentContextAnalysis() {
+    if (state.guidedResult || state.persistedAnalysis?.status !== "completed") return null;
+    return state.persistedAnalysis;
+  }
+
+  async function ensureAgentSession(channel = "text") {
+    if (state.agentSession) return state.agentSession;
+    if (state.agentSessionPromise) return state.agentSessionPromise;
+
+    const contextualAnalysis = agentContextAnalysis();
+    const body = {
+      language: language === "pt" ? "pt-BR" : "en",
+      channel,
+      field_id: state.field.id,
+    };
+    if (contextualAnalysis) body.analysis_id = contextualAnalysis.id;
+
+    const contextKey = contextualAnalysis?.id || state.field.id;
+    state.agentSessionPromise = apiRequest(copy.agentSessionsUrl, {
+      method: "POST",
+      action: `create-agent-session-${contextKey}-${channel}`,
+      body,
+    })
+      .then((session) => {
+        state.agentSession = session;
+        return session;
+      })
+      .finally(() => {
+        state.agentSessionPromise = null;
+      });
+    return state.agentSessionPromise;
+  }
+
+  async function sendAgentMessage(event) {
+    event.preventDefault();
+    const input = app.querySelector("#agent-question");
+    const button = app.querySelector("#send-agent-question");
+    const message = input.value.trim();
+    if (!message) {
+      input.focus();
+      return;
+    }
+
+    appendChatMessage("user", message);
+    input.value = "";
+    input.disabled = true;
+    setBusy(button, true, runtimeCopy.sending);
+    try {
+      const session = await ensureAgentSession(state.nextAgentChannel);
+      state.nextAgentChannel = "text";
+      const result = await apiRequest(`${copy.agentSessionsUrl}${session.id}/turns/`, {
+        method: "POST",
+        body: { message },
+      });
+      state.agentSession = result.session;
+      appendChatMessage("assistant", result.message.text);
+      renderAgentTrace(result.trace);
+    } catch (_error) {
+      appendChatMessage("assistant", runtimeCopy.assistantFailure);
+    } finally {
+      input.disabled = false;
+      setBusy(button, false);
+      input.focus();
+    }
+  }
+
+  function listenForQuestion(SpeechRecognition, button, input) {
+    const recognition = new SpeechRecognition();
+    recognition.lang = language === "pt" ? "pt-BR" : "en-US";
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+    button.disabled = true;
+    button.textContent = runtimeCopy.listening;
+    recognition.addEventListener("result", (event) => {
+      input.value = event.results[0][0].transcript;
+      state.nextAgentChannel = "voice";
+      input.focus();
+    });
+    recognition.addEventListener("end", () => {
+      button.disabled = false;
+      button.textContent = runtimeCopy.listen;
+    });
+    recognition.addEventListener("error", () => {
+      button.disabled = false;
+      button.textContent = runtimeCopy.listen;
+    });
+    recognition.start();
+  }
+
+  async function reclusterAnalysis(event) {
+    event.preventDefault();
+    const status = app.querySelector("#recluster-status");
+    const select = app.querySelector("#zone-count");
+    const button = app.querySelector("#recluster-submit");
+    const source = agentContextAnalysis();
+    if (!source) {
+      status.textContent = runtimeCopy.regroupDemo;
+      return;
+    }
+
+    const zoneCount = Number(select.value);
+    setBusy(button, true, runtimeCopy.regroupBusy);
+    try {
+      const analysis = await apiRequest(`${copy.analysesUrl}${source.id}/recluster/`, {
+        method: "POST",
+        action: `recluster-${source.id}-${zoneCount}`,
+        body: { zone_count: zoneCount },
+      });
+      state.analysis = analysis;
+      state.persistedAnalysis = analysis;
+      state.guidedResult = false;
+      state.agentSession = null;
+      state.agentSessionPromise = null;
+      updateProgress(analysis);
+      setStep(3);
+      await pollAnalysis(analysis.id);
+    } catch (error) {
+      setStep(4);
+      showAlert(errorMessage(error));
+    } finally {
+      setBusy(button, false);
+    }
+  }
+
+  async function submitFeedback(rating) {
+    const buttons = [...app.querySelectorAll("[data-feedback-rating]")];
+    const status = app.querySelector("#feedback-status");
+    if (!state.persistedAnalysis) return;
+    buttons.forEach((button) => {
+      button.disabled = true;
+    });
+    status.textContent = runtimeCopy.feedbackBusy;
+    try {
+      const session = await ensureAgentSession();
+      await apiRequest(copy.feedbackUrl, {
+        method: "POST",
+        action: `feedback-${state.persistedAnalysis.id}-${rating}`,
+        body: {
+          analysis_id: state.persistedAnalysis.id,
+          session_id: session.id,
+          rating,
+        },
+      });
+      status.textContent = runtimeCopy.feedbackThanks;
+    } catch (error) {
+      status.textContent = errorMessage(error);
+      buttons.forEach((button) => {
+        button.disabled = false;
+      });
+    }
+  }
+
+  function buildResultInteractions() {
+    if (state.resultInteractionsBuilt) return;
+
+    const zonePanel = app.querySelector("#zone-controls");
+    zonePanel.className = "interaction-card zone-control-panel";
+    const zoneForm = createElement("form", {
+      className: "inline-control",
+      attributes: { id: "recluster-form" },
+    });
+    const zoneLabel = createElement("label", {
+      text: runtimeCopy.zoneCount,
+      attributes: { for: "zone-count" },
+    });
+    const zoneSelect = createElement("select", {
+      attributes: { id: "zone-count", name: "zone_count" },
+    });
+    for (let count = 2; count <= 7; count += 1) {
+      zoneSelect.append(createElement("option", { text: count, attributes: { value: count } }));
+    }
+    const zoneButton = createElement("button", {
+      className: "secondary-button",
+      text: runtimeCopy.regroup,
+      attributes: { id: "recluster-submit", type: "submit" },
+    });
+    zoneForm.append(zoneLabel, zoneSelect, zoneButton);
+    zonePanel.append(
+      createElement("h3", { text: runtimeCopy.regroupTitle }),
+      createElement("p", { text: runtimeCopy.regroupBody }),
+      zoneForm,
+      createElement("p", {
+        className: "interaction-status",
+        attributes: { id: "recluster-status", role: "status" },
+      }),
+    );
+    zoneForm.addEventListener("submit", reclusterAnalysis);
+
+    const assistant = app.querySelector("#gemini-assistant");
+    assistant.className = "interaction-card assistant-panel";
+    const chatLog = createElement("div", {
+      className: "chat-log",
+      attributes: { id: "agent-chat-log", role: "log", "aria-live": "polite" },
+    });
+    const welcome = createElement("article", { className: "chat-message chat-message-assistant" });
+    welcome.append(
+      createElement("strong", { text: runtimeCopy.gemini }),
+      createElement("p", { text: runtimeCopy.assistantWelcome }),
+    );
+    chatLog.append(welcome);
+
+    const agentForm = createElement("form", {
+      className: "agent-form",
+      attributes: { id: "agent-form" },
+    });
+    const question = createElement("textarea", {
+      attributes: {
+        id: "agent-question",
+        name: "message",
+        maxlength: 2000,
+        rows: 2,
+        required: "required",
+        placeholder: runtimeCopy.assistantPlaceholder,
+        "aria-label": runtimeCopy.assistantPlaceholder,
+      },
+    });
+    const agentActions = createElement("div", { className: "agent-actions" });
+    const speech = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (speech) {
+      const voiceButton = createElement("button", {
+        className: "secondary-button voice-button",
+        text: runtimeCopy.listen,
+        attributes: { type: "button", id: "agent-voice" },
+      });
+      voiceButton.addEventListener("click", () => {
+        listenForQuestion(speech, voiceButton, question);
+      });
+      agentActions.append(voiceButton);
+    }
+    agentActions.append(createElement("button", {
+      className: "primary-button app-primary",
+      text: runtimeCopy.send,
+      attributes: { type: "submit", id: "send-agent-question" },
+    }));
+    agentForm.append(question, agentActions);
+    agentForm.addEventListener("submit", sendAgentMessage);
+    const trace = createElement("aside", {
+      className: "agent-trace",
+      attributes: { id: "agent-trace", hidden: "hidden" },
+    });
+    trace.append(
+      createElement("strong", { text: runtimeCopy.trace }),
+      createElement("div", { className: "trace-list", attributes: { id: "agent-trace-list" } }),
+    );
+    assistant.append(
+      createElement("h3", { text: runtimeCopy.assistantTitle }),
+      createElement("p", { text: runtimeCopy.assistantBody }),
+      chatLog,
+      agentForm,
+      trace,
+    );
+
+    const feedback = app.querySelector("#feedback-panel");
+    feedback.className = "interaction-card feedback-panel";
+    const feedbackActions = createElement("div", { className: "feedback-actions" });
+    [
+      ["helpful", runtimeCopy.helpful],
+      ["unclear", runtimeCopy.unclear],
+      ["not_helpful", runtimeCopy.notHelpful],
+    ].forEach(([rating, label]) => {
+      const button = createElement("button", {
+        className: "choice-button",
+        text: label,
+        attributes: { type: "button", "data-feedback-rating": rating },
+      });
+      button.addEventListener("click", () => submitFeedback(rating));
+      feedbackActions.append(button);
+    });
+    feedback.append(
+      createElement("h3", { text: runtimeCopy.feedbackTitle }),
+      createElement("p", { text: runtimeCopy.feedbackBody }),
+      feedbackActions,
+      createElement("p", {
+        className: "interaction-status",
+        attributes: { id: "feedback-status", role: "status" },
+      }),
+    );
+
+    state.resultInteractionsBuilt = true;
+    app.querySelector("#result-interactions").hidden = false;
+  }
+
+  function updateResultInteractions(result) {
+    buildResultInteractions();
+    const canRecluster = Boolean(agentContextAnalysis());
+    const zoneSelect = app.querySelector("#zone-count");
+    const button = app.querySelector("#recluster-submit");
+    zoneSelect.value = String(result.selected_zone_count);
+    zoneSelect.disabled = !canRecluster;
+    button.disabled = !canRecluster;
+    app.querySelector("#recluster-status").textContent = canRecluster
+      ? ""
+      : runtimeCopy.regroupDemo;
+  }
+
   function renderResult(analysis) {
     state.analysis = analysis;
     const result = analysis.result;
@@ -540,6 +920,7 @@
     renderZoneLegend(result.zones);
     renderZoneCards(result.zones);
     renderEvidence(result);
+    updateResultInteractions(result);
     setStep(4);
   }
 
@@ -555,6 +936,7 @@
     const completed = await apiRequest(copy.fixtureResultUrl);
     updateProgress(completed);
     await delay(350);
+    state.guidedResult = true;
     renderResult(completed);
   }
 
@@ -562,8 +944,10 @@
     for (let attempt = 0; attempt < 150; attempt += 1) {
       await delay(2000);
       const analysis = await apiRequest(`${copy.analysesUrl}${analysisId}/`);
+      state.persistedAnalysis = analysis;
       updateProgress(analysis);
       if (analysis.status === "completed") {
+        state.guidedResult = false;
         renderResult(analysis);
         return;
       }
@@ -581,6 +965,8 @@
       body: { field_id: state.field.id, requested_zone_count: 4 },
     });
     state.analysis = analysis;
+    state.persistedAnalysis = analysis;
+    state.guidedResult = false;
     updateProgress(analysis);
     if (app.querySelector("#guided-demo").checked) await runGuidedAnalysis();
     else await pollAnalysis(analysis.id);

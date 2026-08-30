@@ -1,12 +1,21 @@
+import logging
 from uuid import UUID
 
 from django.http import HttpRequest, HttpResponse
+from django.utils.html import strip_tags
 
+from agriculture.adapters import (
+    AgentAPIConfigurationError,
+    AgentAPIProtocolError,
+    AgentAPIUnavailableError,
+    AgentTurnContext,
+)
 from agriculture.api.auth import api_login_required
 from agriculture.api.errors import APIError
 from agriculture.api.models import (
     AgentSessionCreateInput,
     AgentSessionPatchInput,
+    AgentTurnCreateInput,
     AnalysisCreateInput,
     EmptyInput,
     FeedbackCreateInput,
@@ -20,12 +29,14 @@ from agriculture.api.responses import (
     handle_api_errors,
     require_api_methods,
 )
-from agriculture.container import get_agriculture_service
+from agriculture.container import get_agent_api_client, get_agriculture_service
 from agriculture.fixture_loader import fixture_names, load_fixture
 from agriculture.services.idempotency import (
     ServiceResult,
     context_from_request,
 )
+
+logger = logging.getLogger(__name__)
 
 
 def _result_response(result: ServiceResult) -> HttpResponse:
@@ -148,6 +159,76 @@ def agent_session_detail(
         return api_response(service.get_agent_session(session_id))
     payload = parse_json(request, AgentSessionPatchInput)
     return api_response(service.patch_agent_session(session_id, payload))
+
+
+@require_api_methods("POST")
+@handle_api_errors
+@api_login_required
+def agent_session_turns(
+    request: HttpRequest,
+    session_id: UUID,
+    *,
+    actor_id: str,
+) -> HttpResponse:
+    payload = parse_json(request, AgentTurnCreateInput)
+    service = get_agriculture_service()
+    session, field, analysis = service.get_active_agent_session(session_id)
+    context = AgentTurnContext(
+        session_id=str(session.id),
+        actor_id=actor_id,
+        language=session.language,
+        channel=session.channel.value,
+        field_id=str(field.id) if field is not None else None,
+        analysis_id=str(analysis.id) if analysis is not None else None,
+    )
+
+    try:
+        reply = get_agent_api_client().run_turn(payload.message, context)
+    except AgentAPIConfigurationError:
+        logger.warning("The private agent gateway is not configured.")
+        raise APIError(
+            "agent_unavailable",
+            "The agricultural assistant is temporarily unavailable.",
+            503,
+            headers={"Retry-After": "15"},
+        ) from None
+    except AgentAPIProtocolError:
+        logger.exception("The private agent returned an invalid response.")
+        raise APIError(
+            "agent_invalid_response",
+            "The agricultural assistant returned an invalid response.",
+            502,
+        ) from None
+    except AgentAPIUnavailableError:
+        logger.exception("The private agent request failed.")
+        raise APIError(
+            "agent_unavailable",
+            "The agricultural assistant is temporarily unavailable.",
+            503,
+            headers={"Retry-After": "15"},
+        ) from None
+
+    updated_session = service.patch_agent_session(
+        session.id,
+        AgentSessionPatchInput(increment_turn_count=True),
+    )
+    return api_response(
+        {
+            "message": {
+                "role": "assistant",
+                "text": strip_tags(reply.text),
+                "format": "plain_text",
+            },
+            "session": updated_session.model_dump(mode="json"),
+            "trace": {
+                "provider": "Google Vertex AI",
+                "framework": "Google ADK",
+                "model": reply.model,
+                "agents": list(reply.agents),
+                "tools": list(reply.tools),
+            },
+        }
+    )
 
 
 @require_api_methods("POST")

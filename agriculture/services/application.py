@@ -339,6 +339,47 @@ class AgricultureService:
             raise APIError("agent_session_not_found", "The agent session was not found.", 404)
         return session
 
+    def get_active_agent_session(
+        self,
+        session_id: UUID | str,
+    ) -> tuple[AgentSession, Field | None, Analysis | None]:
+        """Resolve and revalidate the trusted context for one conversational turn."""
+
+        session = self.get_agent_session(session_id)
+        now = self.clock()
+        if session.expires_at <= now:
+            if session.status is not AgentSessionStatus.EXPIRED:
+                session = self.patch_agent_session(
+                    session.id,
+                    AgentSessionPatchInput(status=AgentSessionStatus.EXPIRED),
+                )
+            raise APIError(
+                "agent_session_expired",
+                "The agent session has expired. Start a new session.",
+                410,
+            )
+        if session.status is not AgentSessionStatus.ACTIVE:
+            raise APIError(
+                "agent_session_not_active",
+                "The agent session is not active.",
+                409,
+            )
+
+        field = self.get_field(session.field_id) if session.field_id is not None else None
+        analysis = (
+            self.get_analysis(session.analysis_id) if session.analysis_id is not None else None
+        )
+        if analysis is not None:
+            if field is None:
+                field = self.get_field(analysis.field_id)
+            elif analysis.field_id != field.id:
+                raise APIError(
+                    "agent_session_context_mismatch",
+                    "The analysis belongs to a different field.",
+                    409,
+                )
+        return session, field, analysis
+
     def patch_agent_session(
         self,
         session_id: UUID | str,

@@ -183,6 +183,16 @@ CLOUD_TASKS_SERVICE_ACCOUNT = os.getenv("CLOUD_TASKS_SERVICE_ACCOUNT", "").strip
 CLOUD_TASKS_SHARED_SECRET = os.getenv("CLOUD_TASKS_SHARED_SECRET", "")
 CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = env_int("CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS", 900)
 
+# Server-side gateway to the private Google ADK service. The browser only talks
+# to Django; Cloud Run identity tokens and the private origin never leave the
+# web service. An empty URL keeps local development importable while making
+# agent turns fail closed with a versioned 503 response.
+AGENT_API_URL = os.getenv("AGENT_API_URL", "").strip().rstrip("/")
+AGENT_API_AUDIENCE = os.getenv("AGENT_API_AUDIENCE", "").strip().rstrip("/")
+AGENT_API_TIMEOUT_SECONDS = env_int("AGENT_API_TIMEOUT_SECONDS", 90)
+AGENT_APP_NAME = os.getenv("AGENT_APP_NAME", "agentic_agriculture").strip()
+AGENT_MODEL = os.getenv("AGENT_MODEL", "gemini-3.5-flash").strip()
+
 API_SCHEMA_VERSION = "1.0"
 API_MAX_REQUEST_BYTES = env_int("API_MAX_REQUEST_BYTES", 256 * 1024)
 ANALYSIS_DAILY_LIMIT = env_int("ANALYSIS_DAILY_LIMIT", 3)

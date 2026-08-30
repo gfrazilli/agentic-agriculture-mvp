@@ -14,6 +14,8 @@
     data-fields-url="/api/v1/fields/"
     data-boundary-suffix="boundary-suggestions/"
     data-analyses-url="/api/v1/analyses/"
+    data-agent-sessions-url="/api/v1/agent-sessions/"
+    data-feedback-url="/api/v1/feedback/"
     data-fixture-field-url="/api/v1/fixtures/field-draft/"
     data-fixture-boundary-url="/api/v1/fixtures/boundary-suggestion/"
     data-fixture-running-url="/api/v1/fixtures/analysis-running/"
@@ -215,6 +217,12 @@
         </section>
 
         <aside class="scope-note"><span aria-hidden="true">i</span><div><strong>{% translate "A map for investigation, not a diagnosis" %}</strong><p id="result-disclaimer"></p></div></aside>
+
+        <div class="result-interactions" id="result-interactions" hidden>
+          <section id="zone-controls"></section>
+          <section id="gemini-assistant"></section>
+          <section id="feedback-panel"></section>
+        </div>
         <div class="form-actions result-actions">
           <button class="secondary-button" id="restart-analysis" type="button">{% translate "Map another field" %}</button>
           <button class="primary-button app-primary" id="download-geojson" type="button">{% translate "Download zone GeoJSON" %}</button>

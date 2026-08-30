@@ -18,6 +18,9 @@ when the Google Cloud CLI is installed.
 Only the web service is public, and it still requires the application's demonstration login.
 Worker, MCP, and ADK have public `run.app` origins so authenticated Google service-to-service
 calls work without a VPC connector, but Cloud Run IAM denies unauthenticated invocation.
+The web service account is the only browser-facing gateway allowed to invoke ADK. Django mints
+a short-lived identity token server-side; neither that token nor the private agent origin is
+sent to the browser.
 
 ## First deployment
 
