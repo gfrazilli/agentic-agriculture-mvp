@@ -194,6 +194,10 @@ def test_farmer_script_uses_real_contract_and_safe_dom_updates():
     assert "feedback" in script
     assert "SpeechRecognition" in script
     assert 'format: "plain_text"' not in script
+    assert 'boundary.type === "Polygon"' in script
+    assert 'boundary.type === "MultiPolygon"' in script
+    assert '"fill-rule": "evenodd"' in script
+    assert "zoneGeometryPath(zone.boundary, projection)" in script
 
 
 def test_agent_interface_keeps_private_cloud_identity_out_of_the_browser():

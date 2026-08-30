@@ -25,6 +25,8 @@ from agriculture.schemas import (
     Field,
     GeoJSONPolygon,
     ReclusterRequest,
+    ZoneGeoJSONMultiPolygon,
+    ZoneGeoJSONPolygon,
 )
 
 FIXTURES = Path(__file__).parents[1] / "agriculture" / "fixtures"
@@ -120,6 +122,32 @@ def test_polygon_has_one_ring_and_at_most_200_vertices() -> None:
     )
     with pytest.raises(ValidationError, match="more than 200"):
         _polygon(too_many)
+
+
+def test_zone_geometry_contracts_preserve_holes_and_disconnected_components() -> None:
+    exterior = ((0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0), (0.0, 0.0))
+    hole = ((1.0, 1.0), (1.0, 2.0), (2.0, 2.0), (2.0, 1.0), (1.0, 1.0))
+    second = ((5.0, 0.0), (6.0, 0.0), (6.0, 1.0), (5.0, 1.0), (5.0, 0.0))
+
+    polygon = ZoneGeoJSONPolygon(coordinates=(exterior, hole))
+    multipolygon = ZoneGeoJSONMultiPolygon(coordinates=((exterior, hole), (second,)))
+
+    assert len(polygon.coordinates) == 2
+    assert len(multipolygon.coordinates) == 2
+    assert len(multipolygon.coordinates[0]) == 2
+    with pytest.raises(ValidationError):
+        GeoJSONPolygon(coordinates=(exterior, hole))
+
+
+def test_zone_geometry_contracts_reject_invalid_ring_relationships() -> None:
+    exterior = ((0.0, 0.0), (4.0, 0.0), (4.0, 4.0), (0.0, 4.0), (0.0, 0.0))
+    outside_hole = ((5.0, 5.0), (5.0, 6.0), (6.0, 6.0), (6.0, 5.0), (5.0, 5.0))
+    overlapping = ((3.0, 0.0), (5.0, 0.0), (5.0, 2.0), (3.0, 2.0), (3.0, 0.0))
+
+    with pytest.raises(ValidationError):
+        ZoneGeoJSONPolygon(coordinates=(exterior, outside_hole))
+    with pytest.raises(ValidationError):
+        ZoneGeoJSONMultiPolygon(coordinates=((exterior,), (overlapping,)))
 
 
 def test_field_limits_area_and_season_length() -> None:

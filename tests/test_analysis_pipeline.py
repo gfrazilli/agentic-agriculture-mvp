@@ -16,7 +16,7 @@ from agriculture.services.application import AgricultureService
 from agriculture.services.idempotency import IdempotencyContext
 from geospatial.cog import MultibandWindow, RasterWindow
 from geospatial.earth_search import Sentinel2Scene
-from geospatial.pipeline import AnalysisPipeline
+from geospatial.pipeline import AnalysisPipeline, _geometry_vertex_count, _zone_geometry
 
 NOW = datetime(2026, 8, 29, 12, tzinfo=UTC)
 TRANSFORM = (0.001, 0.0, -48.900, 0.0, -0.001, -23.970)
@@ -113,6 +113,40 @@ class MaskedFakeReader(FakeReader):
                     valid_mask=band.valid_mask,
                     transform=band.transform,
                     crs=band.crs,
+                    nodata=band.nodata,
+                )
+                for name, band in window.bands.items()
+            }
+        )
+
+
+class ProjectedFakeReader(FakeReader):
+    def read_required_bands(self, assets, **kwargs):
+        window = super().read_required_bands(assets, **kwargs)
+        rasterio_warp = __import__("rasterio.warp", fromlist=["transform_bounds"])
+        west, south, east, north = rasterio_warp.transform_bounds(
+            "EPSG:4326",
+            "EPSG:3857",
+            -48.900,
+            -23.982,
+            -48.884,
+            -23.970,
+        )
+        transform = (
+            (east - west) / window.shape[1],
+            0.0,
+            west,
+            0.0,
+            (south - north) / window.shape[0],
+            north,
+        )
+        return MultibandWindow(
+            bands={
+                name: RasterWindow(
+                    data=band.data,
+                    valid_mask=band.valid_mask,
+                    transform=transform,
+                    crs="EPSG:3857",
                     nodata=band.nodata,
                 )
                 for name, band in window.bands.items()
@@ -220,6 +254,16 @@ def test_pipeline_completes_with_real_contract_and_auditable_artifacts(caplog, m
     assert artifacts.exists(f"analyses/{analysis_id}/zones.geojson")
     assert artifacts.exists(f"analyses/{analysis_id}/zone-map.svg")
     assert artifacts.exists(f"analyses/{analysis_id}/processing-report.json")
+    feature_collection = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+    assert feature_collection["type"] == "FeatureCollection"
+    assert "crs" not in feature_collection["metadata"]
+    assert [feature["geometry"] for feature in feature_collection["features"]] == [
+        zone.boundary.model_dump(mode="json") for zone in stored.result.zones
+    ]
+    assert [feature["properties"]["area_ha"] for feature in feature_collection["features"]] == [
+        zone.area_ha for zone in stored.result.zones
+    ]
+    assert len(stored.result.model_dump_json().encode()) < 500_000
 
     replay = pipeline.run(analysis_id)
     assert replay.status == "already_completed"
@@ -420,6 +464,188 @@ def test_pipeline_discards_nonfinite_index_scene_and_completes_with_exactly_two(
     assert not artifacts.exists(f"analyses/{analysis_id}/scenes/{scenes[1].id}-ndvi.svg")
 
 
+def test_pipeline_rezones_after_scene_has_no_pixels_in_one_zone(caplog, monkeypatch):
+    caplog.set_level("INFO", logger="geospatial.pipeline")
+    monkeypatch.setattr(logging.getLogger("geospatial.pipeline"), "propagate", True)
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(3)
+    left_only = np.zeros((12, 16), dtype=bool)
+    left_only[:, :8] = True
+    pipeline = AnalysisPipeline(
+        repository,
+        InMemoryArtifactStore(),
+        client=FakeClient(scenes),
+        reader=MaskedFakeReader(scenes, {scenes[0].id: left_only}),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+
+    assert outcome.status == "completed"
+    assert outcome.scene_count == 2
+    assert stored is not None and stored.result is not None
+    retained_ids = (scenes[1].id, scenes[2].id)
+    assert tuple(scene.scene_id for scene in stored.result.scenes) == retained_ids
+    assert stored.result.provenance.scene_ids == retained_ids
+    assert all(
+        tuple(point.scene_id for point in zone.trajectory) == retained_ids
+        for zone in stored.result.zones
+    )
+    assert all(
+        np.isfinite([point.indices.ndvi, point.indices.ndre, point.indices.ndmi]).all()
+        for zone in stored.result.zones
+        for point in zone.trajectory
+    )
+    events = [
+        json.loads(record.getMessage())
+        for record in caplog.records
+        if record.name == "geospatial.pipeline"
+    ]
+    clustered_discard = next(
+        event
+        for event in events
+        if event["event"] == "sentinel_pipeline.scenes_discarded"
+        and event["stage"] == "clustering_zones"
+    )
+    assert clustered_discard["scene_ids"] == [scenes[0].id]
+
+
+def test_pipeline_zone_gaps_leaving_one_scene_are_nonretryable():
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    artifacts = InMemoryArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(3)
+    left_only = np.zeros((12, 16), dtype=bool)
+    left_only[:, :8] = True
+    right_only = np.zeros((12, 16), dtype=bool)
+    right_only[:, 8:] = True
+    pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=MaskedFakeReader(
+            scenes,
+            {
+                scenes[0].id: left_only,
+                scenes[1].id: right_only,
+            },
+        ),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+
+    assert outcome.status == "failed"
+    assert outcome.error_code == "INSUFFICIENT_SATELLITE_DATA"
+    assert outcome.retryable is False
+    assert stored is not None and stored.error is not None
+    assert stored.error.retryable is False
+    assert "complete trajectories" in stored.error.message
+    assert not artifacts.exists(f"analyses/{analysis_id}/zones.geojson")
+
+
+def test_zone_geometry_preserves_projected_multipolygon_hole_and_dissolves_runs():
+    projected = {
+        "type": "MultiPolygon",
+        "coordinates": [
+            [
+                [(0, 0), (100, 0), (100, 100), (0, 100), (0, 0)],
+                [(25, 25), (25, 75), (75, 75), (75, 25), (25, 25)],
+            ],
+            [[(200, 0), (300, 0), (300, 100), (200, 100), (200, 0)]],
+        ],
+    }
+
+    boundary = _zone_geometry(projected, source_crs="EPSG:3857", max_vertices=100)
+
+    assert boundary.type == "MultiPolygon"
+    assert len(boundary.coordinates) == 2
+    assert sorted(len(polygon) for polygon in boundary.coordinates) == [1, 2]
+    assert (
+        max(
+            abs(coordinate)
+            for polygon in boundary.coordinates
+            for ring in polygon
+            for position in ring
+            for coordinate in position
+        )
+        < 1
+    )
+
+    adjacent_runs = {
+        "type": "MultiPolygon",
+        "coordinates": [
+            [[(0, 0), (10, 0), (10, 10), (0, 10), (0, 0)]],
+            [[(10, 0), (20, 0), (20, 10), (10, 10), (10, 0)]],
+        ],
+    }
+    dissolved = _zone_geometry(adjacent_runs, source_crs="EPSG:3857", max_vertices=20)
+    assert dissolved.type == "Polygon"
+    assert len(dissolved.coordinates) == 1
+
+
+def test_zone_geometry_simplification_honors_explicit_vertex_limit():
+    shapely_geometry = __import__("shapely.geometry", fromlist=["Point"])
+    dense = shapely_geometry.Point(0, 0).buffer(1, quad_segs=128)
+
+    boundary = _zone_geometry(
+        shapely_geometry.mapping(dense),
+        source_crs="EPSG:4326",
+        max_vertices=40,
+    )
+    rebuilt = shapely_geometry.shape(boundary.model_dump(mode="json"))
+
+    assert _geometry_vertex_count(rebuilt) <= 40
+    assert rebuilt.is_valid
+
+
+def test_pipeline_writes_wgs84_geojson_from_projected_raster():
+    repository = InMemoryAgricultureRepository(clock=lambda: NOW)
+    artifacts = InMemoryArtifactStore()
+    analysis_id = _queued_analysis(repository)
+    scenes = _scenes(3)
+    pipeline = AnalysisPipeline(
+        repository,
+        artifacts,
+        client=FakeClient(scenes),
+        reader=ProjectedFakeReader(scenes),
+        clock=lambda: NOW,
+        target_scene_count=3,
+        max_dimension=64,
+    )
+
+    outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
+    artifact = json.loads(artifacts.get_bytes(f"analyses/{analysis_id}/zones.geojson"))
+
+    assert outcome.status == "completed"
+    assert stored is not None and stored.result is not None
+    assert "crs" not in artifact["metadata"]
+    assert [feature["geometry"] for feature in artifact["features"]] == [
+        zone.boundary.model_dump(mode="json") for zone in stored.result.zones
+    ]
+    positions = [
+        position
+        for feature in artifact["features"]
+        for polygon in (
+            [feature["geometry"]["coordinates"]]
+            if feature["geometry"]["type"] == "Polygon"
+            else feature["geometry"]["coordinates"]
+        )
+        for ring in polygon
+        for position in ring
+    ]
+    assert all(-49.0 < longitude < -48.0 for longitude, _latitude in positions)
+    assert all(-25.0 < latitude < -23.0 for _longitude, latitude in positions)
+
+
 def test_pipeline_persists_explicit_insufficient_data_failure():
     repository = InMemoryAgricultureRepository(clock=lambda: NOW)
     analysis_id = _queued_analysis(repository)
@@ -461,8 +687,16 @@ def test_pipeline_failure_log_excludes_exception_message_and_geometry(caplog, mo
     )
 
     outcome = pipeline.run(analysis_id)
+    stored = repository.get_analysis(analysis_id)
 
     assert outcome.status == "failed"
+    assert stored is not None
+    assert stored.error is not None
+    assert stored.error.message == (
+        "The analysis could not be completed because of an unexpected processing error."
+    )
+    assert "private-worker-token" not in stored.error.message
+    assert "-48.9" not in stored.error.message
     failure = next(
         json.loads(record.getMessage())
         for record in caplog.records

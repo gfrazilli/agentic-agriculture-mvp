@@ -406,6 +406,36 @@
     return ring.map((position) => projection.project(position).map((value) => value.toFixed(2)).join(",")).join(" ");
   }
 
+  function zoneGeometryPolygons(boundary) {
+    if (boundary.type === "Polygon") return [boundary.coordinates];
+    if (boundary.type === "MultiPolygon") return boundary.coordinates;
+    return [];
+  }
+
+  function zoneGeometryRings(boundary) {
+    return zoneGeometryPolygons(boundary).flatMap((polygon) => polygon);
+  }
+
+  function ringToPath(ring, projection) {
+    return ring.map((position, index) => {
+      const [x, y] = projection.project(position);
+      return `${index === 0 ? "M" : "L"}${x.toFixed(2)},${y.toFixed(2)}`;
+    }).join(" ") + " Z";
+  }
+
+  function zoneGeometryPath(boundary, projection) {
+    return zoneGeometryRings(boundary)
+      .map((ring) => ringToPath(ring, projection))
+      .join(" ");
+  }
+
+  function ringArea(ring) {
+    return Math.abs(ring.slice(0, -1).reduce((total, position, index) => {
+      const next = ring[index + 1];
+      return total + position[0] * next[1] - next[0] * position[1];
+    }, 0) / 2);
+  }
+
   function updateBoundaryFromEditor() {
     const rows = [...app.querySelectorAll(".boundary-point")];
     const unique = rows.map((row) => [
@@ -538,15 +568,19 @@
 
   function renderZoneMap(zones) {
     const svg = app.querySelector("#zone-map");
-    const rings = zones.map((zone) => zone.boundary.coordinates[0]);
+    const rings = zones.flatMap((zone) => zoneGeometryRings(zone.boundary));
     const projection = createProjection(rings);
     svg.replaceChildren();
     drawMapGrid(svg);
     zones.forEach((zone, index) => {
-      const ring = zone.boundary.coordinates[0];
-      svg.append(createSvgElement("polygon", {
-        points: ringToPoints(ring, projection),
+      const exteriorRings = zoneGeometryPolygons(zone.boundary).map((polygon) => polygon[0]);
+      const ring = exteriorRings.reduce((largest, candidate) => (
+        ringArea(candidate) > ringArea(largest) ? candidate : largest
+      ));
+      svg.append(createSvgElement("path", {
+        d: zoneGeometryPath(zone.boundary, projection),
         class: `zone-shape ${classFor(zone.relative_label)}`,
+        "fill-rule": "evenodd",
       }));
       const unique = ring.slice(0, -1);
       const center = unique.reduce((total, position) => [total[0] + position[0], total[1] + position[1]], [0, 0]).map((value) => value / unique.length);

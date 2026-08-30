@@ -26,6 +26,9 @@ from agriculture.schemas.contracts import (
     TrajectoryPoint,
     VegetationIndices,
     Zone,
+    ZoneGeoJSONMultiPolygon,
+    ZoneGeoJSONPolygon,
+    ZoneGeometry,
 )
 
 __all__ = [
@@ -54,4 +57,7 @@ __all__ = [
     "TrajectoryPoint",
     "VegetationIndices",
     "Zone",
+    "ZoneGeoJSONMultiPolygon",
+    "ZoneGeoJSONPolygon",
+    "ZoneGeometry",
 ]
