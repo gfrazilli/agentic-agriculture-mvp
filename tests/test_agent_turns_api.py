@@ -75,8 +75,9 @@ def _create_session(
     field_id: str | None = None,
     analysis_id: str | None = None,
     suffix: str = "turn",
+    language: str = "pt-BR",
 ) -> dict[str, object]:
-    payload: dict[str, object] = {"language": "pt-BR", "channel": "text"}
+    payload: dict[str, object] = {"language": language, "channel": "text"}
     if field_id is not None:
         payload["field_id"] = field_id
     if analysis_id is not None:
@@ -215,6 +216,31 @@ def test_analysis_only_session_derives_and_binds_its_field(
     context = calls[0][1]
     assert context.field_id == field["id"]
     assert context.analysis_id == analysis["id"]
+
+
+def test_turn_passes_persisted_english_language_to_private_agent(
+    authenticated_client: Client,
+    monkeypatch,
+) -> None:
+    session = _create_session(
+        authenticated_client,
+        suffix="english-context",
+        language="en",
+    )
+    gateway, calls = _fake_gateway()
+    monkeypatch.setattr("agriculture.api.views.get_agent_api_client", lambda: gateway)
+
+    response = _post_json(
+        authenticated_client,
+        reverse("agriculture_api:agent-session-turns", args=[session["id"]]),
+        {"message": "Which zone should I inspect first?"},
+    )
+
+    assert response.status_code == 200
+    assert len(calls) == 1
+    _, context = calls[0]
+    assert context.language == "en"
+    assert context.channel == "text"
 
 
 @pytest.mark.parametrize(

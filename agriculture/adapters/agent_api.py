@@ -13,7 +13,7 @@ import math
 import re
 from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
-from typing import Any, Self
+from typing import Any, Literal, Self
 from urllib.parse import quote, urlsplit
 
 import httpx
@@ -24,6 +24,11 @@ DEFAULT_AGENT_APP_NAME = "agentic_agriculture"
 DEFAULT_AGENT_MODEL = "gemini-3.5-flash"
 MAX_AGENT_REPLY_CHARS = 20_000
 _APP_NAME_PATTERN = re.compile(r"^[a-z][a-z0-9_]{2,63}$")
+_MARKDOWN_FENCE_PATTERN = re.compile(r"(?m)^[ \t]*```[^\n]*$")
+_MARKDOWN_RULE_PATTERN = re.compile(r"(?m)^[ \t]{0,3}(?:[-*_][ \t]*){3,}$")
+_MARKDOWN_PREFIX_PATTERN = re.compile(r"(?m)^[ \t]{0,3}(?:#{1,6}[ \t]+|>[ \t]?|[-+*][ \t]+)")
+_MARKDOWN_LINK_PATTERN = re.compile(r"\[([^\]\n]+)]\(([^)\n]+)\)")
+_MARKDOWN_STRONG_PATTERN = re.compile(r"(?<!\w)\*\*(\S(?:.*?\S)?)\*\*(?!\w)")
 
 HeaderProvider = Callable[[], Mapping[str, str]]
 
@@ -121,10 +126,16 @@ class AgentTurnContext:
     execution_id: str
     session_id: str
     actor_id: str
-    language: str
+    language: Literal["pt-BR", "en"]
     channel: str
     field_id: str | None = None
     analysis_id: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.language not in {"pt-BR", "en"}:
+            raise AgentAPIConfigurationError(
+                "Agent session language must be either 'pt-BR' or 'en'."
+            )
 
 
 @dataclass(frozen=True, slots=True)
@@ -331,11 +342,36 @@ def _session_state(context: AgentTurnContext) -> dict[str, str]:
 
 
 def _trusted_context_text(state: Mapping[str, str]) -> str:
-    lines = [
-        "Contexto confiável definido pelo aplicativo; preserve estes identificadores:",
-        *(f"- {key}: {value}" for key, value in state.items()),
-        "A próxima parte contém somente a pergunta do usuário.",
-    ]
+    language = state["language"]
+    if language == "en":
+        lines = [
+            "Mandatory response contract defined by the trusted application:",
+            "- Respond exclusively in English, regardless of the question or conversation history.",
+            (
+                "- Return plain text only, without Markdown, HTML, headings, lists, "
+                "or formatting marks."
+            ),
+            "- Be direct and operational; use no more than 180 words.",
+            "Preserve these trusted identifiers:",
+            *(f"- {key}: {value}" for key, value in state.items()),
+            "The next part contains only the user's question.",
+        ]
+    else:
+        lines = [
+            "Contrato obrigatório definido pelo aplicativo confiável:",
+            (
+                "- Responda exclusivamente em português do Brasil, independentemente "
+                "da pergunta ou do histórico."
+            ),
+            (
+                "- Entregue apenas texto simples, sem Markdown, HTML, cabeçalhos, "
+                "listas ou marcas de formatação."
+            ),
+            "- Seja direto e operacional; use no máximo 180 palavras.",
+            "Preserve estes identificadores confiáveis:",
+            *(f"- {key}: {value}" for key, value in state.items()),
+            "A próxima parte contém somente a pergunta do usuário.",
+        ]
     return "\n".join(lines)
 
 
@@ -405,7 +441,7 @@ def _extract_reply(events: Any, *, fallback_model: str) -> AgentTurnReply:
         raise AgentAPIProtocolError("The private agent returned no final text response.")
 
     text, event_model = candidates[-1]
-    text = text[:MAX_AGENT_REPLY_CHARS].strip()
+    text = _plain_text(text[:MAX_AGENT_REPLY_CHARS])
     if not text:
         raise AgentAPIProtocolError("The private agent returned an empty final response.")
     return AgentTurnReply(
@@ -419,3 +455,17 @@ def _extract_reply(events: Any, *, fallback_model: str) -> AgentTurnReply:
 def _append_unique(values: list[str], value: str) -> None:
     if value not in values:
         values.append(value)
+
+
+def _plain_text(value: str) -> str:
+    """Remove common model-authored Markdown while preserving readable text."""
+
+    value = _MARKDOWN_FENCE_PATTERN.sub("", value)
+    value = _MARKDOWN_RULE_PATTERN.sub("", value)
+    value = _MARKDOWN_PREFIX_PATTERN.sub("", value)
+    value = _MARKDOWN_LINK_PATTERN.sub(r"\1 (\2)", value)
+    value = _MARKDOWN_STRONG_PATTERN.sub(r"\1", value)
+    value = value.replace("`", "")
+    value = re.sub(r"\n[ \t]+", "\n", value)
+    value = re.sub(r"\n{3,}", "\n\n", value)
+    return value.strip()
