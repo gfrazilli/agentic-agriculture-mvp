@@ -102,6 +102,13 @@ def test_budget_is_scoped_and_deployment_upload_excludes_local_secrets():
     assert "gha-creds-*.json" in ignore
 
 
+def test_smoke_accepts_cloud_run_private_route_hiding():
+    script = _read("smoke.sh")
+
+    assert 'status_code" == "404"' in script
+    assert "policy_is_public" in script
+
+
 def test_infrastructure_never_creates_long_lived_keys_or_embeds_secret_values():
     scripts = "\n".join(
         _read(name) for name in ("bootstrap.sh", "budget.sh", "deploy.sh", "smoke.sh")

@@ -157,7 +157,9 @@ done
 
 for private_url in "$WORKER_URL/healthz" "$MCP_URL/mcp" "$AGENT_URL/list-apps"; do
     status_code="$(curl --silent --output /dev/null --write-out '%{http_code}' "$private_url")"
-    [[ "$status_code" == "401" || "$status_code" == "403" ]] || \
+    # Cloud Run may deliberately hide a private route with 404 instead of
+    # exposing whether the service exists. IAM policy was checked above.
+    [[ "$status_code" == "401" || "$status_code" == "403" || "$status_code" == "404" ]] || \
         die "Unauthenticated private request returned HTTP $status_code: $private_url"
 done
 
