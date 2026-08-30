@@ -1,3 +1,4 @@
+from django.conf import settings
 from django.urls import reverse
 
 from core.contact import ContactDeliveryError
@@ -29,8 +30,7 @@ def test_language_can_be_switched_to_portuguese(client):
 
 
 def test_landing_story_and_science_are_available_in_portuguese(client):
-    switch = switch_to_portuguese(client, reverse("home"))
-    response = client.get(switch.url)
+    response = client.get(reverse("home_pt"))
     content = response.content.decode()
 
     assert response.status_code == 200
@@ -45,6 +45,37 @@ def test_landing_story_and_science_are_available_in_portuguese(client):
     assert "não é uma média" not in content.lower()
     assert "Faixa de produtividade e dimensão da área: página 2." in content
     assert "Seu e-mail, assunto e mensagem são enviados pelo Resend" in content
+
+
+def test_landing_has_stable_language_urls_and_english_remains_the_default(client):
+    portuguese = client.get(reverse("home_pt"))
+    english = client.get(reverse("home"))
+
+    assert portuguese.status_code == 200
+    assert "Descubra onde sua lavoura merece atenção." in portuguese.content.decode()
+    assert portuguese.cookies[settings.LANGUAGE_COOKIE_NAME].value == "pt-br"
+    assert english.status_code == 200
+    assert "Discover where your crop needs attention." in english.content.decode()
+    assert "Descubra onde sua lavoura merece atenção." not in english.content.decode()
+    assert english.cookies[settings.LANGUAGE_COOKIE_NAME].value == "en"
+
+
+def test_landing_header_links_directly_to_both_languages_with_country_flags(client):
+    content = client.get(reverse("home")).content.decode()
+
+    assert f'href="{reverse("home")}" hreflang="en"' in content
+    assert f'href="{reverse("home_pt")}" hreflang="pt-BR"' in content
+    assert "core/icons/flag-us.svg" in content
+    assert "core/icons/flag-br.svg" in content
+
+
+def test_portuguese_contact_redirect_returns_to_the_portuguese_landing(client):
+    client.get(reverse("home_pt"))
+
+    response = client.post(reverse("contact"), {"website": "bot.example"})
+
+    assert response.status_code == 302
+    assert response.url == f"{reverse('home_pt')}?contact=sent#contact"
 
 
 def test_contact_validation_error_is_translated_to_portuguese(client):

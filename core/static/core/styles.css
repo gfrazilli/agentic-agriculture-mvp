@@ -73,6 +73,9 @@ a {
 }
 
 .language-switcher button {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
   padding: 0.25rem;
   border: 0;
   color: var(--muted);
@@ -83,6 +86,14 @@ a {
 .language-switcher button[aria-current="true"] {
   color: var(--brand-dark);
   font-weight: 750;
+}
+
+.language-switcher .language-flag {
+  width: 1.125rem;
+  height: 0.75rem;
+  display: block;
+  border-radius: 1px;
+  object-fit: cover;
 }
 
 .page-shell {

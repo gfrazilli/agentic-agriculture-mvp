@@ -46,6 +46,7 @@ def test_landing_calls_to_action_open_the_protected_demo(client):
 
 def test_landing_exposes_traceable_primary_sources_and_social_metadata(client):
     content = client.get(reverse("home")).content.decode()
+    portuguese = client.get(reverse("home_pt")).content.decode()
 
     assert "Lucratividade-lavoura.pdf" in content
     assert "10.1002/ppj2.70009" in content
@@ -53,6 +54,10 @@ def test_landing_exposes_traceable_primary_sources_and_social_metadata(client):
     assert 'property="og:image"' in content
     assert "core/brand/og-card" in content
     assert 'name="twitter:card" content="summary_large_image"' in content
+    assert '<link rel="canonical" href="https://1415agri.com/">' in content
+    assert '<link rel="canonical" href="https://1415agri.com/pt/">' in portuguese
+    assert 'hreflang="en" href="https://1415agri.com/"' in content
+    assert 'hreflang="pt-BR" href="https://1415agri.com/pt/"' in content
 
 
 def test_landing_contact_form_has_server_backed_controls(client):

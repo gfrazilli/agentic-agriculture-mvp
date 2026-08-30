@@ -26,14 +26,14 @@
           name="language"
           value="pt-br"
           {% if LANGUAGE_CODE == "pt-br" %}aria-current="true"{% endif %}
-        >PT</button>
+        ><img class="language-flag" src="{% static 'core/icons/flag-br.svg' %}" alt=""><span>PT</span></button>
         <span aria-hidden="true">/</span>
         <button
           type="submit"
           name="language"
           value="en"
           {% if LANGUAGE_CODE == "en" %}aria-current="true"{% endif %}
-        >EN</button>
+        ><img class="language-flag" src="{% static 'core/icons/flag-us.svg' %}" alt=""><span>EN</span></button>
       </form>
     </header>
 

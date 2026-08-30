@@ -163,19 +163,34 @@ body > .page-shell {
   font-size: 12px;
 }
 
-.landing-language-switcher button {
+.landing-language-switcher a {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
   padding: 5px 3px;
   border: 0;
   color: #829087;
   background: transparent;
-  cursor: pointer;
   font-size: 12px;
   font-weight: 650;
+  text-decoration: none;
 }
 
-.landing-language-switcher button[aria-current="true"] {
+.landing-language-switcher a[aria-current="page"] {
   color: var(--landing-green-dark);
   font-weight: 800;
+}
+
+.landing-language-switcher-mobile {
+  display: none;
+}
+
+.language-flag {
+  width: 18px;
+  height: 12px;
+  display: block;
+  border-radius: 1px;
+  object-fit: cover;
 }
 
 .landing-menu-toggle {
@@ -1699,6 +1714,11 @@ body > .page-shell {
 }
 
 @media (max-width: 1020px) {
+  .landing-language-switcher-mobile {
+    display: inline-flex;
+    margin-left: auto;
+  }
+
   .landing-js .landing-menu-toggle {
     display: grid;
   }

@@ -3,6 +3,7 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import get_language, override
 from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
@@ -70,25 +71,57 @@ def logout_view(request: HttpRequest) -> HttpResponse:
 
 @require_GET
 def landing_view(request: HttpRequest) -> HttpResponse:
-    return render(
-        request,
-        "core/landing.html",
-        _landing_context(
-            contact_sent=request.GET.get("contact") == "sent",
-        ),
+    return _render_landing(request, language_code="en")
+
+
+@require_GET
+def landing_portuguese_view(request: HttpRequest) -> HttpResponse:
+    return _render_landing(request, language_code="pt-br")
+
+
+def _render_landing(request: HttpRequest, *, language_code: str) -> HttpResponse:
+    request.LANGUAGE_CODE = language_code
+    with override(language_code):
+        response = render(
+            request,
+            "core/landing.html",
+            _landing_context(
+                language_code=language_code,
+                contact_sent=request.GET.get("contact") == "sent",
+            ),
+        )
+    response.set_cookie(
+        settings.LANGUAGE_COOKIE_NAME,
+        language_code,
+        max_age=settings.LANGUAGE_COOKIE_AGE,
+        path=settings.LANGUAGE_COOKIE_PATH,
+        domain=settings.LANGUAGE_COOKIE_DOMAIN,
+        secure=settings.LANGUAGE_COOKIE_SECURE,
+        httponly=settings.LANGUAGE_COOKIE_HTTPONLY,
+        samesite=settings.LANGUAGE_COOKIE_SAMESITE,
     )
+    return response
+
+
+def _landing_home_name(language_code: str | None = None) -> str:
+    active_language = (language_code or get_language() or settings.LANGUAGE_CODE).lower()
+    return "home_pt" if active_language.startswith("pt") else "home"
 
 
 def _landing_context(
     *,
+    language_code: str | None = None,
     contact_form: ContactForm | None = None,
     contact_sent: bool = False,
     contact_failed: bool = False,
 ) -> dict[str, object]:
+    home_name = _landing_home_name(language_code)
     return {
         "contact_form": contact_form or ContactForm(),
         "contact_sent": contact_sent,
         "contact_failed": contact_failed,
+        "canonical_url": f"https://1415agri.com{reverse(home_name)}",
+        "og_locale": "pt_BR" if home_name == "home_pt" else "en_US",
         "turnstile_enabled": settings.CONTACT_TURNSTILE_ENABLED,
         "turnstile_site_key": settings.CONTACT_TURNSTILE_SITE_KEY,
     }
@@ -97,11 +130,12 @@ def _landing_context(
 @require_POST
 def contact_view(request: HttpRequest) -> HttpResponse:
     form = ContactForm(request.POST)
+    home_url = reverse(_landing_home_name())
 
     # Silently accept honeypot submissions so automated senders do not learn
     # how to bypass it. Nothing is sent and no submitted content is logged.
     if request.POST.get("website", "").strip():
-        return redirect(f"{reverse('home')}?contact=sent#contact")
+        return redirect(f"{home_url}?contact=sent#contact")
 
     if not form.is_valid():
         return _private_no_store(
@@ -129,7 +163,7 @@ def contact_view(request: HttpRequest) -> HttpResponse:
             )
         )
 
-    return redirect(f"{reverse('home')}?contact=sent#contact")
+    return redirect(f"{home_url}?contact=sent#contact")
 
 
 @require_GET

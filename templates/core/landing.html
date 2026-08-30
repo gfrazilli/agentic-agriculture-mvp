@@ -12,7 +12,9 @@
   <meta property="og:site_name" content="1415 Agri">
   <meta property="og:title" content="{% translate 'Know where to scout first.' %}">
   <meta property="og:description" content="{{ meta_description }}">
-  <meta property="og:url" content="https://1415agri.com/">
+  <meta property="og:url" content="{{ canonical_url }}">
+  <meta property="og:locale" content="{{ og_locale }}">
+  <meta property="og:locale:alternate" content="{% if LANGUAGE_CODE == 'pt-br' %}en_US{% else %}pt_BR{% endif %}">
   <meta property="og:image" content="https://1415agri.com{% static 'core/brand/og-card.png' %}">
   <meta property="og:image:type" content="image/png">
   <meta property="og:image:width" content="1200">
@@ -21,7 +23,10 @@
   <meta name="twitter:title" content="{% translate 'Know where to scout first.' %}">
   <meta name="twitter:description" content="{{ meta_description }}">
   <meta name="twitter:image" content="https://1415agri.com{% static 'core/brand/og-card.png' %}">
-  <link rel="canonical" href="https://1415agri.com/">
+  <link rel="canonical" href="{{ canonical_url }}">
+  <link rel="alternate" hreflang="en" href="https://1415agri.com/">
+  <link rel="alternate" hreflang="pt-BR" href="https://1415agri.com/pt/">
+  <link rel="alternate" hreflang="x-default" href="https://1415agri.com/">
   <link rel="stylesheet" href="{% static 'core/landing.css' %}">
 {% endblock %}
 
@@ -34,6 +39,12 @@
         <a class="landing-brand" href="#top" aria-label="{% translate '1415 Agri home' %}">
           <img class="landing-brand-logo" src="{% static 'core/brand/1415-agri-logo.png' %}" alt="1415 Agri">
         </a>
+
+        <div class="landing-language-switcher landing-language-switcher-mobile" aria-label="{% translate 'Language' %}">
+          <a href="{% url 'home' %}" hreflang="en" lang="en" aria-label="English" {% if LANGUAGE_CODE == "en" %}aria-current="page"{% endif %}><img class="language-flag" src="{% static 'core/icons/flag-us.svg' %}" alt=""><span>EN</span></a>
+          <span aria-hidden="true">/</span>
+          <a href="{% url 'home_pt' %}" hreflang="pt-BR" lang="pt-BR" aria-label="Português do Brasil" {% if LANGUAGE_CODE == "pt-br" %}aria-current="page"{% endif %}><img class="language-flag" src="{% static 'core/icons/flag-br.svg' %}" alt=""><span>PT</span></a>
+        </div>
 
         <button
           class="landing-menu-toggle"
@@ -57,14 +68,12 @@
           </nav>
 
           <div class="landing-header-actions">
-            <form class="landing-language-switcher" action="{% url 'set_language' %}" method="post">
-              {% csrf_token %}
-              <input type="hidden" name="next" value="{{ request.path }}">
+            <div class="landing-language-switcher">
               <span class="sr-only">{% translate "Language" %}</span>
-              <button type="submit" name="language" value="en" {% if LANGUAGE_CODE == "en" %}aria-current="true"{% endif %}>EN</button>
+              <a href="{% url 'home' %}" hreflang="en" lang="en" aria-label="English" {% if LANGUAGE_CODE == "en" %}aria-current="page"{% endif %}><img class="language-flag" src="{% static 'core/icons/flag-us.svg' %}" alt=""><span>EN</span></a>
               <span aria-hidden="true">/</span>
-              <button type="submit" name="language" value="pt-br" {% if LANGUAGE_CODE == "pt-br" %}aria-current="true"{% endif %}>PT</button>
-            </form>
+              <a href="{% url 'home_pt' %}" hreflang="pt-BR" lang="pt-BR" aria-label="Português do Brasil" {% if LANGUAGE_CODE == "pt-br" %}aria-current="page"{% endif %}><img class="language-flag" src="{% static 'core/icons/flag-br.svg' %}" alt=""><span>PT</span></a>
+            </div>
             <a class="landing-button landing-button-small landing-button-primary" href="{% url 'demo' %}">
               {% translate "View demo" %}
               <span aria-hidden="true">→</span>
