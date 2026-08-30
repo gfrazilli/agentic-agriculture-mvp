@@ -15,6 +15,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic import Field as PydanticField
+from shapely.geometry import MultiPolygon, Polygon
 
 from agriculture.domain import AnalysisStatus
 
@@ -25,6 +26,7 @@ type Position = tuple[Longitude, Latitude]
 type AreaHectares = Annotated[float, PydanticField(gt=0.0, le=500.0)]
 type ZoneCount = Annotated[int, PydanticField(ge=2, le=7)]
 type IndexValue = Annotated[float, PydanticField(ge=-1.0, le=1.0)]
+ZONE_GEOMETRY_MAX_VERTICES = 2_000
 
 
 class StrictContract(BaseModel):
@@ -145,6 +147,79 @@ class GeoJSONPoint(StrictContract):
 
     type: Literal["Point"] = "Point"
     coordinates: Position
+
+
+def _validate_zone_rings(
+    polygons: tuple[tuple[tuple[Position, ...], ...], ...],
+) -> tuple[tuple[tuple[Position, ...], ...], ...]:
+    if not polygons or any(not rings for rings in polygons):
+        raise ValueError("Zone geometry must contain at least one polygon and exterior ring.")
+    vertex_count = 0
+    for rings in polygons:
+        for ring in rings:
+            _validate_simple_ring(ring)
+            vertex_count += len(ring)
+            longitudes = [position[0] for position in ring]
+            if max(longitudes) - min(longitudes) > 180.0 or any(
+                abs(ring[index + 1][0] - ring[index][0]) > 180.0 for index in range(len(ring) - 1)
+            ):
+                raise ValueError("Zone geometries cannot cross the antimeridian.")
+    if vertex_count > ZONE_GEOMETRY_MAX_VERTICES:
+        raise ValueError(
+            f"A zone geometry cannot contain more than {ZONE_GEOMETRY_MAX_VERTICES} vertices."
+        )
+    return polygons
+
+
+def _validate_zone_topology(
+    polygons: tuple[tuple[tuple[Position, ...], ...], ...],
+) -> tuple[tuple[tuple[Position, ...], ...], ...]:
+    shapes = tuple(Polygon(rings[0], rings[1:]) for rings in polygons)
+    geometry = shapes[0] if len(shapes) == 1 else MultiPolygon(shapes)
+    if geometry.is_empty or not geometry.is_valid:
+        raise ValueError(
+            "Zone geometry must be topologically valid: holes must stay inside their exterior "
+            "ring and polygon components cannot overlap."
+        )
+    return polygons
+
+
+class ZoneGeoJSONPolygon(StrictContract):
+    """WGS84 result polygon that may contain interior rings."""
+
+    type: Literal["Polygon"] = "Polygon"
+    coordinates: Annotated[tuple[tuple[Position, ...], ...], PydanticField(min_length=1)]
+
+    @field_validator("coordinates")
+    @classmethod
+    def validate_coordinates(
+        cls, coordinates: tuple[tuple[Position, ...], ...]
+    ) -> tuple[tuple[Position, ...], ...]:
+        validated = _validate_zone_rings((coordinates,))
+        return _validate_zone_topology(validated)[0]
+
+
+class ZoneGeoJSONMultiPolygon(StrictContract):
+    """WGS84 result geometry preserving every disconnected polygon and hole."""
+
+    type: Literal["MultiPolygon"] = "MultiPolygon"
+    coordinates: Annotated[
+        tuple[tuple[tuple[Position, ...], ...], ...],
+        PydanticField(min_length=1),
+    ]
+
+    @field_validator("coordinates")
+    @classmethod
+    def validate_coordinates(
+        cls, coordinates: tuple[tuple[tuple[Position, ...], ...], ...]
+    ) -> tuple[tuple[tuple[Position, ...], ...], ...]:
+        return _validate_zone_topology(_validate_zone_rings(coordinates))
+
+
+type ZoneGeometry = Annotated[
+    ZoneGeoJSONPolygon | ZoneGeoJSONMultiPolygon,
+    PydanticField(discriminator="type"),
+]
 
 
 class Field(StrictContract):
@@ -271,7 +346,7 @@ class Zone(StrictContract):
     relative_label: RelativeDevelopmentLabel
     area_ha: AreaHectares
     area_percent: Annotated[float, PydanticField(gt=0.0, le=100.0)]
-    boundary: GeoJSONPolygon
+    boundary: ZoneGeometry
     trajectory: Annotated[tuple[TrajectoryPoint, ...], PydanticField(min_length=2)]
     summary_pt: Annotated[str, PydanticField(min_length=1, max_length=500)]
     summary_en: Annotated[str, PydanticField(min_length=1, max_length=500)]

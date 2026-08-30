@@ -28,6 +28,17 @@ class InsufficientDataError(ValueError):
     """Raised when the observations cannot support at least two defensible zones."""
 
 
+class ZoneObservationGapError(ValueError):
+    """Ask the pipeline to remove scenes unsupported by one or more final zones."""
+
+    def __init__(self, scene_indices: Sequence[int]) -> None:
+        normalized = tuple(sorted({int(index) for index in scene_indices}))
+        if not normalized or normalized[0] < 0:
+            raise ValueError("scene_indices must contain non-negative indexes.")
+        self.scene_indices = normalized
+        super().__init__("One or more scenes have no valid pixels in every selected zone.")
+
+
 @dataclass(frozen=True, slots=True)
 class PixelTransform:
     """Minimal north-up raster transform used to emit GeoJSON footprints.
@@ -705,6 +716,21 @@ def _build_zone_statistics(
     transform: PixelTransform,
 ) -> tuple[ZoneStatistics, ...]:
     total_pixels = len(labels)
+    temporal_values = matrix.raw_features.reshape(total_pixels, matrix.time_count, 3)
+    unsupported_scene_indices = {
+        time_index
+        for label in range(zone_count)
+        for time_index in range(matrix.time_count)
+        if not np.any(
+            np.all(
+                np.isfinite(temporal_values[labels == label, time_index, :]),
+                axis=1,
+            )
+        )
+    }
+    if unsupported_scene_indices:
+        raise ZoneObservationGapError(tuple(unsupported_scene_indices))
+
     aggregate_signal = np.nanmean(matrix.raw_features, axis=1)
     field_mean = float(np.nanmean(aggregate_signal))
     field_std = float(np.nanstd(aggregate_signal))
@@ -738,12 +764,12 @@ def _build_zone_statistics(
             summary_en = "This zone's spectral trajectory remained close to the field as a whole."
 
         trajectory: list[TrajectoryPoint] = []
-        reshaped = matrix.raw_features[selected].reshape(pixel_count, matrix.time_count, 3)
+        reshaped = temporal_values[selected]
         for time_index, scene_id in enumerate(scene_ids):
             scene_values = reshaped[:, time_index, :]
             valid_rows = np.all(np.isfinite(scene_values), axis=1)
             valid_fraction = float(np.count_nonzero(valid_rows) / pixel_count)
-            means = np.nanmean(scene_values, axis=0)
+            means = np.mean(scene_values[valid_rows], axis=0)
             trajectory.append(
                 TrajectoryPoint(
                     scene_id=scene_id,

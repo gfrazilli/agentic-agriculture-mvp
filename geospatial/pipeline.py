@@ -27,19 +27,21 @@ from agriculture.schemas import (
     AnalysisResult,
     AnalysisScope,
     AnalysisStage,
-    GeoJSONPolygon,
     RelativeDevelopmentLabel,
     ResultArtifacts,
     SentinelScene,
     TrajectoryPoint,
     VegetationIndices,
     Zone,
+    ZoneGeoJSONMultiPolygon,
+    ZoneGeoJSONPolygon,
 )
 from geospatial.cog import COGWindowReader, MultibandWindow
 from geospatial.earth_search import EarthSearchClient, Sentinel2Scene
 from geospatial.zoning import (
     InsufficientDataError,
     PixelTransform,
+    ZoneObservationGapError,
     ZoningResult,
     analyze_temporal_zones,
     build_valid_observation_mask,
@@ -48,6 +50,11 @@ from geospatial.zoning import (
 
 PROVIDER_LABEL = "EU/ESA/Copernicus via Earth Search/AWS Open Data"
 RUNNING_LEASE_SECONDS = 20 * 60
+UNEXPECTED_PIPELINE_ERROR_MESSAGE = (
+    "The analysis could not be completed because of an unexpected processing error."
+)
+MAX_RESULT_ZONE_GEOMETRY_VERTICES = 3_500
+MAX_PERSISTED_RESULT_JSON_BYTES = 500_000
 ZONE_COLORS = ("#b45309", "#d97706", "#65a30d", "#16a34a", "#0d9488", "#0284c7", "#4f46e5")
 logger = get_audit_logger(__name__)
 
@@ -247,13 +254,70 @@ class AnalysisPipeline:
                     scene_count=len(discarded_scene_ids),
                     scene_ids=discarded_scene_ids,
                 )
+            # Every observation is aligned to the first acquired grid. Keep that
+            # immutable reference even if the corresponding scene is later rejected.
+            reference_window = first_window
             if len(observations) < 2:
                 raise InsufficientDataError(
                     "Fewer than two scenes contribute finite index values to pixels with at "
                     "least two observations."
                 )
+            analysis = self._advance(
+                analysis,
+                stage=AnalysisStage.CLUSTERING_ZONES,
+                percent=70,
+                message_pt="Agrupando trajetórias espectrais relativas.",
+                message_en="Grouping relative spectral trajectories.",
+            )
+            while True:
+                if len(observations) < 2:
+                    raise InsufficientDataError(
+                        "Fewer than two scenes support complete trajectories across every "
+                        "selected zone."
+                    )
+                scene_ids = tuple(item.scene.id for item in observations)
+                try:
+                    zoning = analyze_temporal_zones(
+                        indices=indices,
+                        field_mask=field_mask,
+                        requested_zone_count=analysis.requested_zone_count,
+                        scene_ids=scene_ids,
+                        pixel_area_m2=_pixel_area_m2(
+                            reference_window.transform,
+                            reference_window.crs,
+                            reference_window.data.shape,
+                        ),
+                        transform=PixelTransform(
+                            origin_x=reference_window.transform[2],
+                            origin_y=reference_window.transform[5],
+                            pixel_width=reference_window.transform[0],
+                            pixel_height=reference_window.transform[4],
+                            crs=reference_window.crs,
+                        ),
+                    )
+                except ZoneObservationGapError as exc:
+                    rejected_ids = tuple(scene_ids[index] for index in exc.scene_indices)
+                    observations, indices, observation_mask = _drop_observations(
+                        observations,
+                        indices,
+                        observation_mask,
+                        exc.scene_indices,
+                    )
+                    observations, indices, observation_mask, cascaded_ids = (
+                        _stabilize_usable_observations(
+                            observations,
+                            indices,
+                            observation_mask,
+                        )
+                    )
+                    _audit_discarded_scenes(
+                        analysis,
+                        rejected_ids + cascaded_ids,
+                        stage=AnalysisStage.CLUSTERING_ZONES,
+                    )
+                    continue
+                break
 
-            scene_ids = tuple(item.scene.id for item in observations)
             audit_event(
                 logger,
                 "sentinel_pipeline.scenes_selected",
@@ -264,32 +328,6 @@ class AnalysisPipeline:
                 status="selected",
                 scene_count=len(observations),
                 scene_ids=scene_ids,
-            )
-            reference_window = observations[0].window.bands["B04"]
-            analysis = self._advance(
-                analysis,
-                stage=AnalysisStage.CLUSTERING_ZONES,
-                percent=70,
-                message_pt="Agrupando trajetórias espectrais relativas.",
-                message_en="Grouping relative spectral trajectories.",
-            )
-            zoning = analyze_temporal_zones(
-                indices=indices,
-                field_mask=field_mask,
-                requested_zone_count=analysis.requested_zone_count,
-                scene_ids=scene_ids,
-                pixel_area_m2=_pixel_area_m2(
-                    reference_window.transform,
-                    reference_window.crs,
-                    reference_window.data.shape,
-                ),
-                transform=PixelTransform(
-                    origin_x=reference_window.transform[2],
-                    origin_y=reference_window.transform[5],
-                    pixel_width=reference_window.transform[0],
-                    pixel_height=reference_window.transform[4],
-                    crs=reference_window.crs,
-                ),
             )
             analysis = self._advance(
                 analysis,
@@ -358,7 +396,7 @@ class AnalysisPipeline:
             return self._fail(
                 analysis,
                 code="ANALYSIS_PIPELINE_FAILED",
-                message=f"{type(exc).__name__}: {exc}",
+                message=UNEXPECTED_PIPELINE_ERROR_MESSAGE,
                 retryable=True,
                 error_type=type(exc).__name__,
             )
@@ -556,13 +594,22 @@ class AnalysisPipeline:
             )
 
         captured_by_id = {scene.scene_id: scene.captured_at for scene in api_scenes}
+        geometry_vertex_limit = MAX_RESULT_ZONE_GEOMETRY_VERTICES // len(zoning.zones)
+        zone_boundaries = tuple(
+            _zone_geometry(
+                zone.geometry,
+                source_crs=source_crs,
+                max_vertices=geometry_vertex_limit,
+            )
+            for zone in zoning.zones
+        )
         api_zones = tuple(
             Zone(
                 zone_id=zone.zone_id,
                 relative_label=RelativeDevelopmentLabel(zone.relative_label),
                 area_ha=zone.area_ha,
                 area_percent=zone.area_percent,
-                boundary=_zone_polygon(zone.geometry, source_crs=source_crs),
+                boundary=boundary,
                 trajectory=tuple(
                     TrajectoryPoint(
                         scene_id=point.scene_id,
@@ -578,16 +625,30 @@ class AnalysisPipeline:
                 summary_pt=zone.summary_pt,
                 summary_en=zone.summary_en,
             )
-            for zone in zoning.zones
+            for zone, boundary in zip(zoning.zones, zone_boundaries, strict=True)
         )
-        exact_geojson = dict(zoning.feature_collection)
-        exact_geojson["metadata"] = {
-            **exact_geojson.get("metadata", {}),
-            "scope": zoning.scope,
-            "selection": {
-                "mode": zoning.selection.mode,
-                "reason_pt": zoning.selection.reason_pt,
-                "reason_en": zoning.selection.reason_en,
+        exact_geojson = {
+            "type": "FeatureCollection",
+            "features": [
+                {
+                    "type": "Feature",
+                    "properties": {
+                        "zone_id": zone.zone_id,
+                        "relative_label": zone.relative_label,
+                        "area_ha": zone.area_ha,
+                        "area_percent": zone.area_percent,
+                    },
+                    "geometry": boundary.model_dump(mode="json"),
+                }
+                for zone, boundary in zip(zoning.zones, zone_boundaries, strict=True)
+            ],
+            "metadata": {
+                "scope": zoning.scope,
+                "selection": {
+                    "mode": zoning.selection.mode,
+                    "reason_pt": zoning.selection.reason_pt,
+                    "reason_en": zoning.selection.reason_en,
+                },
             },
         }
         zone_artifact = self.artifact_store.put_bytes(
@@ -615,7 +676,7 @@ class AnalysisPipeline:
             ).encode(),
             content_type="application/json",
         )
-        return AnalysisResult(
+        result = AnalysisResult(
             selected_zone_count=zoning.selected_zone_count,
             mode=AnalysisMode.LIVE,
             generated_at=self.clock(),
@@ -632,7 +693,7 @@ class AnalysisPipeline:
                 bands=("B04", "B05", "B08", "B11", "SCL"),
                 indices=("NDVI", "NDRE", "NDMI"),
                 scene_ids=tuple(scene.scene_id for scene in api_scenes),
-                processing_version="0.2.0",
+                processing_version="0.3.0",
             ),
             artifacts=ResultArtifacts(
                 map_preview_uri=map_artifact.uri,
@@ -640,6 +701,11 @@ class AnalysisPipeline:
                 report_uri=report_artifact.uri,
             ),
         )
+        if len(result.model_dump_json().encode()) > MAX_PERSISTED_RESULT_JSON_BYTES:
+            raise InsufficientDataError(
+                "The zone geometry is too complex for the persisted analysis contract."
+            )
+        return result
 
 
 def _evenly_spaced_dates(values: list[date], count: int) -> tuple[date, ...]:
@@ -731,6 +797,49 @@ def _stabilize_usable_observations(
     return current_observations, current_indices, current_mask, tuple(discarded)
 
 
+def _drop_observations(
+    observations: tuple[LoadedObservation, ...],
+    indices: dict[str, np.ndarray],
+    observation_mask: np.ndarray,
+    rejected_indices: tuple[int, ...],
+) -> tuple[tuple[LoadedObservation, ...], dict[str, np.ndarray], np.ndarray]:
+    rejected = frozenset(rejected_indices)
+    if not rejected or min(rejected) < 0 or max(rejected) >= len(observations):
+        raise ValueError("rejected_indices must identify existing observations.")
+    keep = np.asarray(
+        [index not in rejected for index in range(len(observations))],
+        dtype=bool,
+    )
+    return (
+        tuple(observation for index, observation in enumerate(observations) if bool(keep[index])),
+        {name: np.asarray(values)[keep] for name, values in indices.items()},
+        np.asarray(observation_mask, dtype=bool)[keep],
+    )
+
+
+def _audit_discarded_scenes(
+    analysis: Analysis,
+    scene_ids: tuple[str, ...],
+    *,
+    stage: AnalysisStage,
+) -> None:
+    if not scene_ids:
+        return
+    audit_event(
+        logger,
+        "sentinel_pipeline.scenes_discarded",
+        level=logging.WARNING,
+        component="worker",
+        execution_id=str(analysis.id),
+        analysis_id=str(analysis.id),
+        field_id=str(analysis.field_id),
+        status="discarded",
+        stage=stage.value,
+        scene_count=len(scene_ids),
+        scene_ids=scene_ids,
+    )
+
+
 def _pixel_area_m2(
     transform: tuple[float, float, float, float, float, float],
     crs: str,
@@ -777,26 +886,101 @@ def _index_means(
     return result
 
 
-def _zone_polygon(geometry: dict[str, Any], *, source_crs: str) -> GeoJSONPolygon:
+def _zone_geometry(
+    geometry: dict[str, Any],
+    *,
+    source_crs: str,
+    max_vertices: int,
+) -> ZoneGeoJSONPolygon | ZoneGeoJSONMultiPolygon:
+    """Dissolve a raster footprint and return every WGS84 component and hole."""
+
+    if max_vertices < 5:
+        raise ValueError("max_vertices must be at least 5.")
     warp = importlib.import_module("rasterio.warp")
     shapely_geometry = importlib.import_module("shapely.geometry")
+    shapely_polygon = importlib.import_module("shapely.geometry.polygon")
     shapely_ops = importlib.import_module("shapely.ops")
     source = shapely_geometry.shape(geometry)
-    if source.geom_type == "MultiPolygon":
-        source = shapely_ops.unary_union(source.geoms)
-    if source.geom_type == "MultiPolygon":
-        source = max(source.geoms, key=lambda item: item.area)
-    transformed = warp.transform_geom(source_crs, "EPSG:4326", shapely_geometry.mapping(source))
-    polygon = shapely_geometry.shape(transformed)
-    if polygon.geom_type == "MultiPolygon":
-        polygon = max(polygon.geoms, key=lambda item: item.area)
-    polygon = shapely_geometry.Polygon(polygon.exterior)
-    tolerance = 0.0
-    while len(polygon.exterior.coords) > 200:
-        tolerance = tolerance * 2 or 1e-7
-        polygon = polygon.simplify(tolerance, preserve_topology=True)
-    ring = tuple((float(x), float(y)) for x, y in polygon.exterior.coords)
-    return GeoJSONPolygon(coordinates=(ring,))
+    if source.is_empty or source.geom_type not in {"Polygon", "MultiPolygon"}:
+        raise InsufficientDataError("A selected zone has no polygonal footprint.")
+    components = list(source.geoms) if source.geom_type == "MultiPolygon" else [source]
+    dissolved = shapely_ops.unary_union(components)
+    if dissolved.is_empty or dissolved.geom_type not in {"Polygon", "MultiPolygon"}:
+        raise InsufficientDataError("A selected zone has no polygonal footprint.")
+
+    simplified = _simplify_zone_geometry(dissolved, max_vertices=max_vertices)
+    transformed = warp.transform_geom(
+        source_crs,
+        "EPSG:4326",
+        shapely_geometry.mapping(simplified),
+        precision=8,
+    )
+    wgs84 = shapely_geometry.shape(transformed)
+    if wgs84.is_empty or not wgs84.is_valid:
+        raise InsufficientDataError(
+            "A selected zone became topologically invalid when transformed to WGS84."
+        )
+    if wgs84.geom_type == "Polygon":
+        oriented = shapely_polygon.orient(wgs84, sign=1.0)
+        contract_type = ZoneGeoJSONPolygon
+    elif wgs84.geom_type == "MultiPolygon":
+        oriented = shapely_geometry.MultiPolygon(
+            [shapely_polygon.orient(polygon, sign=1.0) for polygon in wgs84.geoms]
+        )
+        contract_type = ZoneGeoJSONMultiPolygon
+    else:
+        raise InsufficientDataError("A selected zone could not be represented in WGS84.")
+    return contract_type.model_validate_json(
+        json.dumps(shapely_geometry.mapping(oriented), separators=(",", ":"))
+    )
+
+
+def _simplify_zone_geometry(geometry: Any, *, max_vertices: int) -> Any:
+    """Reduce boundary detail without removing polygon components or holes."""
+
+    original_topology = _geometry_topology_signature(geometry)
+    if _geometry_vertex_count(geometry) <= max_vertices:
+        return geometry
+
+    minimum_x, minimum_y, maximum_x, maximum_y = geometry.bounds
+    span = max(maximum_x - minimum_x, maximum_y - minimum_y)
+    tolerance = max(span / 1_000_000.0, 1e-12)
+    best = geometry
+    for _ in range(40):
+        candidate = geometry.simplify(tolerance, preserve_topology=True)
+        if (
+            not candidate.is_empty
+            and candidate.geom_type in {"Polygon", "MultiPolygon"}
+            and candidate.is_valid
+            and _geometry_topology_signature(candidate) == original_topology
+        ):
+            best = candidate
+            if _geometry_vertex_count(best) <= max_vertices:
+                return best
+        tolerance *= 2.0
+    raise InsufficientDataError(
+        "A zone footprint exceeds the topology-preserving geometry complexity limit."
+    )
+
+
+def _geometry_polygons(geometry: Any) -> tuple[Any, ...]:
+    if geometry.geom_type == "Polygon":
+        return (geometry,)
+    if geometry.geom_type == "MultiPolygon":
+        return tuple(geometry.geoms)
+    return ()
+
+
+def _geometry_vertex_count(geometry: Any) -> int:
+    return sum(
+        len(polygon.exterior.coords) + sum(len(interior.coords) for interior in polygon.interiors)
+        for polygon in _geometry_polygons(geometry)
+    )
+
+
+def _geometry_topology_signature(geometry: Any) -> tuple[int, int]:
+    polygons = _geometry_polygons(geometry)
+    return len(polygons), sum(len(polygon.interiors) for polygon in polygons)
 
 
 def _zone_svg(label_grid: tuple[tuple[int | None, ...], ...]) -> bytes:
