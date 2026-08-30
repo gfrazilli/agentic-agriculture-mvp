@@ -19,6 +19,8 @@ from geospatial.cog import MultibandWindow, RasterWindow
 from geospatial.earth_search import Sentinel2Scene
 
 NOW = datetime(2026, 8, 29, 12, tzinfo=UTC)
+SEASON_START = date(2026, 4, 1)
+SEASON_END = date(2026, 8, 1)
 
 
 def _scene(
@@ -106,11 +108,13 @@ class FakeReader:
 def test_real_boundary_service_uses_scene_pixels_and_keeps_provenance():
     client = FakeClient()
     reader = FakeReader()
-    service = SentinelBoundaryService(client=client, reader=reader, clock=lambda: NOW)
+    service = SentinelBoundaryService(client=client, reader=reader)
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=0.36,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.result.used_fallback is False
@@ -119,6 +123,10 @@ def test_real_boundary_service_uses_scene_pixels_and_keeps_provenance():
     assert acquired.provenance["catalog_provider"] == "Element 84 Earth Search"
     assert client.query["max_cloud_cover"] == 35.0
     assert client.query["limit"] == 12
+    assert client.query["start"] == SEASON_START
+    assert client.query["end"] == SEASON_END
+    assert acquired.debug["season_start"] == "2026-04-01"
+    assert acquired.debug["season_end"] == "2026-08-01"
     assert len(reader.calls) == 1
     payload = suggestion_debug_payload(acquired)
     assert payload["candidates"][0]["rank"] == 1
@@ -129,12 +137,13 @@ def test_catalog_failure_returns_editable_geometric_fallback():
     service = SentinelBoundaryService(
         client=FakeClient(fail=True),
         reader=FakeReader(),
-        clock=lambda: NOW,
     )
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=1.2,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.result.used_fallback is True
@@ -154,12 +163,13 @@ def test_tile_without_pixels_falls_through_to_next_intersecting_scene():
     service = SentinelBoundaryService(
         client=FakeClient((first, _scene())),
         reader=FakeReader(),
-        clock=lambda: NOW,
     )
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=0.36,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.scene_id == "S2A_REAL_SCENE"
@@ -177,12 +187,13 @@ def test_local_scl_cloud_mask_rejects_scene_and_uses_next_clear_scene():
     service = SentinelBoundaryService(
         client=FakeClient((clear, cloudy)),
         reader=FakeReader(),
-        clock=lambda: NOW,
     )
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=0.36,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.scene_id == "S2B_CLEAR"
@@ -203,12 +214,13 @@ def test_scene_that_generates_engine_fallback_does_not_block_next_scene():
     service = SentinelBoundaryService(
         client=FakeClient((clear, spectrally_constant)),
         reader=FakeReader(),
-        clock=lambda: NOW,
     )
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=0.36,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.scene_id == "S2B_USEFUL"
@@ -234,13 +246,14 @@ def test_scene_attempts_are_bounded_and_final_fallback_keeps_debug_reason():
     service = SentinelBoundaryService(
         client=FakeClient(scenes),
         reader=FakeReader(),
-        clock=lambda: NOW,
         max_scenes_to_try=2,
     )
 
     acquired = service.suggest(
         reference_location=(-48.88, -23.98),
         estimated_area_ha=0.36,
+        season_start=SEASON_START,
+        season_end=SEASON_END,
     )
 
     assert acquired.result.used_fallback is True
@@ -307,8 +320,9 @@ def test_stable_boundary_endpoint_can_use_injected_real_provider():
     assert suggestion.source is BoundarySource.SENTINEL_2
 
 
-def test_earth_search_provider_maps_top_candidate_to_public_contract():
-    service = SentinelBoundaryService(client=FakeClient(), reader=FakeReader(), clock=lambda: NOW)
+def test_earth_search_provider_uses_field_season_without_reading_current_time():
+    client = FakeClient()
+    service = SentinelBoundaryService(client=client, reader=FakeReader())
     provider = EarthSearchBoundaryProvider(service)
     repository = InMemoryAgricultureRepository(clock=lambda: NOW)
     application = AgricultureService(repository, InMemoryTaskQueue(), clock=lambda: NOW)
@@ -331,3 +345,6 @@ def test_earth_search_provider_maps_top_candidate_to_public_contract():
     assert proposal.source is BoundarySource.SENTINEL_2
     assert proposal.estimated_area_ha > 0
     assert 0 <= proposal.confidence <= 1
+    assert client.query["start"] == field.season_start == date(2026, 1, 1)
+    assert client.query["end"] == field.season_end == date(2026, 4, 1)
+    assert client.query["end"] != NOW.date()

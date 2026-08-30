@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import UTC, datetime, timedelta
+from datetime import date, datetime
 from math import ceil, cos, floor, hypot, pi, radians, sqrt
 from typing import Any
 
@@ -196,14 +196,12 @@ class SentinelBoundaryService:
         *,
         client: EarthSearchClient | None = None,
         reader: COGWindowReader | None = None,
-        clock=lambda: datetime.now(UTC),
         max_scenes_to_try: int = 4,
     ) -> None:
         if not 1 <= max_scenes_to_try <= 8:
             raise ValueError("max_scenes_to_try must be between 1 and 8")
         self.client = client or EarthSearchClient()
         self.reader = reader or COGWindowReader()
-        self.clock = clock
         self.max_scenes_to_try = max_scenes_to_try
 
     def suggest(
@@ -211,14 +209,17 @@ class SentinelBoundaryService:
         *,
         reference_location: tuple[float, float],
         estimated_area_ha: float,
-        lookback_days: int = 120,
+        season_start: date,
+        season_end: date,
     ) -> AcquiredBoundarySuggestion:
-        if not 30 <= lookback_days <= 366:
-            raise ValueError("lookback_days must be between 30 and 366")
+        if season_end <= season_start:
+            raise ValueError("season_end must be after season_start")
+        if (season_end - season_start).days > 365:
+            raise ValueError("crop season cannot exceed 365 days")
         bbox = _search_bbox(reference_location, estimated_area_ha)
-        end = self.clock()
-        start = end - timedelta(days=lookback_days)
         debug: dict[str, Any] = {
+            "season_start": season_start.isoformat(),
+            "season_end": season_end.isoformat(),
             "catalog_scene_limit": _CATALOG_SCENE_LIMIT,
             "scene_attempt_limit": self.max_scenes_to_try,
             "masked_scl_classes": _MASKED_SCL_CLASSES.tolist(),
@@ -228,8 +229,8 @@ class SentinelBoundaryService:
         try:
             scenes = self.client.search(
                 bbox=bbox,
-                start=start,
-                end=end,
+                start=season_start,
+                end=season_end,
                 max_cloud_cover=35.0,
                 limit=_CATALOG_SCENE_LIMIT,
             )
@@ -357,6 +358,8 @@ class EarthSearchBoundaryProvider:
         acquired = self.service.suggest(
             reference_location=field.reference_location.coordinates,
             estimated_area_ha=field.estimated_area_ha,
+            season_start=field.season_start,
+            season_end=field.season_end,
         )
         candidate = acquired.result.candidates[0]
         raw_coordinates = candidate.boundary["coordinates"]
