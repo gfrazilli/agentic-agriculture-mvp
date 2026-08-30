@@ -36,6 +36,10 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     APP_ENV=production \
     PORT=8080
 
+RUN apt-get update \
+    && apt-get install --yes --no-install-recommends libexpat1 \
+    && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd --system app \
     && useradd --system --gid app --home-dir /app --no-create-home app
 
