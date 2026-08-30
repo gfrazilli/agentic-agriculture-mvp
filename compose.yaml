@@ -19,7 +19,7 @@ services:
     healthcheck:
       test:
         - CMD-SHELL
-        - python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '8080') + '/readyz', timeout=2)"
+        - python -c "import os, urllib.request; urllib.request.urlopen('http://127.0.0.1:' + os.getenv('PORT', '8080') + '/ready', timeout=2)"
       interval: 10s
       timeout: 3s
       retries: 5

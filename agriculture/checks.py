@@ -1,7 +1,35 @@
+from urllib.parse import urlsplit
+
 from django.conf import settings
 from django.core.checks import Error, Tags, register
 
 from agriculture.internal.security import task_secret_is_valid
+
+
+def _task_target_is_valid(url: str, *, require_https: bool) -> bool:
+    """Accept only a service origin so OIDC audience and task URLs stay aligned."""
+
+    try:
+        parsed = urlsplit(url.strip())
+        _ = parsed.port
+    except ValueError:
+        return False
+    if parsed.scheme not in {"http", "https"} or not parsed.hostname:
+        return False
+    if require_https and parsed.scheme != "https":
+        return False
+    return not (
+        parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    )
+
+
+def _service_account_email_is_valid(value: str) -> bool:
+    local_part, separator, domain = value.strip().partition("@")
+    return bool(local_part and separator and domain.endswith(".iam.gserviceaccount.com"))
 
 
 def backend_configuration() -> dict[str, bool]:
@@ -25,9 +53,15 @@ def backend_configuration() -> dict[str, bool]:
         settings.GOOGLE_CLOUD_PROJECT
         and settings.CLOUD_TASKS_LOCATION
         and settings.CLOUD_TASKS_QUEUE
-        and settings.CLOUD_TASKS_BASE_URL
+        and _task_target_is_valid(
+            settings.CLOUD_TASKS_BASE_URL,
+            require_https=settings.IS_PRODUCTION,
+        )
         and 60 <= settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS <= 1800
-        and (not settings.IS_PRODUCTION or settings.CLOUD_TASKS_BASE_URL.startswith("https://"))
+        and (
+            not settings.IS_PRODUCTION
+            or _service_account_email_is_valid(settings.CLOUD_TASKS_SERVICE_ACCOUNT)
+        )
         and task_secret_is_valid(settings.CLOUD_TASKS_SHARED_SECRET)
     )
     production_backends = not settings.IS_PRODUCTION or (
@@ -97,8 +131,9 @@ def check_cloud_backends(app_configs, **kwargs):  # noqa: ARG001
             Error(
                 (
                     "Cloud Tasks requires project, location, queue, a secure handler URL and "
-                    "a shared secret of at least 32 characters; its dispatch deadline must be "
-                    "between 60 and 1800 seconds."
+                    "a shared secret of at least 32 characters; production also requires an "
+                    "OIDC service account. Its dispatch deadline must be between 60 and 1800 "
+                    "seconds."
                 ),
                 id="agriculture.E005",
             )

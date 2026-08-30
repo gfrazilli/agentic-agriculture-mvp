@@ -312,6 +312,7 @@ def test_cloud_tasks_readiness_requires_https_and_a_strong_secret_in_production(
     settings.CLOUD_TASKS_LOCATION = "us-central1"
     settings.CLOUD_TASKS_QUEUE = "analysis"
     settings.CLOUD_TASKS_BASE_URL = "http://service.example"
+    settings.CLOUD_TASKS_SERVICE_ACCOUNT = "tasks@demo-project.iam.gserviceaccount.com"
     settings.CLOUD_TASKS_SHARED_SECRET = TASK_SECRET
 
     assert backend_configuration()["cloud_tasks"] is False
@@ -323,5 +324,19 @@ def test_cloud_tasks_readiness_requires_https_and_a_strong_secret_in_production(
     settings.CLOUD_TASKS_SHARED_SECRET = TASK_SECRET
     assert backend_configuration()["cloud_tasks"] is True
 
+    settings.CLOUD_TASKS_BASE_URL = "https://service.example/internal/tasks"
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_BASE_URL = "https://service.example?target=other"
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_BASE_URL = "https://service.example"
+    settings.CLOUD_TASKS_SERVICE_ACCOUNT = ""
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_SERVICE_ACCOUNT = "not-a-service-account@example.com"
+    assert backend_configuration()["cloud_tasks"] is False
+
+    settings.CLOUD_TASKS_SERVICE_ACCOUNT = "tasks@demo-project.iam.gserviceaccount.com"
     settings.CLOUD_TASKS_DISPATCH_DEADLINE_SECONDS = 59
     assert backend_configuration()["cloud_tasks"] is False

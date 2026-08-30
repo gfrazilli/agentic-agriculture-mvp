@@ -20,6 +20,8 @@ staticfiles/*
 .env
 .env.*
 !.env.example
+infra/gcp/.secrets/
+infra/gcp/.state/
 .idea/
 .vscode/
 .DS_Store
