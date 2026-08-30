@@ -222,7 +222,7 @@ gcloud run deploy "$WORKER_SERVICE" \
     --no-allow-unauthenticated \
     --set-env-vars="${COMMON_DJANGO_ENV}|WEB_CONCURRENCY=1|GUNICORN_THREADS=1|GUNICORN_TIMEOUT=840" \
     --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
-    --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,httpGet.port=8080,httpGet.path=/healthz' \
+    --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,tcpSocket.port=8080' \
     --labels='app=agentic-agriculture,component=worker,managed-by=infra-script' \
     --description='Private Sentinel-2 temporal analysis worker' \
     --deploy-health-check \
@@ -327,7 +327,7 @@ gcloud run deploy "$WEB_SERVICE" \
     --allow-unauthenticated \
     --set-env-vars="${WEB_ENV}|WEB_CONCURRENCY=2|GUNICORN_THREADS=4|GUNICORN_TIMEOUT=840" \
     --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},DEMO_PASSWORD_HASH=${DEMO_PASSWORD_SECRET_ID}:${DEMO_PASSWORD_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
-    --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,httpGet.port=8080,httpGet.path=/healthz' \
+    --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,tcpSocket.port=8080' \
     --labels='app=agentic-agriculture,component=web,managed-by=infra-script' \
     --description='Public Agentic Agriculture demonstration web application' \
     --deploy-health-check \

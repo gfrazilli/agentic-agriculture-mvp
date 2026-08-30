@@ -79,6 +79,7 @@ def test_worker_and_agent_limits_match_the_runtime_contract():
     assert "--max-instances=1" in worker_block
     assert "--timeout=900" in worker_block
     assert "GUNICORN_TIMEOUT=840" in worker_block
+    assert "tcpSocket.port=8080" in worker_block
 
     agent_block = script.split('gcloud run deploy "$AGENT_SERVICE"', 1)[1].split(
         'gcloud run deploy "$WEB_SERVICE"', 1
