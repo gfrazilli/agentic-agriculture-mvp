@@ -190,8 +190,12 @@ import sys
 with open(sys.argv[1], encoding="utf-8") as source:
     bucket = json.load(source)
 iam = bucket.get("iamConfiguration", {})
-uniform = iam.get("uniformBucketLevelAccess", {}).get("enabled")
-prevention = str(iam.get("publicAccessPrevention", "")).lower()
+uniform = bucket.get("uniform_bucket_level_access")
+if uniform is None:
+    uniform = iam.get("uniformBucketLevelAccess", {}).get("enabled")
+prevention = str(
+    bucket.get("public_access_prevention", iam.get("publicAccessPrevention", ""))
+).lower()
 if uniform is not True or prevention != "enforced":
     raise SystemExit("bucket must enforce uniform access and public access prevention")
 PY
