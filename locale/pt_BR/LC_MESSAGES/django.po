@@ -369,11 +369,11 @@ msgstr "Ver demonstração"
 msgid "Smart satellite monitoring · Powered by Gemini"
 msgstr "Monitoramento inteligente por satélite · Powered by Gemini"
 
-msgid "Know where to scout first. In minutes."
-msgstr "Saiba onde olhar primeiro. Em poucos minutos."
+msgid "Discover where your crop needs attention. In minutes."
+msgstr "Descubra onde sua lavoura merece atenção. Em poucos minutos."
 
-msgid "Satellite imagery monitors your crop throughout the growing season. Gemini compares changes over time and highlights areas that need a closer look—so you can decide where to scout first."
-msgstr "Imagens de satélite acompanham sua área plantada ao longo da safra. O Gemini compara as mudanças ao longo do tempo e destaca os pontos que merecem um olhar mais atento — para você saber onde ir primeiro."
+msgid "Satellites monitor your crop. Advanced AI handles the technical analysis for you. Work that once took hours and required specialists now takes minutes—all to help you make decisions in the field."
+msgstr "Os satélites acompanham sua lavoura. A inteligência artificial avançada faz análises técnicas para te ajudar. Análises que eram demoradas e restritas a especialistas, agora saem em minutos. Tudo para te ajudar nas decisões no campo."
 
 msgid "Analyze my field"
 msgstr "Analisar minha área"

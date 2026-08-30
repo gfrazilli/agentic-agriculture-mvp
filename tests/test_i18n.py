@@ -34,7 +34,8 @@ def test_landing_story_and_science_are_available_in_portuguese(client):
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert "Saiba onde olhar primeiro. Em poucos minutos." in content
+    assert "Descubra onde sua lavoura merece atenção. Em poucos minutos." in content
+    assert "A inteligência artificial avançada faz análises técnicas para te ajudar." in content
     assert "Uma área plantada não se desenvolve toda por igual." in content
     assert "Do satélite à próxima visita em campo." in content
     assert "Uma safra inteira de dados. Uma explicação que faz sentido." in content

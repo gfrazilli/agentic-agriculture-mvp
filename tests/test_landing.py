@@ -23,7 +23,8 @@ def test_landing_is_public_and_contains_the_complete_product_story(client):
     assert "Powered by Gemini" in content
     assert "Real Sentinel-2 data" in content
     assert "38" in content and "151" in content and "94-acre" in content
-    assert "Know where to scout first. In minutes." in content
+    assert "Discover where your crop needs attention. In minutes." in content
+    assert "Advanced AI handles the technical analysis for you." in content
     assert "field scouting" in content
     assert "field inspection" not in content
     assert "development zones" not in content
