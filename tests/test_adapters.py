@@ -2,6 +2,7 @@ import json
 from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, date, datetime, timedelta
 from pathlib import Path
+from types import SimpleNamespace
 from uuid import uuid4
 
 import pytest
@@ -15,7 +16,17 @@ from agriculture.adapters import (
     InMemoryTaskQueue,
     MissingGoogleDependency,
 )
-from agriculture.ports import DailyUsageLimitExceeded, IdempotencyConflict
+from agriculture.adapters.firestore import (
+    _CODEC_MARKER,
+    _MAPPING_MARKER,
+    _decode_firestore_document,
+    _encode_firestore_document,
+)
+from agriculture.ports import (
+    DailyUsageLimitExceeded,
+    IdempotencyConflict,
+    IdempotencyRecord,
+)
 from agriculture.schemas import AgentSession, Analysis, Feedback, Field
 
 FIXTURES = Path(__file__).parents[1] / "agriculture" / "fixtures"
@@ -188,6 +199,254 @@ def test_firestore_expired_idempotency_read_never_deletes_outside_transaction():
     repository = FirestoreRepository(client=Client())
 
     assert repository.get_idempotency("request-1", now=now) is None
+
+
+def test_firestore_round_trips_polygon_without_nested_native_arrays():
+    draft = _load_contract("field-draft.example.json", Field)
+    suggestion = json.loads((FIXTURES / "boundary-suggestion.example.json").read_text())
+    confirmed = Field.model_validate_json(
+        json.dumps(
+            {
+                **draft.model_dump(mode="json"),
+                "boundary": suggestion["boundary"],
+                "boundary_confirmed": True,
+            }
+        )
+    )
+    documents: dict[str, dict] = {}
+
+    class Snapshot:
+        def __init__(self, payload=None):
+            self._payload = payload
+            self.exists = payload is not None
+
+        def to_dict(self):
+            return self._payload
+
+    class DocumentReference:
+        def __init__(self, document_id: str):
+            self._document_id = document_id
+
+        def set(self, payload):
+            documents[self._document_id] = payload
+
+        def get(self):
+            return Snapshot(documents.get(self._document_id))
+
+    class CollectionReference:
+        @staticmethod
+        def document(document_id: str):
+            return DocumentReference(document_id)
+
+    class Client:
+        @staticmethod
+        def collection(_name: str):
+            return CollectionReference()
+
+    def assert_no_nested_arrays(value):
+        if isinstance(value, list):
+            assert all(not isinstance(item, list) for item in value)
+            for item in value:
+                assert_no_nested_arrays(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                assert_no_nested_arrays(item)
+
+    repository = FirestoreRepository(client=Client())
+    repository.save_field(confirmed)
+
+    stored = documents[str(confirmed.id)]
+    assert_no_nested_arrays(stored)
+    assert stored[_CODEC_MARKER] == "nested-arrays-v1"
+    assert repository.get_field(str(confirmed.id)) == confirmed
+
+
+def test_firestore_round_trips_completed_analysis_without_nested_native_arrays():
+    completed = _load_contract("analysis-result.example.json", Analysis)
+    documents: dict[str, dict] = {}
+
+    class Snapshot:
+        def __init__(self, payload=None):
+            self._payload = payload
+            self.exists = payload is not None
+
+        def to_dict(self):
+            return self._payload
+
+    class DocumentReference:
+        def __init__(self, document_id: str):
+            self._document_id = document_id
+
+        def set(self, payload):
+            documents[self._document_id] = payload
+
+        def get(self):
+            return Snapshot(documents.get(self._document_id))
+
+    class CollectionReference:
+        @staticmethod
+        def document(document_id: str):
+            return DocumentReference(document_id)
+
+    class Client:
+        @staticmethod
+        def collection(_name: str):
+            return CollectionReference()
+
+    def assert_no_nested_arrays(value):
+        if isinstance(value, list):
+            assert all(not isinstance(item, list) for item in value)
+            for item in value:
+                assert_no_nested_arrays(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                assert_no_nested_arrays(item)
+
+    repository = FirestoreRepository(client=Client())
+    repository.save_analysis(completed)
+
+    stored = documents[str(completed.id)]
+    assert_no_nested_arrays(stored)
+    assert repository.get_analysis(str(completed.id)) == completed
+
+
+def test_firestore_codec_is_reversible_for_reserved_keys_and_rejects_unknown_versions():
+    original = {
+        "outer": [
+            [1, 2],
+            {_MAPPING_MARKER: {"nested": [[3, 4]]}},
+        ],
+        "tuple": ("a", "b"),
+    }
+    encoded = _encode_firestore_document(original)
+
+    assert original["outer"][0] == [1, 2]
+    assert _decode_firestore_document(encoded) == {
+        "outer": [[1, 2], {_MAPPING_MARKER: {"nested": [[3, 4]]}}],
+        "tuple": ["a", "b"],
+    }
+    with pytest.raises(ValueError, match="Unsupported Firestore codec version"):
+        _decode_firestore_document({_CODEC_MARKER: "future-v2", "value": 1})
+    with pytest.raises(ValueError, match="Unsupported Firestore codec version"):
+        _decode_firestore_document({_CODEC_MARKER: None, "value": 1})
+    with pytest.raises(ValueError, match="require string keys"):
+        _encode_firestore_document({1: "integer", "1": "string"})
+
+
+def test_firestore_complete_request_round_trips_nested_response_and_preserves_usage_count():
+    documents: dict[str, dict[str, dict]] = {}
+
+    class Snapshot:
+        def __init__(self, payload=None):
+            self._payload = payload
+            self.exists = payload is not None
+
+        def to_dict(self):
+            return self._payload
+
+    class DocumentReference:
+        def __init__(self, collection: str, document_id: str):
+            self._collection = collection
+            self._document_id = document_id
+
+        def set(self, payload):
+            documents.setdefault(self._collection, {})[self._document_id] = payload
+
+        def get(self, *, transaction=None):  # noqa: ARG002
+            return Snapshot(documents.get(self._collection, {}).get(self._document_id))
+
+    class CollectionReference:
+        def __init__(self, name: str):
+            self._name = name
+
+        def document(self, document_id: str):
+            return DocumentReference(self._name, document_id)
+
+    class Transaction:
+        @staticmethod
+        def set(reference, payload):
+            reference.set(payload)
+
+    class Client:
+        @staticmethod
+        def collection(name: str):
+            return CollectionReference(name)
+
+        @staticmethod
+        def transaction():
+            return Transaction()
+
+    repository = FirestoreRepository(client=Client())
+    repository._firestore = SimpleNamespace(transactional=lambda function: function)
+    first = repository.claim_idempotency("nested-response", "digest-a")
+    stored = next(iter(documents[repository.IDEMPOTENCY].values()))
+    stored["usage_count"] = 7
+    response = {
+        "boundary": {"coordinates": [[[-48.88, -23.98], [-48.87, -23.97]]]},
+    }
+
+    completed = repository.complete_request("nested-response", response, request_digest="digest-a")
+    replay = repository.claim_idempotency("nested-response", "digest-a")
+    stored = next(iter(documents[repository.IDEMPOTENCY].values()))
+
+    def assert_no_nested_arrays(value):
+        if isinstance(value, list):
+            assert all(not isinstance(item, list) for item in value)
+            for item in value:
+                assert_no_nested_arrays(item)
+        elif isinstance(value, dict):
+            for item in value.values():
+                assert_no_nested_arrays(item)
+
+    assert not first.is_replay
+    assert completed.response == response
+    assert replay.is_replay and replay.record.response == response
+    assert stored["usage_count"] == 7
+    assert_no_nested_arrays(stored)
+
+
+def test_firestore_decoder_accepts_legacy_arrays_and_idempotency_nested_sequences():
+    field = _load_contract("field-draft.example.json", Field)
+    legacy_payload = field.model_dump(mode="json")
+
+    class Snapshot:
+        exists = True
+
+        @staticmethod
+        def to_dict():
+            return legacy_payload
+
+    class DocumentReference:
+        @staticmethod
+        def get():
+            return Snapshot()
+
+    class CollectionReference:
+        @staticmethod
+        def document(_document_id: str):
+            return DocumentReference()
+
+    class Client:
+        @staticmethod
+        def collection(_name: str):
+            return CollectionReference()
+
+    repository = FirestoreRepository(client=Client())
+    assert repository.get_field(str(field.id)) == field
+
+    record = IdempotencyRecord(
+        key="boundary-request",
+        request_digest="digest-a",
+        expires_at=datetime(2026, 8, 30, 12, tzinfo=UTC),
+        response={"boundary": {"coordinates": [[[-48.88, -23.98], [-48.87, -23.97]]]}},
+        pending=False,
+    )
+    encoded = repository._record_payload(record, usage_count=0)
+    decoded = repository._record(encoded)
+
+    assert decoded == record
+    assert encoded[_CODEC_MARKER] == "nested-arrays-v1"
+    assert isinstance(encoded["response"]["boundary"]["coordinates"], list)
 
 
 def test_put_idempotency_detects_payload_conflicts_and_returns_defensive_copies():
