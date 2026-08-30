@@ -25,6 +25,11 @@ urlpatterns = [
         views.agent_session_detail,
         name="agent-session-detail",
     ),
+    path(
+        "agent-sessions/<uuid:session_id>/turns/",
+        views.agent_session_turns,
+        name="agent-session-turns",
+    ),
     path("feedback/", views.feedback_collection, name="feedback"),
     path("fixtures/", views.fixtures_index, name="fixtures"),
     path("fixtures/<slug:fixture_name>/", views.fixture_detail, name="fixture-detail"),

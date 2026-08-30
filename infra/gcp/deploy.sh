@@ -313,6 +313,10 @@ AGENT_URL="${AGENT_URL%/}"
 
 log "Deploying the public, login-protected web service."
 WEB_ENV="${COMMON_DJANGO_ENV}|DEMO_USERNAME=${DEMO_USERNAME}"
+# Django is the authenticated server-side gateway. The browser never receives
+# this private origin or a Google identity token.
+WEB_ENV+="|AGENT_API_URL=${AGENT_URL}|AGENT_API_AUDIENCE=${AGENT_URL}"
+WEB_ENV+="|AGENT_API_TIMEOUT_SECONDS=120"
 gcloud run deploy "$WEB_SERVICE" \
     --project="$PROJECT_ID" \
     --region="$REGION" \
@@ -350,6 +354,7 @@ gcloud run services update "$WEB_SERVICE" \
 log "Applying Cloud Run service-to-service invocation boundaries."
 add_run_invoker "$WORKER_SERVICE" "serviceAccount:${TASK_INVOKER_SA}"
 add_run_invoker "$MCP_SERVICE" "serviceAccount:${AGENT_SA}"
+add_run_invoker "$AGENT_SERVICE" "serviceAccount:${WEB_SA}"
 
 # A new revision may take a moment to become the observed latest ready revision.
 for service_name in "$WEB_SERVICE" "$WORKER_SERVICE" "$MCP_SERVICE" "$AGENT_SERVICE"; do

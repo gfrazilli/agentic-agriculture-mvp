@@ -1,8 +1,9 @@
+import re
 from datetime import date
 from typing import Annotated, Literal
 from uuid import UUID
 
-from pydantic import BaseModel, ConfigDict, model_validator
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from pydantic import Field as PydanticField
 
 from agriculture.domain import AnalysisStatus
@@ -89,6 +90,21 @@ class AgentSessionPatchInput(APIInput):
         if not supplied and not self.increment_turn_count:
             raise ValueError("At least one session change must be supplied.")
         return self
+
+
+class AgentTurnCreateInput(APIInput):
+    message: Annotated[str, PydanticField(min_length=1, max_length=2_000)]
+
+    @field_validator("message")
+    @classmethod
+    def require_plain_text(cls, value: str) -> str:
+        if any(ord(character) < 32 and character not in "\n\r\t" for character in value):
+            raise ValueError("The message cannot contain control characters.")
+        # The API contract is text-only. Comparison operators such as ``<``
+        # remain valid; only tag-shaped markup is rejected.
+        if re.search(r"<\s*/?\s*[A-Za-z][^>]*>", value):
+            raise ValueError("HTML markup is not accepted; send plain text.")
+        return value
 
 
 class FeedbackCreateInput(APIInput):
