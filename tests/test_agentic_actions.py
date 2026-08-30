@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import logging
 from datetime import timedelta
 
 from agentic_agriculture.tools import AgricultureActionTools
@@ -42,7 +44,11 @@ def _action_tool(
     return AgricultureActionTools(lambda: service), repository, queue, field
 
 
-def test_request_field_analysis_enqueues_once_and_replays_same_safe_result(settings) -> None:
+def test_request_field_analysis_enqueues_once_and_replays_same_safe_result(
+    settings, caplog, monkeypatch
+) -> None:
+    caplog.set_level("INFO", logger="agentic_agriculture.tools")
+    monkeypatch.setattr(logging.getLogger("agentic_agriculture.tools"), "propagate", True)
     settings.ANALYSIS_DAILY_LIMIT = 3
     tools, repository, queue, field = _action_tool(confirmed=True)
 
@@ -64,6 +70,17 @@ def test_request_field_analysis_enqueues_once_and_replays_same_safe_result(setti
     assert replay == {**first, "replayed": True}
     assert len(queue.tasks) == 1
     assert len(repository.list_analyses(str(field.id))) == 1
+    messages = dict.fromkeys(
+        record.getMessage()
+        for record in caplog.records
+        if record.name == "agentic_agriculture.tools"
+    )
+    events = [json.loads(message) for message in messages]
+    assert [event["replayed"] for event in events] == [False, True]
+    assert all(event["event"] == "agent_action.request_field_analysis" for event in events)
+    assert all(event["execution_id"] == first["analysis_id"] for event in events)
+    assert all(event["analysis_id"] == first["analysis_id"] for event in events)
+    assert all(event["field_id"] == str(field.id) for event in events)
 
 
 def test_request_field_analysis_uses_service_boundary_guard(settings) -> None:

@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+import logging
 import os
+from collections.abc import Callable
 from functools import lru_cache
 from typing import Any
+from uuid import uuid4
 
 from mcp.server.fastmcp import FastMCP
 
+from agriculture.observability import audit_event, get_audit_logger
 from geospatial.tools import GeospatialTools
 
 INSTRUCTIONS = """
@@ -17,6 +21,7 @@ Scene IDs, timestamps, cloud coverage and asset URLs come from Earth Search.
 Pixel arrays are processed by the deterministic backend and are never returned
 through the model context.
 """.strip()
+logger = get_audit_logger(__name__)
 
 
 @lru_cache(maxsize=1)
@@ -48,15 +53,18 @@ def search_sentinel_scenes(
 ) -> dict[str, Any]:
     """Search real Sentinel-2 L2A scenes for a WGS84 bounding box and date interval."""
 
-    return get_tools().search_scenes(
-        west=west,
-        south=south,
-        east=east,
-        north=north,
-        start=start,
-        end=end,
-        max_cloud_cover=max_cloud_cover,
-        limit=limit,
+    return _invoke_tool(
+        "search_sentinel_scenes",
+        lambda: get_tools().search_scenes(
+            west=west,
+            south=south,
+            east=east,
+            north=north,
+            start=start,
+            end=end,
+            max_cloud_cover=max_cloud_cover,
+            limit=limit,
+        ),
     )
 
 
@@ -64,7 +72,7 @@ def search_sentinel_scenes(
 def get_sentinel_scene(scene_id: str) -> dict[str, Any]:
     """Fetch one Earth Search item and resolve the exact spectral assets used by the MVP."""
 
-    return get_tools().get_scene(scene_id)
+    return _invoke_tool("get_sentinel_scene", lambda: get_tools().get_scene(scene_id))
 
 
 @mcp.tool()
@@ -77,12 +85,68 @@ def plan_field_observations(
 ) -> dict[str, Any]:
     """Select chronologically distributed real scenes for one field polygon."""
 
-    return get_tools().plan_observations(
-        polygon=polygon,
-        start=start,
-        end=end,
-        max_cloud_cover=max_cloud_cover,
-        scene_count=scene_count,
+    return _invoke_tool(
+        "plan_field_observations",
+        lambda: get_tools().plan_observations(
+            polygon=polygon,
+            start=start,
+            end=end,
+            max_cloud_cover=max_cloud_cover,
+            scene_count=scene_count,
+        ),
+    )
+
+
+def _invoke_tool(tool_name: str, operation: Callable[[], dict[str, Any]]) -> dict[str, Any]:
+    """Audit MCP calls without serializing arguments, geometry, or provider bodies."""
+
+    execution_id = str(uuid4())
+    audit_event(
+        logger,
+        "mcp.tool.started",
+        component="mcp",
+        execution_id=execution_id,
+        tool_name=tool_name,
+        status="started",
+    )
+    try:
+        result = operation()
+    except Exception as exc:
+        audit_event(
+            logger,
+            "mcp.tool.failed",
+            level=logging.WARNING,
+            component="mcp",
+            execution_id=execution_id,
+            tool_name=tool_name,
+            status="failed",
+            error_type=type(exc).__name__,
+        )
+        raise
+
+    scene_ids = _scene_ids(result)
+    audit_event(
+        logger,
+        "mcp.tool.completed",
+        component="mcp",
+        execution_id=execution_id,
+        tool_name=tool_name,
+        status="completed",
+        scene_count=len(scene_ids),
+        scene_ids=scene_ids,
+    )
+    return result
+
+
+def _scene_ids(result: dict[str, Any]) -> tuple[str, ...]:
+    scenes = result.get("scenes")
+    if not isinstance(scenes, list):
+        scene = result.get("scene")
+        scenes = [scene] if isinstance(scene, dict) else []
+    return tuple(
+        scene_id
+        for scene in scenes
+        if isinstance(scene, dict) and isinstance((scene_id := scene.get("id")), str)
     )
 
 

@@ -1,5 +1,6 @@
 import logging
-from uuid import UUID
+from time import monotonic
+from uuid import UUID, uuid4
 
 from django.http import HttpRequest, HttpResponse
 from django.utils.html import strip_tags
@@ -31,12 +32,13 @@ from agriculture.api.responses import (
 )
 from agriculture.container import get_agent_api_client, get_agriculture_service
 from agriculture.fixture_loader import fixture_names, load_fixture
+from agriculture.observability import audit_event, get_audit_logger
 from agriculture.services.idempotency import (
     ServiceResult,
     context_from_request,
 )
 
-logger = logging.getLogger(__name__)
+logger = get_audit_logger(__name__)
 
 
 def _result_response(result: ServiceResult) -> HttpResponse:
@@ -173,7 +175,9 @@ def agent_session_turns(
     payload = parse_json(request, AgentTurnCreateInput)
     service = get_agriculture_service()
     session, field, analysis = service.get_active_agent_session(session_id)
+    execution_id = str(uuid4())
     context = AgentTurnContext(
+        execution_id=execution_id,
         session_id=str(session.id),
         actor_id=actor_id,
         language=session.language,
@@ -181,26 +185,61 @@ def agent_session_turns(
         field_id=str(field.id) if field is not None else None,
         analysis_id=str(analysis.id) if analysis is not None else None,
     )
+    started_at = monotonic()
+    audit_event(
+        logger,
+        "agent_gateway.turn.started",
+        component="web",
+        execution_id=execution_id,
+        session_id=str(session.id),
+        turn_number=session.turn_count + 1,
+        field_id=context.field_id,
+        analysis_id=context.analysis_id,
+        language=context.language,
+        channel=context.channel,
+        status="started",
+    )
 
     try:
         reply = get_agent_api_client().run_turn(payload.message, context)
-    except AgentAPIConfigurationError:
-        logger.warning("The private agent gateway is not configured.")
+    except AgentAPIConfigurationError as exc:
+        _log_agent_gateway_failure(
+            execution_id=execution_id,
+            context=context,
+            turn_number=session.turn_count + 1,
+            started_at=started_at,
+            error_code="agent_unavailable",
+            exception=exc,
+        )
         raise APIError(
             "agent_unavailable",
             "The agricultural assistant is temporarily unavailable.",
             503,
             headers={"Retry-After": "15"},
         ) from None
-    except AgentAPIProtocolError:
-        logger.exception("The private agent returned an invalid response.")
+    except AgentAPIProtocolError as exc:
+        _log_agent_gateway_failure(
+            execution_id=execution_id,
+            context=context,
+            turn_number=session.turn_count + 1,
+            started_at=started_at,
+            error_code="agent_invalid_response",
+            exception=exc,
+        )
         raise APIError(
             "agent_invalid_response",
             "The agricultural assistant returned an invalid response.",
             502,
         ) from None
-    except AgentAPIUnavailableError:
-        logger.exception("The private agent request failed.")
+    except AgentAPIUnavailableError as exc:
+        _log_agent_gateway_failure(
+            execution_id=execution_id,
+            context=context,
+            turn_number=session.turn_count + 1,
+            started_at=started_at,
+            error_code="agent_unavailable",
+            exception=exc,
+        )
         raise APIError(
             "agent_unavailable",
             "The agricultural assistant is temporarily unavailable.",
@@ -211,6 +250,23 @@ def agent_session_turns(
     updated_session = service.patch_agent_session(
         session.id,
         AgentSessionPatchInput(increment_turn_count=True),
+    )
+    audit_event(
+        logger,
+        "agent_gateway.turn.completed",
+        component="web",
+        execution_id=execution_id,
+        session_id=str(session.id),
+        turn_number=updated_session.turn_count,
+        field_id=context.field_id,
+        analysis_id=context.analysis_id,
+        language=context.language,
+        channel=context.channel,
+        status="completed",
+        duration_ms=max(0, round((monotonic() - started_at) * 1_000)),
+        model=reply.model,
+        agents=reply.agents,
+        tools=reply.tools,
     )
     return api_response(
         {
@@ -228,6 +284,36 @@ def agent_session_turns(
                 "tools": list(reply.tools),
             },
         }
+    )
+
+
+def _log_agent_gateway_failure(
+    *,
+    execution_id: str,
+    context: AgentTurnContext,
+    turn_number: int,
+    started_at: float,
+    error_code: str,
+    exception: Exception,
+) -> None:
+    """Record a safe failure code and type without formatting the exception."""
+
+    audit_event(
+        logger,
+        "agent_gateway.turn.failed",
+        level=logging.WARNING,
+        component="web",
+        execution_id=execution_id,
+        session_id=context.session_id,
+        turn_number=turn_number,
+        field_id=context.field_id,
+        analysis_id=context.analysis_id,
+        language=context.language,
+        channel=context.channel,
+        status="failed",
+        duration_ms=max(0, round((monotonic() - started_at) * 1_000)),
+        error_code=error_code,
+        error_type=type(exception).__name__,
     )
 
 

@@ -4,11 +4,13 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import os
 import re
 from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import Any
+from uuid import uuid4
 
 from pydantic import ValidationError
 
@@ -20,6 +22,7 @@ from agentic_agriculture.evidence import (
 )
 from agriculture.api.errors import APIError
 from agriculture.api.models import AnalysisCreateInput
+from agriculture.observability import audit_event, get_audit_logger
 from agriculture.ports.repositories import AgricultureRepository
 from agriculture.services.application import AgricultureService
 from agriculture.services.idempotency import IdempotencyContext
@@ -28,6 +31,7 @@ RepositoryProvider = Callable[[], AgricultureRepository]
 ServiceProvider = Callable[[], AgricultureService]
 _ZONE_ID = re.compile(r"^zone-[1-7]$")
 _AGENT_ANALYSIS_ACTOR = "agentic-agriculture-adk"
+logger = get_audit_logger(__name__)
 
 
 def _bootstrap_django() -> None:
@@ -111,6 +115,16 @@ class AgricultureActionTools:
         try:
             normalized = _identifier(field_id, name="field_id")
         except (AttributeError, ValueError):
+            audit_event(
+                logger,
+                "agent_action.request_field_analysis",
+                level=logging.WARNING,
+                component="agent",
+                execution_id=str(uuid4()),
+                status="rejected",
+                error_code="invalid_field_id",
+                error_type="ValidationError",
+            )
             return _not_found("invalid_field_id", "O ID do talhão é inválido.")
 
         service = self._service_provider()
@@ -130,12 +144,36 @@ class AgricultureActionTools:
                 context,
                 actor_id=_AGENT_ANALYSIS_ACTOR,
             )
-        except ValidationError:
+        except ValidationError as exc:
+            audit_event(
+                logger,
+                "agent_action.request_field_analysis",
+                level=logging.WARNING,
+                component="agent",
+                execution_id=str(uuid4()),
+                field_id=normalized,
+                requested_zone_count=requested_zone_count,
+                status="rejected",
+                error_code="invalid_analysis_request",
+                error_type=type(exc).__name__,
+            )
             return _not_found(
                 "invalid_analysis_request",
                 "A quantidade de zonas deve estar entre 2 e 7.",
             )
         except APIError as exc:
+            audit_event(
+                logger,
+                "agent_action.request_field_analysis",
+                level=logging.WARNING,
+                component="agent",
+                execution_id=str(uuid4()),
+                field_id=normalized,
+                requested_zone_count=requested_zone_count,
+                status="rejected",
+                error_code=exc.code,
+                error_type=type(exc).__name__,
+            )
             return {
                 "ok": False,
                 "error": {
@@ -151,6 +189,17 @@ class AgricultureActionTools:
         analysis_id = str(data["id"])
         returned_field_id = str(data["field_id"])
         status = str(data["status"])
+        audit_event(
+            logger,
+            "agent_action.request_field_analysis",
+            component="agent",
+            execution_id=analysis_id,
+            field_id=returned_field_id,
+            analysis_id=analysis_id,
+            requested_zone_count=requested_zone_count,
+            status=status,
+            replayed=result.replayed,
+        )
         return {
             "ok": True,
             "action": "analysis_requested",
