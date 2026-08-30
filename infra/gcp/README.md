@@ -13,6 +13,7 @@ when the Google Cloud CLI is installed.
 - separate identities for web, worker, MCP, ADK, and task invocation;
 - three Secret Manager secrets;
 - four independently scaled Cloud Run services from one immutable image tag;
+- an optional global external classic Application Load Balancer for custom domains;
 - an optional monthly billing budget alert scoped to this project.
 
 Only the web service is public, and it still requires the application's demonstration login.
@@ -102,6 +103,76 @@ The same mechanism rolls all four roles back to one earlier image. The deploy sc
 the canonical worker and MCP URLs, uses the worker origin as the Cloud Tasks OIDC audience, and
 uses the MCP origin (without `/mcp`) as the ADK token audience.
 
+## Custom domain through the global load balancer
+
+Cloud Run domain mapping is not used for this deployment. The web service runs in
+`southamerica-east1`, so the custom domain uses Google's supported global external classic
+Application Load Balancer path instead:
+
+```text
+global IPv4
+  -> global HTTP/HTTPS forwarding rules
+  -> global target HTTP/HTTPS proxies
+  -> global URL map and Google-managed certificate
+  -> global external backend service
+  -> regional serverless NEG
+  -> public Cloud Run web service
+```
+
+The current production names are intentionally stable:
+
+| Role | Google Cloud resource |
+| --- | --- |
+| Static IPv4 | `aa-web-ip` (`136.110.164.101`) |
+| Serverless NEG | `aa-web-neg` |
+| Backend service | `aa-web-backend` |
+| URL map | `aa-web-url-map` |
+| Managed certificate | `aa-web-cert` |
+| HTTPS proxy and rule | `aa-web-https-proxy`, `aa-web-https` |
+| HTTP proxy and rule | `aa-web-http-proxy`, `aa-web-http` |
+
+Set the Django host allowlist before deploying the web revision, then reconcile the load
+balancer. `AA_CUSTOM_WWW_DOMAIN` defaults to `www.$AA_CUSTOM_DOMAIN`:
+
+```bash
+export GCP_PROJECT_ID=agentic-agriculture-2026
+export GCP_REGION=southamerica-east1
+export AA_CUSTOM_DOMAIN=1415agri.com
+export AA_CUSTOM_WWW_DOMAIN=www.1415agri.com
+export AA_CUSTOM_EXPECTED_IP=136.110.164.101
+export AA_CUSTOM_DOMAINS="$AA_CUSTOM_DOMAIN,$AA_CUSTOM_WWW_DOMAIN"
+
+bash infra/gcp/deploy.sh
+bash infra/gcp/custom-domain.sh
+```
+
+`custom-domain.sh` is a non-destructive reconciler. It creates missing resources, reuses
+compatible resources, and stops if a named resource points at an unexpected service, backend,
+certificate, proxy, port, or address. It never deletes or replaces a resource and never calls
+Cloudflare.
+
+Create these records in Cloudflare using **DNS only** (gray cloud), not proxied, while the
+Google-managed certificate is being issued:
+
+```text
+A  1415agri.com      136.110.164.101
+A  www.1415agri.com  136.110.164.101
+```
+
+Certificate issuance is asynchronous; `PROVISIONING` is expected until DNS has propagated and
+Google validates both hostnames. Rerun `custom-domain.sh` to print `managed.status` and the
+per-domain status. Keep the records DNS-only at least until the certificate is `ACTIVE`.
+Enabling Cloudflare proxying later changes the TLS termination and can interfere with Google's
+certificate renewal; that configuration is outside these scripts and should be evaluated
+separately.
+
+The load balancer has ongoing forwarding-rule and data-processing charges even when every Cloud
+Run service is scaled to zero. The reserved global IPv4 address can also be billable. The
+Google-managed certificate itself does not remove those load-balancer costs. Review current
+[Cloud Load Balancing pricing](https://cloud.google.com/vpc/network-pricing#lb) before leaving
+the custom-domain infrastructure active after the demonstration. The budget alert reports spend
+but does not stop these resources automatically.
+
 ## Verification
 
 `smoke.sh` verifies resource locations and privacy, IAM exposure, queue state, bucket controls,
@@ -121,3 +192,5 @@ Useful official references:
 - [Firestore database management](https://cloud.google.com/firestore/docs/manage-databases)
 - [Cloud Run Secret Manager integration](https://cloud.google.com/run/docs/configuring/services/secrets)
 - [Cloud Billing budgets](https://cloud.google.com/billing/docs/how-to/budgets)
+- [Serverless NEGs with external Application Load Balancers](https://cloud.google.com/load-balancing/docs/negs/serverless-neg-concepts)
+- [Google-managed SSL certificates](https://cloud.google.com/load-balancing/docs/ssl-certificates/google-managed-certs)

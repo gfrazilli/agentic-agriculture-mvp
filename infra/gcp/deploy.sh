@@ -11,6 +11,7 @@
 #   export AA_IMAGE_URI="region-docker.pkg.dev/project/repo/app:tag"
 #   export AA_PREPARED_DEMO_FIELD_ID="00000000-0000-0000-0000-000000000000"
 #   export AA_PREPARED_DEMO_ANALYSIS_ID="00000000-0000-0000-0000-000000000000"
+#   export AA_CUSTOM_DOMAINS="1415agri.com,www.1415agri.com"
 
 set -Eeuo pipefail
 IFS=$'\n\t'
@@ -76,6 +77,7 @@ AGENT_MODEL="${AA_AGENT_MODEL:-gemini-3.5-flash}"
 SKIP_BUILD="${AA_SKIP_BUILD:-false}"
 PREPARED_DEMO_FIELD_ID="${AA_PREPARED_DEMO_FIELD_ID:-}"
 PREPARED_DEMO_ANALYSIS_ID="${AA_PREPARED_DEMO_ANALYSIS_ID:-}"
+CUSTOM_DOMAINS_RAW="${AA_CUSTOM_DOMAINS:-}"
 
 [[ -n "$PROJECT_ID" ]] || die "Set GCP_PROJECT_ID before running this script."
 [[ "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "GCP_PROJECT_ID is invalid."
@@ -88,6 +90,44 @@ if [[ -n "$PREPARED_DEMO_FIELD_ID" || -n "$PREPARED_DEMO_ANALYSIS_ID" ]]; then
     for prepared_demo_id in "$PREPARED_DEMO_FIELD_ID" "$PREPARED_DEMO_ANALYSIS_ID"; do
         [[ "$prepared_demo_id" =~ ^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]] || \
             die "Prepared demonstration IDs must be valid UUID values."
+    done
+fi
+
+validate_hostname() {
+    local hostname=$1
+    local label
+    local -a labels=()
+
+    [[ ${#hostname} -le 253 ]] || return 1
+    [[ "$hostname" == "${hostname,,}" ]] || return 1
+    [[ "$hostname" == *.* ]] || return 1
+    [[ "$hostname" != .* && "$hostname" != *. && "$hostname" != *'..'* ]] || return 1
+    [[ "$hostname" != *'/'* && "$hostname" != *':'* && "$hostname" != *'|'* ]] || return 1
+    [[ "$hostname" != *$'\n'* && "$hostname" != *$'\r'* ]] || return 1
+
+    IFS='.' read -r -a labels <<<"$hostname"
+    ((${#labels[@]} >= 2)) || return 1
+    for label in "${labels[@]}"; do
+        [[ ${#label} -le 63 ]] || return 1
+        [[ "$label" =~ ^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$ ]] || return 1
+    done
+}
+
+CUSTOM_DOMAIN_LIST=()
+if [[ -n "$CUSTOM_DOMAINS_RAW" ]]; then
+    [[ "$CUSTOM_DOMAINS_RAW" != ,* && "$CUSTOM_DOMAINS_RAW" != *, && \
+        "$CUSTOM_DOMAINS_RAW" != *',,'* ]] || \
+        die "AA_CUSTOM_DOMAINS must be a comma-separated list without empty entries."
+    [[ ! "$CUSTOM_DOMAINS_RAW" =~ [[:space:]] ]] || \
+        die "AA_CUSTOM_DOMAINS cannot contain whitespace."
+    IFS=',' read -r -a CUSTOM_DOMAIN_LIST <<<"$CUSTOM_DOMAINS_RAW"
+    declare -A SEEN_CUSTOM_DOMAINS=()
+    for custom_domain in "${CUSTOM_DOMAIN_LIST[@]}"; do
+        validate_hostname "$custom_domain" || \
+            die "AA_CUSTOM_DOMAINS contains an invalid canonical hostname: $custom_domain"
+        [[ -z "${SEEN_CUSTOM_DOMAINS[$custom_domain]+present}" ]] || \
+            die "AA_CUSTOM_DOMAINS contains a duplicate hostname: $custom_domain"
+        SEEN_CUSTOM_DOMAINS["$custom_domain"]=true
     done
 fi
 
@@ -371,10 +411,17 @@ WEB_URL="${WEB_URL%/}"
 [[ "$WEB_URL" == https://*.run.app ]] || die "Unexpected web URL: $WEB_URL"
 WEB_HOST="${WEB_URL#https://}"
 
+WEB_ALLOWED_HOSTS="$WEB_HOST"
+WEB_CSRF_TRUSTED_ORIGINS="$WEB_URL"
+for custom_domain in "${CUSTOM_DOMAIN_LIST[@]}"; do
+    WEB_ALLOWED_HOSTS+=",${custom_domain}"
+    WEB_CSRF_TRUSTED_ORIGINS+=",https://${custom_domain}"
+done
+
 gcloud run services update "$WEB_SERVICE" \
     --project="$PROJECT_ID" \
     --region="$REGION" \
-    --update-env-vars="^|^DJANGO_ALLOWED_HOSTS=${WEB_HOST}|DJANGO_CSRF_TRUSTED_ORIGINS=${WEB_URL}|CLOUD_TASKS_BASE_URL=${WORKER_URL}" \
+    --update-env-vars="^|^DJANGO_ALLOWED_HOSTS=${WEB_ALLOWED_HOSTS}|DJANGO_CSRF_TRUSTED_ORIGINS=${WEB_CSRF_TRUSTED_ORIGINS}|CLOUD_TASKS_BASE_URL=${WORKER_URL}" \
     --quiet >/dev/null
 
 log "Applying Cloud Run service-to-service invocation boundaries."
