@@ -413,7 +413,7 @@
                 {% if contact_failed %}<p class="contact-message contact-message-error">{% translate "Check the fields below or try again in a moment." %}</p>{% endif %}
               </div>
 
-              <form class="contact-form" action="{% url 'contact' %}" method="post" novalidate>
+              <form class="contact-form" action="{% url 'contact' %}#contact-form" method="post">
                 {% csrf_token %}
                 <div class="contact-field">
                   <label for="contact-email">{% translate "Email" %}</label>

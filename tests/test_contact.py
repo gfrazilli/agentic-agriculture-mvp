@@ -289,7 +289,7 @@ def test_honeypot_contact_post_fakes_success_without_delivery(client, monkeypatc
     )
 
     assert result.status_code == 302
-    assert result.url == f"{reverse('home')}?contact=sent#contact"
+    assert result.url == f"{reverse('home')}?contact=sent#contact-form"
 
 
 def test_provider_failure_returns_generic_502_with_bound_form(client, monkeypatch):
@@ -321,7 +321,7 @@ def test_valid_contact_post_uses_prg_without_collecting_the_visitor_ip(client, m
     )
 
     assert result.status_code == 302
-    assert result.url == f"{reverse('home')}?contact=sent#contact"
+    assert result.url == f"{reverse('home')}?contact=sent#contact-form"
     assert recorded == {
         "message": ContactMessage(
             email="producer@example.com",

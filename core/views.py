@@ -135,7 +135,7 @@ def contact_view(request: HttpRequest) -> HttpResponse:
     # Silently accept honeypot submissions so automated senders do not learn
     # how to bypass it. Nothing is sent and no submitted content is logged.
     if request.POST.get("website", "").strip():
-        return redirect(f"{home_url}?contact=sent#contact")
+        return redirect(f"{home_url}?contact=sent#contact-form")
 
     if not form.is_valid():
         return _private_no_store(
@@ -163,7 +163,7 @@ def contact_view(request: HttpRequest) -> HttpResponse:
             )
         )
 
-    return redirect(f"{home_url}?contact=sent#contact")
+    return redirect(f"{home_url}?contact=sent#contact-form")
 
 
 @require_GET

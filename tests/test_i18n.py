@@ -75,7 +75,7 @@ def test_portuguese_contact_redirect_returns_to_the_portuguese_landing(client):
     response = client.post(reverse("contact"), {"website": "bot.example"})
 
     assert response.status_code == 302
-    assert response.url == f"{reverse('home_pt')}?contact=sent#contact"
+    assert response.url == f"{reverse('home_pt')}?contact=sent#contact-form"
 
 
 def test_contact_validation_error_is_translated_to_portuguese(client):

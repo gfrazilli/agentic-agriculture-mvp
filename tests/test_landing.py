@@ -63,7 +63,8 @@ def test_landing_exposes_traceable_primary_sources_and_social_metadata(client):
 def test_landing_contact_form_has_server_backed_controls(client):
     content = client.get(reverse("home")).content.decode()
 
-    assert f'action="{reverse("contact")}"' in content
+    assert f'action="{reverse("contact")}#contact-form"' in content
+    assert "novalidate" not in content
     for name in ("email", "subject", "message", "consent", "website"):
         assert f'name="{name}"' in content
     assert "csrfmiddlewaretoken" in content
