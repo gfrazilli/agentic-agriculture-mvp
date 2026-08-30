@@ -36,9 +36,9 @@ def _login(client) -> None:
     assert response.status_code == 302
 
 
-def _authenticated_home(client) -> tuple[str, _SemanticHtmlParser]:
+def _authenticated_demo(client) -> tuple[str, _SemanticHtmlParser]:
     _login(client)
-    response = client.get(reverse("home"))
+    response = client.get(reverse("demo"))
     assert response.status_code == 200
     assert [template.name for template in response.templates if template.name] == [
         "core/home.html",
@@ -59,14 +59,14 @@ def _authenticated_home(client) -> tuple[str, _SemanticHtmlParser]:
     ],
 )
 def test_authenticated_farmer_interface_loads_versioned_static_assets(client, asset, url):
-    html, _ = _authenticated_home(client)
+    html, _ = _authenticated_demo(client)
 
     assert url in html
     assert finders.find(asset) is not None
 
 
 def test_farmer_interface_exposes_four_step_form_and_contract_fields(client):
-    _, parser = _authenticated_home(client)
+    _, parser = _authenticated_demo(client)
 
     form_tag, form_attributes = parser.attributes_for_id("field-form")
     assert form_tag == "form"
@@ -96,7 +96,7 @@ def test_farmer_interface_exposes_four_step_form_and_contract_fields(client):
 
 
 def test_farmer_interface_configures_only_real_versioned_api_routes(client):
-    html, _ = _authenticated_home(client)
+    html, _ = _authenticated_demo(client)
 
     expected_routes = (
         "/api/v1/fields/",
@@ -116,7 +116,7 @@ def test_farmer_interface_configures_only_real_versioned_api_routes(client):
 
 
 def test_map_progress_and_results_are_accessible_regions(client):
-    _, parser = _authenticated_home(client)
+    _, parser = _authenticated_demo(client)
 
     map_tag, boundary_map = parser.attributes_for_id("boundary-map")
     assert map_tag in {"div", "svg"}
@@ -141,28 +141,28 @@ def test_map_progress_and_results_are_accessible_regions(client):
 
 def test_farmer_interface_renders_in_portuguese_and_english(client):
     _login(client)
-    portuguese = client.get(reverse("home"))
-    assert portuguese.status_code == 200
-    assert '<html lang="pt-br">' in portuguese.content.decode()
-    assert "Cadastre sua lavoura" in portuguese.content.decode()
-
-    switch = client.post(
-        reverse("set_language"),
-        {"language": "en", "next": reverse("home")},
-    )
-    assert switch.status_code == 302
-
-    english = client.get(switch.url)
+    english = client.get(reverse("demo"))
     assert english.status_code == 200
     assert '<html lang="en">' in english.content.decode()
     assert "Register your field" in english.content.decode()
 
+    switch = client.post(
+        reverse("set_language"),
+        {"language": "pt-br", "next": reverse("demo")},
+    )
+    assert switch.status_code == 302
+
+    portuguese = client.get(switch.url)
+    assert portuguese.status_code == 200
+    assert '<html lang="pt-br">' in portuguese.content.decode()
+    assert "Cadastre sua lavoura" in portuguese.content.decode()
+
 
 def test_anonymous_farmer_is_redirected_to_the_demo_login(client):
-    response = client.get(reverse("home"))
+    response = client.get(reverse("demo"))
 
     assert response.status_code == 302
-    assert response.url == f"{reverse('login')}?next=%2F"
+    assert response.url == f"{reverse('login')}?next=%2Fdemo%2F"
 
 
 def test_farmer_script_uses_real_contract_and_safe_dom_updates():

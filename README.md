@@ -1,6 +1,6 @@
-# Agentic Agriculture MVP
+# 1415 Agri
 
-Google Cloud-ready Django and Google ADK application for the Agentic Agriculture MVP. It
+Google Cloud-ready Django and Google ADK application for the 1415 Agri MVP. It
 combines public Sentinel-2 imagery, deterministic multispectral processing, MCP tools, and
 Gemini 3.5+ agents while preserving a stable interface contract for the independently built
 PR3A web UI.
@@ -12,7 +12,8 @@ This repository contains the application foundation plus the PR4-PR7 backend sta
 - Python 3.12 and Django 5.2;
 - one demonstration account configured entirely through environment variables;
 - Django signed-cookie sessions, with no relational session table;
-- protected `/`, login, POST-only logout, language selection, and static assets;
+- a public landing page at `/`, a protected demonstration at `/demo/`, login,
+  POST-only logout, language selection, and static assets;
 - strict Pydantic contracts for fields, boundaries, analyses, agent sessions, and feedback;
 - authenticated `/api/v1/` endpoints with idempotency, validation, and daily analysis limits;
 - stable example payloads for the beginner-friendly PR3A interface;
@@ -66,7 +67,8 @@ Requirements: Docker with Compose.
    docker compose up --build
    ```
 
-Open <http://localhost:8080/login/> and use `DEMO_USERNAME` plus the password chosen in
+Open <http://localhost:8080/> to see the public landing page. Select **View demonstration**
+or open <http://localhost:8080/demo/> and use `DEMO_USERNAME` plus the password chosen in
 step 3. The Compose health check calls `/ready`, so the container remains unhealthy until
 the demonstration credentials are valid.
 
@@ -122,6 +124,13 @@ this automatically.
 | `PRODUCT_NAME` | No | Product label displayed in the UI. |
 | `DEMO_USERNAME` | Yes for readiness | Username for the single demonstration account. |
 | `DEMO_PASSWORD_HASH` | Yes for readiness | Encoded Django password hash, never a plain password. |
+| `CONTACT_TURNSTILE_ENABLED` | Production | Enables Cloudflare Turnstile verification for the public contact form. |
+| `CONTACT_TURNSTILE_SITE_KEY` | Turnstile | Public widget site key for `1415agri.com`. |
+| `CONTACT_TURNSTILE_SECRET_KEY` | Turnstile | Private verification key; keep in Secret Manager. |
+| `CONTACT_TURNSTILE_HOSTNAMES` | No | Comma-separated hostnames accepted in Turnstile verification. |
+| `CONTACT_RESEND_API_KEY` | Contact delivery | Resend API key; keep in Secret Manager. |
+| `CONTACT_FROM_EMAIL` | No | Verified sender; defaults to `1415 Agri <contato@1415agri.com>`. |
+| `CONTACT_TO_EMAIL` | Contact delivery | Private recipient; keep in Secret Manager. |
 | `PERSISTENCE_BACKEND` | Production | `memory` locally or `firestore` in production. |
 | `ARTIFACT_BACKEND` | Production | `memory` locally or `gcs` in production. |
 | `TASK_BACKEND` | Production | `memory` locally or `cloud_tasks` in production. |
@@ -170,7 +179,8 @@ multiple workers and Cloud Run instances safely.
 
 | Method | Route | Description |
 | --- | --- | --- |
-| `GET` | `/` | Protected home page. |
+| `GET` | `/` | Public product landing page. |
+| `GET` | `/demo/` | Login-protected field analysis application. |
 | `GET`, `POST` | `/login/` | Demonstration login; POST is CSRF-protected. |
 | `POST` | `/logout/` | Clears the signed session. |
 | `POST` | `/i18n/setlang/` | Persists PT-BR or English in Django's language cookie. |
@@ -228,7 +238,7 @@ DJANGO_ALLOWED_HOSTS=<service host>
 DJANGO_CSRF_TRUSTED_ORIGINS=https://<service host>
 DEMO_USERNAME=<demo user>
 DEMO_PASSWORD_HASH=<encoded Django hash>
-PRODUCT_NAME=Agentic Agriculture
+PRODUCT_NAME=1415 Agri
 PERSISTENCE_BACKEND=firestore
 ARTIFACT_BACKEND=gcs
 TASK_BACKEND=cloud_tasks

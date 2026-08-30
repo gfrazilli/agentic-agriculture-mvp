@@ -1,0 +1,509 @@
+{% extends "base.html" %}
+{% load i18n static %}
+
+{% block title %}{% translate "1415 Agri · Know where your field deserves attention" %}{% endblock %}
+
+{% block extra_head %}
+  {% translate "Satellite monitoring that turns a season of Sentinel-2 evidence into clear priorities for field inspection, with Gemini." as meta_description %}
+  <meta name="description" content="{{ meta_description }}">
+  <meta name="robots" content="index,follow,max-image-preview:large">
+  <meta name="theme-color" content="#ffffff">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="1415 Agri">
+  <meta property="og:title" content="{% translate 'Know where your field deserves attention.' %}">
+  <meta property="og:description" content="{{ meta_description }}">
+  <meta property="og:url" content="https://1415agri.com/">
+  <meta property="og:image" content="https://1415agri.com{% static 'core/brand/og-card.png' %}">
+  <meta property="og:image:type" content="image/png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="{% translate 'Know where your field deserves attention.' %}">
+  <meta name="twitter:description" content="{{ meta_description }}">
+  <meta name="twitter:image" content="https://1415agri.com{% static 'core/brand/og-card.png' %}">
+  <link rel="canonical" href="https://1415agri.com/">
+  <link rel="stylesheet" href="{% static 'core/landing.css' %}">
+{% endblock %}
+
+{% block content %}
+  <div class="landing-page" id="top">
+    <a class="landing-skip-link" href="#landing-content">{% translate "Skip to content" %}</a>
+
+    <header class="landing-header" data-landing-header>
+      <div class="landing-container landing-header-inner">
+        <a class="landing-brand" href="#top" aria-label="{% translate '1415 Agri home' %}">
+          <svg class="landing-brand-mark" viewBox="0 0 44 44" aria-hidden="true">
+            <circle cx="22" cy="22" r="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="76 16" transform="rotate(-32 22 22)" />
+            <path d="M21.9 29.4V19.1" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+            <path d="M21.8 21.8c-5.7.1-8.8-2.7-9.5-7.4 5.3-.1 8.8 2.4 9.5 7.4Z" fill="currentColor" />
+            <path d="M22.1 20.2c5.6.1 8.6-2.7 9.3-7.2-5.2-.1-8.6 2.3-9.3 7.2Z" fill="currentColor" opacity=".78" />
+            <path d="M8.4 31.2c4.3-3.6 8.8-5.3 13.5-5.1-2.9 6.2-6.5 8.7-10.8 7.4" fill="currentColor" opacity=".72" />
+            <path d="M22.2 31.9c4.3-4.4 8.7-6.5 13.3-6.3-2.1 6.5-6.5 9.2-13.3 8.8" fill="currentColor" />
+          </svg>
+          <span class="landing-brand-name"><strong>1415</strong> Agri</span>
+        </a>
+
+        <button
+          class="landing-menu-toggle"
+          type="button"
+          aria-expanded="false"
+          aria-controls="landing-navigation"
+          data-menu-toggle
+          data-label-open="{% translate 'Open navigation' %}"
+          data-label-close="{% translate 'Close navigation' %}"
+        >
+          <span class="landing-menu-icon" aria-hidden="true"><span></span><span></span></span>
+          <span class="sr-only">{% translate "Open navigation" %}</span>
+        </button>
+
+        <div class="landing-nav-menu" id="landing-navigation" data-menu>
+          <nav class="landing-nav" aria-label="{% translate 'Main navigation' %}">
+            <a href="#how-it-works">{% translate "How it works" %}</a>
+            <a href="#technology">{% translate "Technology" %}</a>
+            <a href="#science">{% translate "Science" %}</a>
+            <a href="#about">{% translate "About" %}</a>
+          </nav>
+
+          <div class="landing-header-actions">
+            <form class="landing-language-switcher" action="{% url 'set_language' %}" method="post">
+              {% csrf_token %}
+              <input type="hidden" name="next" value="{{ request.path }}">
+              <span class="sr-only">{% translate "Language" %}</span>
+              <button type="submit" name="language" value="en" {% if LANGUAGE_CODE == "en" %}aria-current="true"{% endif %}>EN</button>
+              <span aria-hidden="true">/</span>
+              <button type="submit" name="language" value="pt-br" {% if LANGUAGE_CODE == "pt-br" %}aria-current="true"{% endif %}>PT</button>
+            </form>
+            <a class="landing-button landing-button-small landing-button-primary" href="{% url 'demo' %}">
+              {% translate "View demo" %}
+              <span aria-hidden="true">→</span>
+            </a>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <div id="landing-content">
+      <section class="landing-hero landing-section" aria-labelledby="hero-title">
+        <div class="landing-container landing-hero-grid">
+          <div class="landing-hero-copy">
+            <p class="landing-badge">
+              <span class="landing-badge-dot" aria-hidden="true"></span>
+              {% translate "Smart satellite monitoring · Powered by Gemini" %}
+            </p>
+            <h1 id="hero-title">{% translate "Know where your field deserves attention. In minutes." %}</h1>
+            <p class="landing-hero-lede">
+              {% translate "Satellites follow your field over time. Gemini connects what changed and turns an analysis once slow and restricted to specialists into a clear view of what deserves attention—so you can decide where to look first." %}
+            </p>
+            <div class="landing-hero-actions">
+              <a class="landing-button landing-button-primary" href="{% url 'demo' %}">
+                {% translate "Analyze a field" %}
+                <span aria-hidden="true">→</span>
+              </a>
+              <a class="landing-button landing-button-secondary" href="#how-it-works">
+                <span class="landing-play" aria-hidden="true">▶</span>
+                {% translate "See how it works" %}
+              </a>
+            </div>
+            <ul class="landing-trust-line" aria-label="{% translate 'Platform assurances' %}">
+              <li>{% translate "Real Sentinel-2 data" %}</li>
+              <li>{% translate "Traceable evidence" %}</li>
+              <li>{% translate "Farmer in control" %}</li>
+            </ul>
+          </div>
+
+          <div class="product-preview" aria-label="{% translate '1415 Agri analysis preview showing development zones and a Gemini explanation' %}">
+            <div class="product-preview-bar">
+              <div class="product-preview-brand">
+                <span class="product-preview-logo" aria-hidden="true"></span>
+                <strong>1415 Agri</strong>
+              </div>
+              <span class="product-preview-status"><span aria-hidden="true"></span>{% translate "Analysis complete" %}</span>
+            </div>
+
+            <div class="product-preview-content">
+              <div class="product-map-card">
+                <div class="product-card-heading">
+                  <div>
+                    <span>{% translate "FIELD ANALYSIS" %}</span>
+                    <strong>{% translate "North field · Soybean" %}</strong>
+                  </div>
+                  <button type="button" tabindex="-1" aria-hidden="true">•••</button>
+                </div>
+
+                <div class="product-map-wrap">
+                  <svg class="product-map" viewBox="0 0 640 430" role="img" aria-labelledby="preview-map-title preview-map-desc">
+                    <title id="preview-map-title">{% translate "Relative development zones" %}</title>
+                    <desc id="preview-map-desc">{% translate "A sample field divided into four zones, with one area highlighted for inspection." %}</desc>
+                    <rect width="640" height="430" fill="#edf1ec" />
+                    <g fill="none" stroke="#d8ded7" stroke-width="2">
+                      <path d="M0 68C116 30 215 110 335 58s210-28 305 18" />
+                      <path d="M0 170c98-44 195 35 310-8s222-7 330 22" />
+                      <path d="M0 287c116-48 205 17 318-12s216-8 322 18" />
+                      <path d="M112 0c-22 88 29 164 3 250s8 139 22 180" />
+                      <path d="M480 0c28 89-24 159 12 242s5 136-11 188" />
+                    </g>
+                    <g transform="translate(125 34)">
+                      <path d="M71 22 294 5l86 77-8 184-87 94-223-18L12 238 24 95Z" fill="#f8faf7" stroke="#315d48" stroke-width="5" stroke-linejoin="round" />
+                      <path d="M28 99 71 26l105-8 17 145-94 31-82 38Z" fill="#aed6a8" />
+                      <path d="m176 18 116-9 83 76-8 85-174-7Z" fill="#79ad74" />
+                      <path d="m193 163 174 7 2 93-85 92-108-9 2-82Z" fill="#d8e8c8" />
+                      <path d="m17 232 82-38 94-31-15 101-2 82-112-9Z" fill="#e7c874" />
+                      <g fill="none" stroke="#ffffff" stroke-width="4">
+                        <path d="m176 18 17 145 174 7" />
+                        <path d="M17 232 99 194l94-31-15 101-2 82" />
+                      </g>
+                      <path d="M71 22 294 5l86 77-8 184-87 94-223-18L12 238 24 95Z" fill="none" stroke="#315d48" stroke-width="5" stroke-linejoin="round" />
+                      <g font-family="system-ui, sans-serif" font-size="18" font-weight="750" text-anchor="middle">
+                        <g><circle cx="106" cy="103" r="19" fill="#fff" /><text x="106" y="109" fill="#234c39">1</text></g>
+                        <g><circle cx="279" cy="91" r="19" fill="#fff" /><text x="279" y="97" fill="#234c39">2</text></g>
+                        <g><circle cx="275" cy="252" r="19" fill="#fff" /><text x="275" y="258" fill="#234c39">3</text></g>
+                        <g><circle cx="104" cy="273" r="19" fill="#173e2d" /><text x="104" y="279" fill="#fff">4</text></g>
+                      </g>
+                    </g>
+                    <g transform="translate(22 371)">
+                      <rect width="180" height="38" rx="19" fill="#fff" stroke="#d8ded7" />
+                      <circle cx="23" cy="19" r="6" fill="#d3a835" />
+                      <text x="38" y="24" fill="#44554d" font-family="system-ui, sans-serif" font-size="14">{% translate "Priority inspection" %}</text>
+                    </g>
+                  </svg>
+                  <div class="product-map-controls" aria-hidden="true"><span>+</span><span>−</span></div>
+                </div>
+
+                <div class="product-observations">
+                  <span><strong>3</strong> {% translate "clear observations" %}</span>
+                  <span><strong>3</strong> {% translate "spectral indices" %}</span>
+                  <span><strong>1</strong> {% translate "priority area" %}</span>
+                </div>
+              </div>
+
+              <aside class="gemini-preview" aria-label="{% translate 'Gemini explanation' %}">
+                <div class="gemini-preview-label">
+                  <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 1.8c.5 6.3 3.9 9.7 10.2 10.2-6.3.5-9.7 3.9-10.2 10.2C11.5 15.9 8.1 12.5 1.8 12 8.1 11.5 11.5 8.1 12 1.8Z" fill="currentColor" /></svg>
+                  <strong>Gemini</strong>
+                </div>
+                <h2>{% translate "Zone 4 deserves a closer look" %}</h2>
+                <p>{% translate "This area developed differently from the rest of the field across the selected dates. Its combined NDVI, NDRE and NDMI history makes it the clearest priority for your next field inspection." %}</p>
+                <div class="gemini-evidence">
+                  <span>{% translate "Why this area?" %}</span>
+                  <ul>
+                    <li>{% translate "Consistent difference across dates" %}</li>
+                    <li>{% translate "Signals agree across spectra" %}</li>
+                    <li>{% translate "Original images remain linked" %}</li>
+                  </ul>
+                </div>
+                <button class="gemini-question" type="button" tabindex="-1" aria-hidden="true">
+                  {% translate "Ask about this analysis" %}<span>↗</span>
+                </button>
+              </aside>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section problem-section" id="problem" aria-labelledby="problem-title">
+        <div class="landing-container problem-grid">
+          <div class="landing-section-heading">
+            <p class="landing-eyebrow">{% translate "The challenge" %}</p>
+            <h2 id="problem-title">{% translate "Your field is not an average." %}</h2>
+          </div>
+          <div class="problem-copy">
+            <p>{% translate "Within the same field, differences in soil, moisture, fertility, weather and management can make each region develop in a different way." %}</p>
+            <p>{% translate "1415 Agri helps you find where those differences are emerging—and where it is worth investigating first." %}</p>
+          </div>
+          <figure class="research-stat">
+            <div class="research-stat-value"><span>2.4</span><span aria-hidden="true">—</span><span>9.5</span></div>
+            <figcaption>
+              <strong>{% translate "tonnes of corn per hectare" %}</strong>
+              <span>{% translate "within a single 38-hectare field documented by Embrapa researchers." %}</span>
+              <a href="#reference-1">{% translate "Read the source" %} <span aria-hidden="true">↓</span></a>
+            </figcaption>
+          </figure>
+        </div>
+      </section>
+
+      <section class="landing-section process-section" id="how-it-works" aria-labelledby="process-title">
+        <div class="landing-container">
+          <div class="landing-section-heading landing-section-heading-centered">
+            <p class="landing-eyebrow">{% translate "How it works" %}</p>
+            <h2 id="process-title">{% translate "From orbit to your next inspection." %}</h2>
+            <p>{% translate "A guided path from a field boundary to a clear priority." %}</p>
+          </div>
+
+          <ol class="process-list">
+            <li class="process-card">
+              <span class="process-number">01</span>
+              <div class="process-icon process-icon-field" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><path d="m8 16 14-8 18 8v24L22 33 8 40Z" /><path d="m22 8v25M8 16l14 8 18-8" /></svg>
+              </div>
+              <h3>{% translate "Select your field" %}</h3>
+              <p>{% translate "Outline the field and tell us the crop and period you want to follow." %}</p>
+            </li>
+            <li class="process-card">
+              <span class="process-number">02</span>
+              <div class="process-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><circle cx="24" cy="24" r="15" /><path d="M24 3v6m0 30v6M3 24h6m30 0h6M13.5 13.5l4 4m13 13 4 4m0-21-4 4m-13 13-4 4" /><path d="m19 25 4 4 7-10" /></svg>
+              </div>
+              <h3>{% translate "Request an analysis" %}</h3>
+              <p>{% translate "The platform gathers Sentinel-2 images throughout the season and compares how each region developed." %}</p>
+            </li>
+            <li class="process-card">
+              <span class="process-number">03</span>
+              <div class="process-icon" aria-hidden="true">
+                <svg viewBox="0 0 48 48"><path d="M8 10h32v23H22l-8 7v-7H8Z" /><path d="M17 20h14M17 25h9" /><path d="M36 4c.2 3 1.8 4.6 4.8 4.8C37.8 9 36.2 10.6 36 13.6 35.8 10.6 34.2 9 31.2 8.8 34.2 8.6 35.8 7 36 4Z" /></svg>
+              </div>
+              <h3>{% translate "Talk to the results" %}</h3>
+              <p>{% translate "Gemini connects the evidence, highlights what changed and explains why an area deserves attention." %}</p>
+            </li>
+          </ol>
+
+          <p class="process-outcome">
+            <span aria-hidden="true">✓</span>
+            {% translate "You receive a clear priority to guide the next field inspection." %}
+          </p>
+        </div>
+      </section>
+
+      <section class="landing-section technology-section" id="technology" aria-labelledby="technology-title">
+        <div class="landing-container technology-grid">
+          <div class="technology-copy">
+            <p class="landing-eyebrow">{% translate "Why Gemini" %}</p>
+            <h2 id="technology-title">{% translate "A whole season of data. One explanation that makes sense." %}</h2>
+            <p class="technology-lede">{% translate "Finding cloud-free images, comparing dates and interpreting signals invisible to the eye normally takes specialized tools and hours of work." %}</p>
+            <p>{% translate "Gemini changes that experience. It understands what you want to investigate, coordinates the necessary tools, connects the evidence and turns complex results into a clear conversation." %}</p>
+            <ul class="technology-capabilities">
+              <li>{% translate "Compares different moments in the season" %}</li>
+              <li>{% translate "Connects signals from different spectra" %}</li>
+              <li>{% translate "Explains why an area was highlighted" %}</li>
+              <li>{% translate "Answers follow-up questions about the analysis" %}</li>
+              <li>{% translate "Keeps evidence linked to original imagery" %}</li>
+            </ul>
+          </div>
+
+          <div class="agent-flow" aria-label="{% translate 'Gemini coordinates satellite search, spectral analysis and an evidence-based answer' %}">
+            <div class="agent-flow-query">
+              <span>{% translate "Your question" %}</span>
+              <p>“{% translate "Where should I inspect first?" %}”</p>
+            </div>
+            <div class="agent-flow-line" aria-hidden="true"><span></span></div>
+            <div class="agent-flow-gemini">
+              <svg viewBox="0 0 32 32" aria-hidden="true"><path d="M16 1.6c.7 8.9 5.5 13.7 14.4 14.4-8.9.7-13.7 5.5-14.4 14.4C15.3 21.5 10.5 16.7 1.6 16 10.5 15.3 15.3 10.5 16 1.6Z" /></svg>
+              <div><strong>Gemini</strong><span>{% translate "Agent coordinator" %}</span></div>
+            </div>
+            <div class="agent-flow-line agent-flow-branches" aria-hidden="true"><span></span></div>
+            <div class="agent-flow-tools">
+              <div><span class="tool-dot tool-dot-blue"></span><strong>{% translate "Imagery" %}</strong><small>Sentinel-2</small></div>
+              <div><span class="tool-dot tool-dot-green"></span><strong>{% translate "Spectra" %}</strong><small>NDVI · NDRE · NDMI</small></div>
+              <div><span class="tool-dot tool-dot-yellow"></span><strong>{% translate "Evidence" %}</strong><small>{% translate "Dates · zones" %}</small></div>
+            </div>
+            <div class="agent-flow-answer">
+              <span aria-hidden="true">✓</span>
+              <p>{% translate "A priority you can question, inspect and trace back to its source." %}</p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section science-section" id="science" aria-labelledby="science-title">
+        <div class="landing-container">
+          <div class="landing-section-heading science-heading">
+            <p class="landing-eyebrow">{% translate "Beyond what eyes can see" %}</p>
+            <h2 id="science-title">{% translate "The field also communicates in invisible spectra." %}</h2>
+            <p>{% translate "Sentinel-2 records reflected light beyond the visible range. Those bands help compare how vegetation changes across space and time." %}</p>
+          </div>
+
+          <div class="spectrum-grid">
+            <article class="spectrum-card spectrum-red-edge">
+              <div class="spectrum-wave" aria-hidden="true"><svg viewBox="0 0 260 54"><path d="M1 36c25 0 22-18 48-18s23 20 49 20 23-26 49-26 24 30 51 30 24-20 61-20" /></svg></div>
+              <div class="spectrum-range"><span>{% translate "VISIBLE" %}</span><strong>705 nm</strong><span>{% translate "INVISIBLE" %}</span></div>
+              <h3>{% translate "Red-edge" %}</h3>
+              <p>{% translate "Can reveal changes related to chlorophyll and the physiological state of vegetation." %}</p>
+              <span class="spectrum-band">Sentinel-2 · B05</span>
+            </article>
+            <article class="spectrum-card spectrum-nir">
+              <div class="spectrum-wave" aria-hidden="true"><svg viewBox="0 0 260 54"><path d="M1 34c19 0 21-9 40-9s20 9 39 9 20-21 40-21 20 29 40 29 20-26 40-26 21 12 59 12" /></svg></div>
+              <div class="spectrum-range"><span>{% translate "VISIBLE" %}</span><strong>842 nm</strong><span>{% translate "INVISIBLE" %}</span></div>
+              <h3>{% translate "Near-infrared" %}</h3>
+              <p>{% translate "Helps observe vegetation vigor, canopy density and structure." %}</p>
+              <span class="spectrum-band">Sentinel-2 · B08</span>
+            </article>
+            <article class="spectrum-card spectrum-swir">
+              <div class="spectrum-wave" aria-hidden="true"><svg viewBox="0 0 260 54"><path d="M1 31c18 0 18-5 36-5s18 5 36 5 18-15 37-15 18 22 37 22 18-18 37-18 20 9 75 9" /></svg></div>
+              <div class="spectrum-range"><span>{% translate "VISIBLE" %}</span><strong>1610 nm</strong><span>{% translate "INVISIBLE" %}</span></div>
+              <h3>SWIR</h3>
+              <p>{% translate "Responds to vegetation water content and can reveal changes compatible with water stress." %}</p>
+              <span class="spectrum-band">Sentinel-2 · B11</span>
+            </article>
+          </div>
+
+          <aside class="study-callout">
+            <div class="study-timeline" aria-hidden="true">
+              <div class="study-point study-point-first"><span>46</span><small>DAP</small></div>
+              <div class="study-line"><span>{% translate "18 days" %}</span></div>
+              <div class="study-point"><span>64</span><small>DAP</small></div>
+            </div>
+            <div class="study-copy">
+              <span class="study-label">{% translate "Research evidence" %}</span>
+              <h3>{% translate "A signal before the symptom was visible" %}</h3>
+              <p>{% translate "In a soybean experiment using multispectral UAV sensors, red-edge differentiated groups at 46 days after planting. Visible wilting appeared at 64 days—18 days later." %}</p>
+              <p class="study-caveat">{% translate "This is evidence of pre-visual detection under experimental conditions, not a guarantee of the same lead time from Sentinel-2 or 1415 Agri." %}</p>
+              <a href="#reference-2">{% translate "See the peer-reviewed study" %} <span aria-hidden="true">↓</span></a>
+            </div>
+          </aside>
+        </div>
+      </section>
+
+      <section class="landing-section trust-section" id="trust" aria-labelledby="trust-title">
+        <div class="landing-container trust-grid">
+          <div class="trust-statement">
+            <p class="landing-eyebrow">{% translate "Control and confidence" %}</p>
+            <h2 id="trust-title">
+              <span>{% translate "Satellites measure." %}</span>
+              <span>{% translate "Gemini reasons." %}</span>
+              <span>{% translate "You decide." %}</span>
+            </h2>
+          </div>
+          <div class="trust-copy">
+            <p>{% translate "1415 Agri does not try to diagnose a disease from space." %}</p>
+            <p>{% translate "It identifies areas that developed differently, presents the evidence and helps you formulate a more objective investigation." %}</p>
+            <p>{% translate "The cause is still confirmed in the field, by the people who know it." %}</p>
+            <div class="trust-principle"><span aria-hidden="true">✓</span><strong>{% translate "Decision support, never a black-box verdict." %}</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section vision-section" id="about" aria-labelledby="vision-title">
+        <div class="landing-container vision-inner">
+          <div class="vision-orbit" aria-hidden="true">
+            <span class="vision-orbit-ring"></span>
+            <span class="vision-orbit-dot"></span>
+            <svg viewBox="0 0 120 120"><path d="M60 99V55" /><path d="M60 67C38 67 26 56 23 38c21 0 34 10 37 29Z" /><path d="M60 61c22 0 34-11 37-29-21 0-34 10-37 29Z" /><path d="M23 96c22-16 49-16 74 0" /></svg>
+          </div>
+          <div class="vision-copy">
+            <p class="landing-eyebrow">{% translate "Our vision" %}</p>
+            <h2 id="vision-title">{% translate "The next great frontier of technology grows in the field." %}</h2>
+            <p>{% translate "Producing food with greater resilience, predictability and efficiency will become increasingly important." %}</p>
+            <p>{% translate "1415 Agri was created to make geospatial intelligence accessible—combining satellites, science and Gemini’s reasoning power." %}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="landing-section final-section" id="contact" aria-labelledby="final-title">
+        <div class="landing-container">
+          <div class="final-panel">
+            <div class="final-copy">
+              <p class="landing-eyebrow">{% translate "Start with one field" %}</p>
+              <h2 id="final-title">{% translate "Your field is already producing signals. Start understanding them." %}</h2>
+              <p>{% translate "Follow its development and discover where to look first." %}</p>
+              <div class="final-actions">
+                <a class="landing-button landing-button-light" href="{% url 'demo' %}">{% translate "Analyze a field" %}<span aria-hidden="true">→</span></a>
+                <a class="landing-button landing-button-ghost" href="#contact-form">{% translate "Talk to the team" %}</a>
+              </div>
+            </div>
+
+            <div class="contact-panel" id="contact-form">
+              <div class="contact-panel-heading">
+                <span>{% translate "CONTACT" %}</span>
+                <h3>{% translate "Tell us what you want to monitor." %}</h3>
+                <p>{% translate "We will reply by email." %}</p>
+              </div>
+
+              <div class="contact-messages" aria-live="polite">
+                {% if contact_sent %}<p class="contact-message">{% translate "Message sent. We will get back to you soon." %}</p>{% endif %}
+                {% if contact_failed %}<p class="contact-message contact-message-error">{% translate "Check the fields below or try again in a moment." %}</p>{% endif %}
+              </div>
+
+              <form class="contact-form" action="{% url 'contact' %}" method="post" novalidate>
+                {% csrf_token %}
+                <div class="contact-field">
+                  <label for="contact-email">{% translate "Email" %}</label>
+                  <input id="contact-email" name="email" type="email" autocomplete="email" maxlength="254" value="{{ contact_form.email.value|default_if_none:'' }}" required aria-describedby="contact-email-error">
+                  <div class="contact-error" id="contact-email-error">{{ contact_form.email.errors }}</div>
+                </div>
+                <div class="contact-field">
+                  <label for="contact-subject">{% translate "Subject" %}</label>
+                  <input id="contact-subject" name="subject" type="text" autocomplete="off" minlength="3" maxlength="120" value="{{ contact_form.subject.value|default_if_none:'' }}" required aria-describedby="contact-subject-error">
+                  <div class="contact-error" id="contact-subject-error">{{ contact_form.subject.errors }}</div>
+                </div>
+                <div class="contact-field">
+                  <label for="contact-message">{% translate "Message" %}</label>
+                  <textarea id="contact-message" name="message" rows="4" minlength="10" maxlength="4000" required aria-describedby="contact-message-error">{{ contact_form.message.value|default_if_none:'' }}</textarea>
+                  <div class="contact-error" id="contact-message-error">{{ contact_form.message.errors }}</div>
+                </div>
+                <div class="contact-honeypot" aria-hidden="true">
+                  <label for="contact-company">{% translate "Company website" %}</label>
+                  <input id="contact-company" name="website" type="text" tabindex="-1" autocomplete="off">
+                </div>
+                <label class="contact-consent">
+                  <input type="checkbox" name="consent" value="yes" required {% if contact_form.consent.value %}checked{% endif %}>
+                  <span>{% translate "I agree that my email may be used only to reply to this message." %}</span>
+                </label>
+                <div class="contact-error">{{ contact_form.consent.errors }}{{ contact_form.non_field_errors }}</div>
+                {% if turnstile_enabled and turnstile_site_key %}
+                  <div class="cf-turnstile" data-sitekey="{{ turnstile_site_key }}" data-theme="light" data-action="contact" data-response-field-name="turnstile_token"></div>
+                {% endif %}
+                <button class="landing-button contact-submit" type="submit">{% translate "Send message" %}<span aria-hidden="true">→</span></button>
+                <p class="contact-privacy">{% translate "Your email, subject and message are delivered through Resend only so 1415 Agri can reply; this site does not store them." %}</p>
+              </form>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+
+    <footer class="landing-footer">
+      <div class="landing-container">
+        <div class="landing-footer-main">
+          <div class="landing-footer-brand">
+            <a class="landing-brand landing-brand-footer" href="#top">
+              <svg class="landing-brand-mark" viewBox="0 0 44 44" aria-hidden="true">
+                <circle cx="22" cy="22" r="19" fill="none" stroke="currentColor" stroke-width="2.4" stroke-dasharray="76 16" transform="rotate(-32 22 22)" />
+                <path d="M21.9 29.4V19.1" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" />
+                <path d="M21.8 21.8c-5.7.1-8.8-2.7-9.5-7.4 5.3-.1 8.8 2.4 9.5 7.4Z" fill="currentColor" />
+                <path d="M22.1 20.2c5.6.1 8.6-2.7 9.3-7.2-5.2-.1-8.6 2.3-9.3 7.2Z" fill="currentColor" opacity=".78" />
+                <path d="M8.4 31.2c4.3-3.6 8.8-5.3 13.5-5.1-2.9 6.2-6.5 8.7-10.8 7.4" fill="currentColor" opacity=".72" />
+                <path d="M22.2 31.9c4.3-4.4 8.7-6.5 13.3-6.3-2.1 6.5-6.5 9.2-13.3 8.8" fill="currentColor" />
+              </svg>
+              <span class="landing-brand-name"><strong>1415</strong> Agri</span>
+            </a>
+            <p>{% translate "Satellite intelligence made clear for the people who grow." %}</p>
+          </div>
+
+          <div class="landing-footer-about">
+            <h2>{% translate "Why 1415?" %}</h2>
+            <p>{% translate "14 and 15 are the telephone area codes of the developers’ home regions—and of important Brazilian agricultural areas." %}</p>
+            <p>{% translate "The name also evokes an era when new technologies expanded our ability to navigate, map and understand territories." %}</p>
+          </div>
+        </div>
+
+        <div class="landing-references" aria-labelledby="references-title">
+          <h2 id="references-title">{% translate "Scientific references" %}</h2>
+          <ol>
+            <li id="reference-1">
+              <p>Mattoso, M. J.; Garcia, J. C.; Duarte, J. O.; Avellar, G. de. <cite>Lucratividade da Lavoura de Milho sob a Ótica da Agricultura de Precisão.</cite> Embrapa Milho e Sorgo. {% translate "Productivity range and field size: page 2." %}</p>
+              <a href="https://ainfo.cnptia.embrapa.br/digital/bitstream/item/33308/1/Lucratividade-lavoura.pdf" target="_blank" rel="noopener noreferrer">{% translate "Open Embrapa PDF" %}<span aria-hidden="true">↗</span></a>
+            </li>
+            <li id="reference-2">
+              <p>Jones, S. E. et al. <cite>Multi-sensor and multi-temporal high-throughput phenotyping for monitoring and early detection of water-limiting stress in soybean.</cite> The Plant Phenome Journal, 7(1), e70009, 2024. DOI: 10.1002/ppj2.70009. {% translate "See Methods §2.2 and the multispectral results in §3." %}</p>
+              <a href="https://pmc.ncbi.nlm.nih.gov/articles/PMC11698365/" target="_blank" rel="noopener noreferrer">{% translate "Open peer-reviewed article" %}<span aria-hidden="true">↗</span></a>
+            </li>
+            <li id="reference-3">
+              <p>European Space Agency / Copernicus. <cite>Sentinel-2 Mission and MSI spectral bands.</cite> {% translate "Official mission documentation; see the MSI instrument and spectral bands table." %}</p>
+              <a href="https://sentiwiki.copernicus.eu/web/s2-mission" target="_blank" rel="noopener noreferrer">{% translate "Open Sentinel-2 documentation" %}<span aria-hidden="true">↗</span></a>
+            </li>
+          </ol>
+        </div>
+
+        <div class="landing-footer-bottom">
+          <span>© 2026 1415 Agri</span>
+          <span>{% translate "Built in Brazil · Powered by Gemini · Running on Google Cloud" %}</span>
+          <a href="#top">{% translate "Back to top" %} <span aria-hidden="true">↑</span></a>
+        </div>
+      </div>
+    </footer>
+  </div>
+{% endblock %}
+
+{% block extra_scripts %}
+  {% if turnstile_enabled and turnstile_site_key %}<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>{% endif %}
+  <script src="{% static 'core/landing.js' %}" defer></script>
+{% endblock %}

@@ -3,9 +3,11 @@ from django.http import HttpRequest, HttpResponse, JsonResponse
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.utils.http import url_has_allowed_host_and_scheme
+from django.utils.translation import gettext as _
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from agriculture.checks import backend_configuration
+from core.contact import ContactMessage, ContactService, ContactServiceError
 from core.demo_auth import (
     begin_demo_session,
     credentials_are_configured,
@@ -14,11 +16,11 @@ from core.demo_auth import (
     is_demo_authenticated,
     verify_credentials,
 )
-from core.forms import LoginForm
+from core.forms import ContactForm, LoginForm
 
 
 def _safe_next_url(request: HttpRequest, candidate: str | None) -> str:
-    fallback = reverse("home")
+    fallback = reverse("demo")
     if not candidate:
         return fallback
     if url_has_allowed_host_and_scheme(
@@ -63,12 +65,76 @@ def login_view(request: HttpRequest) -> HttpResponse:
 @require_POST
 def logout_view(request: HttpRequest) -> HttpResponse:
     end_demo_session(request)
-    return redirect("login")
+    return redirect("home")
+
+
+@require_GET
+def landing_view(request: HttpRequest) -> HttpResponse:
+    return render(
+        request,
+        "core/landing.html",
+        _landing_context(
+            contact_sent=request.GET.get("contact") == "sent",
+        ),
+    )
+
+
+def _landing_context(
+    *,
+    contact_form: ContactForm | None = None,
+    contact_sent: bool = False,
+    contact_failed: bool = False,
+) -> dict[str, object]:
+    return {
+        "contact_form": contact_form or ContactForm(),
+        "contact_sent": contact_sent,
+        "contact_failed": contact_failed,
+        "turnstile_enabled": settings.CONTACT_TURNSTILE_ENABLED,
+        "turnstile_site_key": settings.CONTACT_TURNSTILE_SITE_KEY,
+    }
+
+
+@require_POST
+def contact_view(request: HttpRequest) -> HttpResponse:
+    form = ContactForm(request.POST)
+
+    # Silently accept honeypot submissions so automated senders do not learn
+    # how to bypass it. Nothing is sent and no submitted content is logged.
+    if request.POST.get("website", "").strip():
+        return redirect(f"{reverse('home')}?contact=sent#contact")
+
+    if not form.is_valid():
+        return _private_no_store(
+            render(
+                request,
+                "core/landing.html",
+                _landing_context(contact_form=form, contact_failed=True),
+                status=400,
+            )
+        )
+
+    try:
+        ContactService().submit(ContactMessage.from_cleaned_data(form.cleaned_data))
+    except ContactServiceError:
+        form.add_error(
+            None,
+            _("We could not send your message right now. Please try again."),
+        )
+        return _private_no_store(
+            render(
+                request,
+                "core/landing.html",
+                _landing_context(contact_form=form, contact_failed=True),
+                status=502,
+            )
+        )
+
+    return redirect(f"{reverse('home')}?contact=sent#contact")
 
 
 @require_GET
 @demo_login_required
-def home_view(request: HttpRequest) -> HttpResponse:
+def demo_view(request: HttpRequest) -> HttpResponse:
     return render(
         request,
         "core/home.html",
@@ -84,15 +150,40 @@ def _no_store(response: JsonResponse) -> JsonResponse:
     return response
 
 
+def _private_no_store(response: HttpResponse) -> HttpResponse:
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["Pragma"] = "no-cache"
+    return response
+
+
 @require_GET
 def healthz(request: HttpRequest) -> JsonResponse:  # noqa: ARG001
     return _no_store(JsonResponse({"status": "ok"}))
+
+
+def _contact_configuration_is_ready() -> bool:
+    delivery_values = (
+        settings.CONTACT_RESEND_API_KEY,
+        settings.CONTACT_TO_EMAIL,
+    )
+    if (
+        not settings.IS_PRODUCTION
+        and not settings.CONTACT_TURNSTILE_ENABLED
+        and not any(delivery_values)
+    ):
+        return True
+    if not all(delivery_values):
+        return False
+    if not settings.CONTACT_TURNSTILE_ENABLED:
+        return True
+    return all((settings.CONTACT_TURNSTILE_SITE_KEY, settings.CONTACT_TURNSTILE_SECRET_KEY))
 
 
 @require_GET
 def readyz(request: HttpRequest) -> JsonResponse:  # noqa: ARG001
     checks = {
         "demo_credentials": credentials_are_configured(),
+        "contact_delivery": _contact_configuration_is_ready(),
         **backend_configuration(),
     }
     ready = all(checks.values())

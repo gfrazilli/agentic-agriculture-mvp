@@ -11,7 +11,7 @@ when the Google Cloud CLI is installed.
 - one delete-protected Firestore Native database;
 - one rate-limited Cloud Tasks queue;
 - separate identities for web, worker, MCP, ADK, and task invocation;
-- three Secret Manager secrets;
+- six Secret Manager secrets, including Resend, Turnstile, and the private contact recipient available only to the web service;
 - four independently scaled Cloud Run services from one immutable image tag;
 - an optional global external classic Application Load Balancer for custom domains;
 - an optional monthly billing budget alert scoped to this project.
@@ -61,6 +61,10 @@ Run the four stages from the repository root:
 
 ```bash
 export DEMO_PASSWORD_HASH_FILE="$PWD/infra/gcp/.secrets/demo-password-hash.txt"
+export CONTACT_RESEND_API_KEY_FILE="$PWD/infra/gcp/.secrets/resend-api-key.txt"
+export CONTACT_TURNSTILE_SECRET_KEY_FILE="$PWD/infra/gcp/.secrets/turnstile-secret-key.txt"
+export CONTACT_TO_EMAIL_FILE="$PWD/infra/gcp/.secrets/contact-recipient.txt"
+export AA_CONTACT_TURNSTILE_SITE_KEY="replace-with-the-public-site-key"
 bash infra/gcp/bootstrap.sh
 bash infra/gcp/budget.sh
 bash infra/gcp/deploy.sh
@@ -73,9 +77,12 @@ hard-stop usage; the deployment also keeps every service at `min-instances=0`, c
 service's maximum instances, and limits the Sentinel queue to one concurrent dispatch.
 
 The bootstrap creates random Django and internal-task secrets when they do not exist. It
-requires the demo password hash through `DEMO_PASSWORD_HASH_FILE` or
-`DEMO_PASSWORD_HASH_VALUE`. Secret values are piped to Secret Manager over standard input and
-are never printed. Existing versions are preserved unless `AA_ROTATE_SECRETS=true` is set.
+requires the demo password hash, Resend API key, Turnstile secret, and private contact
+recipient through their `*_FILE` (preferred) or `*_VALUE` variables. Secret values are piped
+to Secret Manager over standard input and are never printed. Existing versions are preserved
+unless `AA_ROTATE_SECRETS=true` is set. The deploy requires
+`AA_CONTACT_TURNSTILE_SITE_KEY`, which is public and is stored as a normal Cloud Run
+environment variable.
 
 ## Windows Git Bash
 

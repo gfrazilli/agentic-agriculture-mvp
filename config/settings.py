@@ -1,4 +1,4 @@
-"""Django settings for the Agentic Agriculture bootstrap."""
+"""Django settings for the 1415 Agri application."""
 
 import os
 from pathlib import Path
@@ -107,10 +107,10 @@ ASGI_APPLICATION = "config.asgi.application"
 DATABASES = {"default": {"ENGINE": "django.db.backends.dummy"}}
 SESSION_ENGINE = "django.contrib.sessions.backends.signed_cookies"
 
-LANGUAGE_CODE = "pt-br"
+LANGUAGE_CODE = "en"
 LANGUAGES = [
-    ("pt-br", "Português (Brasil)"),
     ("en", "English"),
+    ("pt-br", "Português (Brasil)"),
 ]
 LOCALE_PATHS = [BASE_DIR / "locale"]
 TIME_ZONE = os.getenv("DJANGO_TIME_ZONE", "America/Sao_Paulo")
@@ -129,13 +129,32 @@ STORAGES = {
     }
 }
 
-PRODUCT_NAME = os.getenv("PRODUCT_NAME", "Agentic Agriculture").strip() or "Agentic Agriculture"
+PRODUCT_NAME = os.getenv("PRODUCT_NAME", "1415 Agri").strip() or "1415 Agri"
 DEMO_USERNAME = os.getenv("DEMO_USERNAME", "").strip()
 DEMO_PASSWORD_HASH = os.getenv("DEMO_PASSWORD_HASH", "").strip()
 PREPARED_DEMO_FIELD_ID, PREPARED_DEMO_ANALYSIS_ID = env_optional_uuid_pair(
     "AA_PREPARED_DEMO_FIELD_ID",
     "AA_PREPARED_DEMO_ANALYSIS_ID",
 )
+
+# Public contact form. Messages are never persisted by Django: validated
+# requests are verified with Turnstile and handed directly to Resend.
+CONTACT_TURNSTILE_ENABLED = env_bool("CONTACT_TURNSTILE_ENABLED", IS_PRODUCTION)
+CONTACT_TURNSTILE_SITE_KEY = os.getenv("CONTACT_TURNSTILE_SITE_KEY", "").strip()
+CONTACT_TURNSTILE_SECRET_KEY = os.getenv("CONTACT_TURNSTILE_SECRET_KEY", "").strip()
+CONTACT_TURNSTILE_HOSTNAMES = env_list(
+    "CONTACT_TURNSTILE_HOSTNAMES",
+    "1415agri.com,www.1415agri.com",
+)
+CONTACT_TURNSTILE_ACTION = os.getenv("CONTACT_TURNSTILE_ACTION", "contact").strip() or "contact"
+CONTACT_TURNSTILE_TIMEOUT_SECONDS = env_int("CONTACT_TURNSTILE_TIMEOUT_SECONDS", 8)
+CONTACT_RESEND_API_KEY = os.getenv("CONTACT_RESEND_API_KEY", "").strip()
+CONTACT_RESEND_TIMEOUT_SECONDS = env_int("CONTACT_RESEND_TIMEOUT_SECONDS", 10)
+CONTACT_FROM_EMAIL = (
+    os.getenv("CONTACT_FROM_EMAIL", "1415 Agri <contato@1415agri.com>").strip()
+    or "1415 Agri <contato@1415agri.com>"
+)
+CONTACT_TO_EMAIL = os.getenv("CONTACT_TO_EMAIL", "").strip()
 
 SESSION_COOKIE_NAME = "agentic_agriculture_session"
 SESSION_COOKIE_AGE = env_int("DJANGO_SESSION_COOKIE_AGE", 8 * 60 * 60)

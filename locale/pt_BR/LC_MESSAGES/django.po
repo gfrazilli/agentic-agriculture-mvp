@@ -2,7 +2,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: agentic-agriculture-mvp 0.1.0\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2026-08-29 00:00-0300\n"
+"POT-Creation-Date: 2026-08-30 10:52+0000\n"
 "PO-Revision-Date: 2026-08-29 00:00-0300\n"
 "Last-Translator: Agentic Agriculture\n"
 "Language-Team: Portuguese (Brazil)\n"
@@ -12,69 +12,38 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Plural-Forms: nplurals=2; plural=(n > 1);\n"
 
-msgid "Language"
-msgstr "Idioma"
-
-msgid "A secure foundation for the MVP."
-msgstr "Uma base segura para o MVP."
-
-#, python-format
-msgid "Sign in · %(product_name)s"
-msgstr "Entrar · %(product_name)s"
-
-msgid "Demonstration access"
-msgstr "Acesso de demonstração"
-
-#, python-format
-msgid "Sign in to %(product_name)s"
-msgstr "Entre no %(product_name)s"
-
-msgid "Use the demonstration credentials configured for this environment."
-msgstr "Use as credenciais de demonstração configuradas para este ambiente."
-
-msgid "Invalid credentials. Try again."
-msgstr "Credenciais inválidas. Tente novamente."
-
-msgid "Demonstration access is not configured yet."
-msgstr "O acesso de demonstração ainda não foi configurado."
-
 msgid "Username"
 msgstr "Usuário"
 
 msgid "Password"
 msgstr "Senha"
 
-msgid "Continue"
-msgstr "Continuar"
+msgid "Email"
+msgstr "E-mail"
 
-#, python-format
-msgid "Home · %(product_name)s"
-msgstr "Início · %(product_name)s"
+msgid "Subject"
+msgstr "Assunto"
 
-msgid "Agricultural foundation"
-msgstr "Base agrícola"
+msgid "Message"
+msgstr "Mensagem"
 
-msgid "The data layer is ready."
-msgstr "A camada de dados está pronta."
+msgid "I agree that my email may be used only to reply to this message."
+msgstr "Concordo que meu e-mail seja usado apenas para responder a esta mensagem."
 
-#, python-format
-msgid "Welcome, %(username)s. Fields, boundaries, analyses and agent-session contracts are active."
-msgstr "Boas-vindas, %(username)s. Os contratos de talhões, limites, análises e sessões do agente estão ativos."
+msgid "Your email, subject and message are delivered through Resend only so 1415 Agri can reply; this site does not store them."
+msgstr "Seu e-mail, assunto e mensagem são enviados pelo Resend apenas para que a 1415 Agri possa responder; este site não os armazena."
 
-msgid "Persistence configured"
-msgstr "Persistência configurada"
+msgid "Enter a subject on one line."
+msgstr "Digite o assunto em uma única linha."
 
-msgid "Production agricultural data uses Firestore."
-msgstr "Os dados agrícolas de produção usam Firestore."
+msgid "Unable to submit this message."
+msgstr "Não foi possível enviar esta mensagem."
 
-msgid "Ready for the interface"
-msgstr "Pronto para a interface"
+msgid "We could not send your message right now. Please try again."
+msgstr "Não foi possível enviar sua mensagem agora. Tente novamente."
 
-msgid "The next interface can consume the stable versioned API and fixtures."
-msgstr "A próxima interface pode consumir a API versionada e os exemplos estáveis."
-
-msgid "Sign out"
-msgstr "Sair"
+msgid "Language"
+msgstr "Idioma"
 
 # Farmer interface (PR3A)
 msgid "Satellite signals translated into practical field zones."
@@ -162,6 +131,9 @@ msgstr "Marque sua lavoura, compare seu histórico espectral e receba um mapa cl
 #, python-format
 msgid "Connected as %(username)s"
 msgstr "Conectado como %(username)s"
+
+msgid "Sign out"
+msgstr "Sair"
 
 msgid "Analysis steps"
 msgstr "Etapas da análise"
@@ -354,3 +326,427 @@ msgstr "Mapear outra lavoura"
 
 msgid "Download zone GeoJSON"
 msgstr "Baixar GeoJSON das zonas"
+
+msgid "1415 Agri · Know where your field deserves attention"
+msgstr "1415 Agri · Descubra onde sua lavoura merece atenção"
+
+msgid "Satellite monitoring that turns a season of Sentinel-2 evidence into clear priorities for field inspection, with Gemini."
+msgstr "Monitoramento por satélite que transforma uma safra de evidências do Sentinel-2 em prioridades claras para inspeção em campo, com o Gemini."
+
+msgid "Know where your field deserves attention."
+msgstr "Descubra onde sua lavoura merece atenção."
+
+msgid "Skip to content"
+msgstr "Pular para o conteúdo"
+
+msgid "1415 Agri home"
+msgstr "Página inicial da 1415 Agri"
+
+msgid "Open navigation"
+msgstr "Abrir navegação"
+
+msgid "Close navigation"
+msgstr "Fechar navegação"
+
+msgid "Main navigation"
+msgstr "Navegação principal"
+
+msgid "How it works"
+msgstr "Como funciona"
+
+msgid "Technology"
+msgstr "Tecnologia"
+
+msgid "Science"
+msgstr "Ciência"
+
+msgid "About"
+msgstr "Sobre"
+
+msgid "View demo"
+msgstr "Ver demonstração"
+
+msgid "Smart satellite monitoring · Powered by Gemini"
+msgstr "Monitoramento inteligente por satélite · Powered by Gemini"
+
+msgid "Know where your field deserves attention. In minutes."
+msgstr "Descubra onde sua lavoura merece atenção. Em poucos minutos."
+
+msgid "Satellites follow your field over time. Gemini connects what changed and turns an analysis once slow and restricted to specialists into a clear view of what deserves attention—so you can decide where to look first."
+msgstr "Os satélites acompanham sua lavoura ao longo do tempo. O Gemini conecta o que mudou e transforma uma análise antes demorada e restrita a especialistas em uma visão clara do que merece atenção — para que você decida onde olhar primeiro."
+
+msgid "Analyze a field"
+msgstr "Analisar uma lavoura"
+
+msgid "See how it works"
+msgstr "Ver como funciona"
+
+msgid "Platform assurances"
+msgstr "Garantias da plataforma"
+
+msgid "Real Sentinel-2 data"
+msgstr "Sentinel-2 real"
+
+msgid "Traceable evidence"
+msgstr "Evidências rastreáveis"
+
+msgid "Farmer in control"
+msgstr "Produtor no controle"
+
+msgid "1415 Agri analysis preview showing development zones and a Gemini explanation"
+msgstr "Prévia de uma análise da 1415 Agri com zonas de desenvolvimento e uma explicação do Gemini"
+
+msgid "Analysis complete"
+msgstr "Análise concluída"
+
+msgid "FIELD ANALYSIS"
+msgstr "ANÁLISE DA LAVOURA"
+
+msgid "North field · Soybean"
+msgstr "Talhão norte · Soja"
+
+msgid "Relative development zones"
+msgstr "Zonas de desenvolvimento relativo"
+
+msgid "A sample field divided into four zones, with one area highlighted for inspection."
+msgstr "Uma lavoura de exemplo dividida em quatro zonas, com uma área destacada para inspeção."
+
+msgid "Priority inspection"
+msgstr "Inspeção prioritária"
+
+msgid "clear observations"
+msgstr "observações sem nuvens"
+
+msgid "spectral indices"
+msgstr "índices espectrais"
+
+msgid "priority area"
+msgstr "área prioritária"
+
+msgid "Gemini explanation"
+msgstr "Explicação do Gemini"
+
+msgid "Zone 4 deserves a closer look"
+msgstr "A zona 4 merece um olhar mais atento"
+
+msgid "This area developed differently from the rest of the field across the selected dates. Its combined NDVI, NDRE and NDMI history makes it the clearest priority for your next field inspection."
+msgstr "Esta área se desenvolveu de forma diferente do restante da lavoura ao longo das datas selecionadas. Seu histórico combinado de NDVI, NDRE e NDMI faz dela a prioridade mais clara para sua próxima inspeção em campo."
+
+msgid "Why this area?"
+msgstr "Por que esta área?"
+
+msgid "Consistent difference across dates"
+msgstr "Diferença consistente entre as datas"
+
+msgid "Signals agree across spectra"
+msgstr "Os sinais coincidem entre os espectros"
+
+msgid "Original images remain linked"
+msgstr "As imagens originais permanecem vinculadas"
+
+msgid "Ask about this analysis"
+msgstr "Pergunte sobre esta análise"
+
+msgid "The challenge"
+msgstr "O desafio"
+
+msgid "Your field is not an average."
+msgstr "A sua lavoura não é uma média."
+
+msgid "Within the same field, differences in soil, moisture, fertility, weather and management can make each region develop in a different way."
+msgstr "Dentro do mesmo talhão, diferenças de solo, umidade, fertilidade, clima e manejo podem fazer cada região se desenvolver de uma maneira."
+
+msgid "1415 Agri helps you find where those differences are emerging—and where it is worth investigating first."
+msgstr "A 1415 Agri ajuda você a encontrar onde essas diferenças estão surgindo e onde vale a pena investigar primeiro."
+
+msgid "tonnes of corn per hectare"
+msgstr "toneladas de milho por hectare"
+
+msgid "within a single 38-hectare field documented by Embrapa researchers."
+msgstr "dentro de uma única área de 38 hectares documentada por pesquisadores da Embrapa."
+
+msgid "Read the source"
+msgstr "Consultar a fonte"
+
+msgid "From orbit to your next inspection."
+msgstr "Da órbita à próxima inspeção."
+
+msgid "A guided path from a field boundary to a clear priority."
+msgstr "Um caminho guiado, da delimitação da lavoura a uma prioridade clara."
+
+msgid "Select your field"
+msgstr "Selecione sua lavoura"
+
+msgid "Outline the field and tell us the crop and period you want to follow."
+msgstr "Delimite o talhão e informe a cultura e o período que deseja acompanhar."
+
+msgid "Request an analysis"
+msgstr "Peça uma análise"
+
+msgid "The platform gathers Sentinel-2 images throughout the season and compares how each region developed."
+msgstr "A plataforma reúne imagens do Sentinel-2 ao longo da safra e compara como cada região se desenvolveu."
+
+msgid "Talk to the results"
+msgstr "Converse com os resultados"
+
+msgid "Gemini connects the evidence, highlights what changed and explains why an area deserves attention."
+msgstr "O Gemini conecta as evidências, destaca o que mudou e explica por que determinada área merece atenção."
+
+msgid "You receive a clear priority to guide the next field inspection."
+msgstr "Você recebe uma prioridade clara para orientar a próxima inspeção em campo."
+
+msgid "Why Gemini"
+msgstr "Por que Gemini"
+
+msgid "A whole season of data. One explanation that makes sense."
+msgstr "Uma safra inteira de dados. Uma explicação que faz sentido."
+
+msgid "Finding cloud-free images, comparing dates and interpreting signals invisible to the eye normally takes specialized tools and hours of work."
+msgstr "Encontrar imagens sem nuvens, comparar diferentes datas e interpretar sinais invisíveis ao olho normalmente exige ferramentas especializadas e muitas horas de trabalho."
+
+msgid "Gemini changes that experience. It understands what you want to investigate, coordinates the necessary tools, connects the evidence and turns complex results into a clear conversation."
+msgstr "O Gemini muda essa experiência. Ele entende o que você deseja investigar, coordena as ferramentas necessárias, relaciona as evidências encontradas e transforma resultados complexos em uma conversa clara."
+
+msgid "Compares different moments in the season"
+msgstr "Compara diferentes momentos da safra"
+
+msgid "Connects signals from different spectra"
+msgstr "Relaciona sinais de diferentes espectros"
+
+msgid "Explains why an area was highlighted"
+msgstr "Explica por que uma área foi destacada"
+
+msgid "Answers follow-up questions about the analysis"
+msgstr "Responde a novas perguntas sobre a análise"
+
+msgid "Keeps evidence linked to original imagery"
+msgstr "Mantém as evidências ligadas às imagens originais"
+
+msgid "Gemini coordinates satellite search, spectral analysis and an evidence-based answer"
+msgstr "O Gemini coordena a busca por imagens de satélite, a análise espectral e uma resposta baseada em evidências"
+
+msgid "Your question"
+msgstr "Sua pergunta"
+
+msgid "Where should I inspect first?"
+msgstr "Onde devo inspecionar primeiro?"
+
+msgid "Agent coordinator"
+msgstr "Agente coordenador"
+
+msgid "Imagery"
+msgstr "Imagens"
+
+msgid "Spectra"
+msgstr "Espectros"
+
+msgid "Dates · zones"
+msgstr "Datas · zonas"
+
+msgid "A priority you can question, inspect and trace back to its source."
+msgstr "Uma prioridade que você pode questionar, inspecionar e rastrear até a fonte."
+
+msgid "Beyond what eyes can see"
+msgstr "Além do que os olhos veem"
+
+msgid "The field also communicates in invisible spectra."
+msgstr "A lavoura também se comunica em espectros invisíveis."
+
+msgid "Sentinel-2 records reflected light beyond the visible range. Those bands help compare how vegetation changes across space and time."
+msgstr "O Sentinel-2 registra a luz refletida além do espectro visível. Essas bandas ajudam a comparar como a vegetação muda no espaço e ao longo do tempo."
+
+msgid "VISIBLE"
+msgstr "VISÍVEL"
+
+msgid "INVISIBLE"
+msgstr "INVISÍVEL"
+
+msgid "Red-edge"
+msgstr "Red-edge"
+
+msgid "Can reveal changes related to chlorophyll and the physiological state of vegetation."
+msgstr "Pode revelar mudanças relacionadas à clorofila e ao estado fisiológico da vegetação."
+
+msgid "Near-infrared"
+msgstr "Infravermelho próximo"
+
+msgid "Helps observe vegetation vigor, canopy density and structure."
+msgstr "Ajuda a observar o vigor, a densidade e a estrutura do dossel."
+
+msgid "Responds to vegetation water content and can reveal changes compatible with water stress."
+msgstr "Responde ao conteúdo de água da vegetação e pode revelar mudanças compatíveis com estresse hídrico."
+
+msgid "18 days"
+msgstr "18 dias"
+
+msgid "Research evidence"
+msgstr "Evidência científica"
+
+msgid "A signal before the symptom was visible"
+msgstr "Um sinal antes de o sintoma ficar visível"
+
+msgid "In a soybean experiment using multispectral UAV sensors, red-edge differentiated groups at 46 days after planting. Visible wilting appeared at 64 days—18 days later."
+msgstr "Em um experimento com soja usando sensores multiespectrais em drone, o red-edge diferenciou grupos aos 46 dias após o plantio. O murchamento visível apareceu aos 64 dias — 18 dias depois."
+
+msgid "This is evidence of pre-visual detection under experimental conditions, not a guarantee of the same lead time from Sentinel-2 or 1415 Agri."
+msgstr "Essa é uma evidência de detecção pré-visual em condições experimentais, não uma garantia da mesma antecedência pelo Sentinel-2 ou pela 1415 Agri."
+
+msgid "See the peer-reviewed study"
+msgstr "Consultar o estudo revisado por pares"
+
+msgid "Control and confidence"
+msgstr "Controle e confiança"
+
+msgid "Satellites measure."
+msgstr "Os satélites medem."
+
+msgid "Gemini reasons."
+msgstr "O Gemini raciocina."
+
+msgid "You decide."
+msgstr "O produtor decide."
+
+msgid "1415 Agri does not try to diagnose a disease from space."
+msgstr "A 1415 Agri não tenta diagnosticar uma doença pelo espaço."
+
+msgid "It identifies areas that developed differently, presents the evidence and helps you formulate a more objective investigation."
+msgstr "Ela identifica áreas que se desenvolveram de maneira diferente, apresenta as evidências e ajuda você a formular uma investigação mais objetiva."
+
+msgid "The cause is still confirmed in the field, by the people who know it."
+msgstr "A causa continua sendo confirmada no campo, por quem conhece a lavoura."
+
+msgid "Decision support, never a black-box verdict."
+msgstr "Apoio à decisão, nunca um veredito de caixa-preta."
+
+msgid "Our vision"
+msgstr "Nossa visão"
+
+msgid "The next great frontier of technology grows in the field."
+msgstr "A próxima grande fronteira da tecnologia cresce no campo."
+
+msgid "Producing food with greater resilience, predictability and efficiency will become increasingly important."
+msgstr "Produzir alimentos com mais resiliência, previsibilidade e eficiência será cada vez mais importante."
+
+msgid "1415 Agri was created to make geospatial intelligence accessible—combining satellites, science and Gemini’s reasoning power."
+msgstr "A 1415 Agri nasce para tornar a inteligência geoespacial acessível — combinando satélites, ciência e o poder de raciocínio do Gemini."
+
+msgid "Start with one field"
+msgstr "Comece com uma área"
+
+msgid "Your field is already producing signals. Start understanding them."
+msgstr "Sua lavoura já está produzindo sinais. Comece a entendê-los."
+
+msgid "Follow its development and discover where to look first."
+msgstr "Acompanhe sua evolução e descubra onde olhar primeiro."
+
+msgid "Talk to the team"
+msgstr "Falar com a equipe"
+
+msgid "CONTACT"
+msgstr "CONTATO"
+
+msgid "Tell us what you want to monitor."
+msgstr "Conte o que você deseja monitorar."
+
+msgid "We will reply by email."
+msgstr "Responderemos por e-mail."
+
+msgid "Message sent. We will get back to you soon."
+msgstr "Mensagem enviada. Entraremos em contato em breve."
+
+msgid "Check the fields below or try again in a moment."
+msgstr "Confira os campos abaixo ou tente novamente em alguns instantes."
+
+msgid "Company website"
+msgstr "Site da empresa"
+
+msgid "Send message"
+msgstr "Enviar mensagem"
+
+msgid "Satellite intelligence made clear for the people who grow."
+msgstr "Inteligência de satélite de forma clara para quem produz."
+
+msgid "Why 1415?"
+msgstr "Por que 1415?"
+
+msgid "14 and 15 are the telephone area codes of the developers’ home regions—and of important Brazilian agricultural areas."
+msgstr "14 e 15 são os DDDs das regiões de origem dos desenvolvedores — e também de importantes áreas agrícolas brasileiras."
+
+msgid "The name also evokes an era when new technologies expanded our ability to navigate, map and understand territories."
+msgstr "O nome também evoca uma época em que novas tecnologias ampliaram nossa capacidade de navegar, mapear e compreender territórios."
+
+msgid "Scientific references"
+msgstr "Referências científicas"
+
+msgid "Productivity range and field size: page 2."
+msgstr "Faixa de produtividade e dimensão da área: página 2."
+
+msgid "Open Embrapa PDF"
+msgstr "Abrir PDF da Embrapa"
+
+msgid "See Methods §2.2 and the multispectral results in §3."
+msgstr "Consulte Métodos §2.2 e os resultados multiespectrais na seção §3."
+
+msgid "Open peer-reviewed article"
+msgstr "Abrir artigo revisado por pares"
+
+msgid "Official mission documentation; see the MSI instrument and spectral bands table."
+msgstr "Documentação oficial da missão; consulte o instrumento MSI e a tabela de bandas espectrais."
+
+msgid "Open Sentinel-2 documentation"
+msgstr "Abrir documentação do Sentinel-2"
+
+msgid "Built in Brazil · Powered by Gemini · Running on Google Cloud"
+msgstr "Criado no Brasil · Powered by Gemini · Executado no Google Cloud"
+
+msgid "Back to top"
+msgstr "Voltar ao topo"
+
+#, python-format
+msgid "Sign in · %(product_name)s"
+msgstr "Entrar · %(product_name)s"
+
+msgid "Demonstration access"
+msgstr "Acesso de demonstração"
+
+#, python-format
+msgid "Sign in to %(product_name)s"
+msgstr "Entre no %(product_name)s"
+
+msgid "Use the demonstration credentials configured for this environment."
+msgstr "Use as credenciais de demonstração configuradas para este ambiente."
+
+msgid "Invalid credentials. Try again."
+msgstr "Credenciais inválidas. Tente novamente."
+
+msgid "Demonstration access is not configured yet."
+msgstr "O acesso de demonstração ainda não foi configurado."
+
+msgid "Continue"
+msgstr "Continuar"
+
+#~ msgid "A secure foundation for the MVP."
+#~ msgstr "Uma base segura para o MVP."
+
+#, python-format
+#~ msgid "Home · %(product_name)s"
+#~ msgstr "Início · %(product_name)s"
+
+#~ msgid "Agricultural foundation"
+#~ msgstr "Base agrícola"
+
+#~ msgid "The data layer is ready."
+#~ msgstr "A camada de dados está pronta."
+
+#, python-format
+#~ msgid "Welcome, %(username)s. Fields, boundaries, analyses and agent-session contracts are active."
+#~ msgstr "Boas-vindas, %(username)s. Os contratos de talhões, limites, análises e sessões do agente estão ativos."
+
+#~ msgid "Persistence configured"
+#~ msgstr "Persistência configurada"
+
+#~ msgid "Production agricultural data uses Firestore."
+#~ msgstr "Os dados agrícolas de produção usam Firestore."
+
+#~ msgid "The next interface can consume the stable versioned API and fixtures."
+#~ msgstr "A próxima interface pode consumir a API versionada e os exemplos estáveis."

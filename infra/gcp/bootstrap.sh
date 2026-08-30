@@ -57,6 +57,9 @@ TASK_INVOKER_SA_ID="${AA_TASK_INVOKER_SERVICE_ACCOUNT_ID:-aa-task-invoker}"
 DJANGO_SECRET_ID="${AA_DJANGO_SECRET_ID:-agentic-agriculture-django-secret-key}"
 DEMO_PASSWORD_SECRET_ID="${AA_DEMO_PASSWORD_SECRET_ID:-agentic-agriculture-demo-password-hash}"
 TASK_SECRET_ID="${AA_TASK_SECRET_ID:-agentic-agriculture-task-shared-secret}"
+RESEND_SECRET_ID="${AA_RESEND_SECRET_ID:-agentic-agriculture-resend-api-key}"
+TURNSTILE_SECRET_ID="${AA_TURNSTILE_SECRET_ID:-agentic-agriculture-turnstile-secret-key}"
+CONTACT_RECIPIENT_SECRET_ID="${AA_CONTACT_RECIPIENT_SECRET_ID:-agentic-agriculture-contact-to-email}"
 ROTATE_SECRETS="${AA_ROTATE_SECRETS:-false}"
 
 [[ -n "$PROJECT_ID" ]] || die "Set GCP_PROJECT_ID before running this script."
@@ -363,6 +366,16 @@ validate_secret_input() {
             [[ "$SECRET_INPUT_VALUE" =~ ^[[:graph:]]+$ ]] || \
                 die "Cloud Tasks shared secret must use printable ASCII without spaces."
             ;;
+        provider-key)
+            ((length >= 16)) || die "Provider key is unexpectedly short."
+            [[ "$SECRET_INPUT_VALUE" =~ ^[[:graph:]]+$ ]] || \
+                die "Provider key must use printable ASCII without spaces."
+            ;;
+        email)
+            ((length <= 254)) || die "Contact recipient email is too long."
+            [[ "$SECRET_INPUT_VALUE" =~ ^[^[:space:]@]+@[^[:space:]@]+\.[^[:space:]@]+$ ]] || \
+                die "Contact recipient must be a single valid email address."
+            ;;
         *)
             die "Unknown secret validation mode: $validation_mode"
             ;;
@@ -426,6 +439,15 @@ ensure_secret \
 ensure_secret \
     "$TASK_SECRET_ID" CLOUD_TASKS_SHARED_SECRET_FILE CLOUD_TASKS_SHARED_SECRET_VALUE \
     random-task task
+ensure_secret \
+    "$RESEND_SECRET_ID" CONTACT_RESEND_API_KEY_FILE CONTACT_RESEND_API_KEY_VALUE \
+    required provider-key
+ensure_secret \
+    "$TURNSTILE_SECRET_ID" CONTACT_TURNSTILE_SECRET_KEY_FILE CONTACT_TURNSTILE_SECRET_KEY_VALUE \
+    required provider-key
+ensure_secret \
+    "$CONTACT_RECIPIENT_SECRET_ID" CONTACT_TO_EMAIL_FILE CONTACT_TO_EMAIL_VALUE \
+    required email
 
 add_secret_role() {
     local secret_id=$1
@@ -442,6 +464,9 @@ log "Granting secret access only to the runtime identities that need it."
 add_secret_role "$DJANGO_SECRET_ID" "$WEB_SA"
 add_secret_role "$DEMO_PASSWORD_SECRET_ID" "$WEB_SA"
 add_secret_role "$TASK_SECRET_ID" "$WEB_SA"
+add_secret_role "$RESEND_SECRET_ID" "$WEB_SA"
+add_secret_role "$TURNSTILE_SECRET_ID" "$WEB_SA"
+add_secret_role "$CONTACT_RECIPIENT_SECRET_ID" "$WEB_SA"
 add_secret_role "$DJANGO_SECRET_ID" "$WORKER_SA"
 add_secret_role "$TASK_SECRET_ID" "$WORKER_SA"
 add_secret_role "$DJANGO_SECRET_ID" "$AGENT_SA"
