@@ -24,6 +24,7 @@
         dateInvalid: "A data final deve ser posterior ao plantio e a safra não pode passar de 365 dias.",
         coordinateInvalid: "Informe uma latitude e longitude válidas.",
         geometryInvalid: "Revise as coordenadas do polígono.",
+        preparedDemoLoaded: "Resultado Sentinel preparado carregado.",
         lower: "Desenvolvimento relativo menor",
         similar: "Desenvolvimento relativo semelhante",
         higher: "Desenvolvimento relativo maior",
@@ -71,6 +72,7 @@
         dateInvalid: "The end date must follow planting and the season cannot exceed 365 days.",
         coordinateInvalid: "Enter a valid latitude and longitude.",
         geometryInvalid: "Review the polygon coordinates.",
+        preparedDemoLoaded: "Prepared Sentinel result loaded.",
         lower: "Lower relative development",
         similar: "Similar relative development",
         higher: "Higher relative development",
@@ -230,19 +232,49 @@
     if (input) input.value = value ?? "";
   }
 
+  function populateFieldForm(field) {
+    setFieldValue("name", field.name);
+    setFieldValue("crop", field.crop);
+    setFieldValue("season_start", field.season_start);
+    setFieldValue("season_end", field.season_end);
+    setFieldValue("estimated_area_ha", field.estimated_area_ha);
+    setFieldValue("longitude", field.reference_location.coordinates[0]);
+    setFieldValue("latitude", field.reference_location.coordinates[1]);
+  }
+
   async function loadDemonstrationField() {
     const button = app.querySelector("#use-demo");
     setBusy(button, true);
     clearAlert();
     try {
+      let preparedDemo = null;
+      try {
+        preparedDemo = await apiRequest(copy.preparedDemoUrl);
+      } catch (error) {
+        const preparedDemoUnavailable = error instanceof ApiRequestError
+          && error.status === 404
+          && error.code === "prepared_demo_unavailable";
+        if (!preparedDemoUnavailable) throw error;
+      }
+
+      if (preparedDemo) {
+        state.field = preparedDemo.field;
+        state.analysis = preparedDemo.analysis;
+        state.persistedAnalysis = preparedDemo.analysis;
+        state.guidedResult = false;
+        state.boundary = null;
+        state.boundaryProjection = null;
+        state.agentSession = null;
+        state.agentSessionPromise = null;
+        populateFieldForm(preparedDemo.field);
+        updateProgress(preparedDemo.analysis);
+        app.querySelector("#location-status").textContent = runtimeCopy.preparedDemoLoaded;
+        renderResult(preparedDemo.analysis);
+        return;
+      }
+
       const fixture = await apiRequest(copy.fixtureFieldUrl);
-      setFieldValue("name", fixture.name);
-      setFieldValue("crop", fixture.crop);
-      setFieldValue("season_start", fixture.season_start);
-      setFieldValue("season_end", fixture.season_end);
-      setFieldValue("estimated_area_ha", fixture.estimated_area_ha);
-      setFieldValue("longitude", fixture.reference_location.coordinates[0]);
-      setFieldValue("latitude", fixture.reference_location.coordinates[1]);
+      populateFieldForm(fixture);
       app.querySelector("#location-status").textContent = copy.copyDemoLoaded;
     } catch (error) {
       showAlert(errorMessage(error));

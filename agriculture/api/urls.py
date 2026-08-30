@@ -1,10 +1,11 @@
 from django.urls import path
 
-from agriculture.api import views
+from agriculture.api import prepared_demo, views
 
 app_name = "agriculture_api"
 
 urlpatterns = [
+    path("demo/prepared/", prepared_demo.prepared_demo, name="prepared-demo"),
     path("fields/", views.fields_collection, name="fields"),
     path("fields/<uuid:field_id>/", views.field_detail, name="field-detail"),
     path(
