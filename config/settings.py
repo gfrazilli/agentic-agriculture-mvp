@@ -2,6 +2,7 @@
 
 import os
 from pathlib import Path
+from uuid import UUID
 
 from django.core.exceptions import ImproperlyConfigured
 
@@ -32,6 +33,21 @@ def env_int(name: str, default: int) -> int:
 
 def env_list(name: str, default: str = "") -> list[str]:
     return [item.strip() for item in os.getenv(name, default).split(",") if item.strip()]
+
+
+def env_optional_uuid_pair(first_name: str, second_name: str) -> tuple[UUID | None, UUID | None]:
+    first_value = os.getenv(first_name, "").strip()
+    second_value = os.getenv(second_name, "").strip()
+    if bool(first_value) != bool(second_value):
+        raise ImproperlyConfigured(f"{first_name} and {second_name} must be set together.")
+    if not first_value:
+        return None, None
+    try:
+        return UUID(first_value), UUID(second_value)
+    except ValueError as exc:
+        raise ImproperlyConfigured(
+            f"{first_name} and {second_name} must be valid UUID values."
+        ) from exc
 
 
 APP_ENV = os.getenv("APP_ENV", "development").strip().lower()
@@ -116,6 +132,10 @@ STORAGES = {
 PRODUCT_NAME = os.getenv("PRODUCT_NAME", "Agentic Agriculture").strip() or "Agentic Agriculture"
 DEMO_USERNAME = os.getenv("DEMO_USERNAME", "").strip()
 DEMO_PASSWORD_HASH = os.getenv("DEMO_PASSWORD_HASH", "").strip()
+PREPARED_DEMO_FIELD_ID, PREPARED_DEMO_ANALYSIS_ID = env_optional_uuid_pair(
+    "AA_PREPARED_DEMO_FIELD_ID",
+    "AA_PREPARED_DEMO_ANALYSIS_ID",
+)
 
 SESSION_COOKIE_NAME = "agentic_agriculture_session"
 SESSION_COOKIE_AGE = env_int("DJANGO_SESSION_COOKIE_AGE", 8 * 60 * 60)

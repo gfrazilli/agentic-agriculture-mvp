@@ -9,6 +9,8 @@
 #   export AA_IMAGE_TAG="$(git rev-parse --short=12 HEAD)"
 #   export AA_SKIP_BUILD=true       # reuse the resolved AA_IMAGE_URI/tag
 #   export AA_IMAGE_URI="region-docker.pkg.dev/project/repo/app:tag"
+#   export AA_PREPARED_DEMO_FIELD_ID="00000000-0000-0000-0000-000000000000"
+#   export AA_PREPARED_DEMO_ANALYSIS_ID="00000000-0000-0000-0000-000000000000"
 
 set -Eeuo pipefail
 IFS=$'\n\t'
@@ -72,18 +74,29 @@ DEMO_USERNAME="${AA_DEMO_USERNAME:-demo}"
 PRODUCT_NAME="${AA_PRODUCT_NAME:-Agentic Agriculture}"
 AGENT_MODEL="${AA_AGENT_MODEL:-gemini-3.5-flash}"
 SKIP_BUILD="${AA_SKIP_BUILD:-false}"
+PREPARED_DEMO_FIELD_ID="${AA_PREPARED_DEMO_FIELD_ID:-}"
+PREPARED_DEMO_ANALYSIS_ID="${AA_PREPARED_DEMO_ANALYSIS_ID:-}"
 
 [[ -n "$PROJECT_ID" ]] || die "Set GCP_PROJECT_ID before running this script."
 [[ "$PROJECT_ID" =~ ^[a-z][a-z0-9-]{4,28}[a-z0-9]$ ]] || die "GCP_PROJECT_ID is invalid."
 [[ "$REGION" =~ ^[a-z]+[a-z0-9-]*[0-9]$ ]] || die "GCP_REGION is invalid."
 [[ "$SKIP_BUILD" == "true" || "$SKIP_BUILD" == "false" ]] || \
     die "AA_SKIP_BUILD must be true or false."
+if [[ -n "$PREPARED_DEMO_FIELD_ID" || -n "$PREPARED_DEMO_ANALYSIS_ID" ]]; then
+    [[ -n "$PREPARED_DEMO_FIELD_ID" && -n "$PREPARED_DEMO_ANALYSIS_ID" ]] || \
+        die "AA_PREPARED_DEMO_FIELD_ID and AA_PREPARED_DEMO_ANALYSIS_ID must be set together."
+    for prepared_demo_id in "$PREPARED_DEMO_FIELD_ID" "$PREPARED_DEMO_ANALYSIS_ID"; do
+        [[ "$prepared_demo_id" =~ ^[0-9A-Fa-f]{8}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{4}-[0-9A-Fa-f]{12}$ ]] || \
+            die "Prepared demonstration IDs must be valid UUID values."
+    done
+fi
 
 # The alternate gcloud dictionary delimiter below is '|'. Reject it in values
 # controlled by the caller so an environment value cannot inject another key.
 for value in \
     "$PROJECT_ID" "$REGION" "$ARTIFACT_REPOSITORY" "$ARTIFACT_BUCKET" "$TASK_QUEUE" \
-    "$DEMO_USERNAME" "$PRODUCT_NAME" "$AGENT_MODEL"; do
+    "$DEMO_USERNAME" "$PRODUCT_NAME" "$AGENT_MODEL" \
+    "$PREPARED_DEMO_FIELD_ID" "$PREPARED_DEMO_ANALYSIS_ID"; do
     [[ "$value" != *'|'* && "$value" != *$'\n'* && "$value" != *$'\r'* ]] || \
         die "Deployment values cannot contain '|', CR, or LF."
 done
@@ -322,6 +335,10 @@ AGENT_URL="${AGENT_URL%/}"
 
 log "Deploying the public, login-protected web service."
 WEB_ENV="${COMMON_DJANGO_ENV}|DEMO_USERNAME=${DEMO_USERNAME}"
+if [[ -n "$PREPARED_DEMO_FIELD_ID" ]]; then
+    WEB_ENV+="|AA_PREPARED_DEMO_FIELD_ID=${PREPARED_DEMO_FIELD_ID}"
+    WEB_ENV+="|AA_PREPARED_DEMO_ANALYSIS_ID=${PREPARED_DEMO_ANALYSIS_ID}"
+fi
 # Django is the authenticated server-side gateway. The browser never receives
 # this private origin or a Google identity token.
 WEB_ENV+="|AGENT_API_URL=${AGENT_URL}|AGENT_API_AUDIENCE=${AGENT_URL}"
