@@ -15,7 +15,7 @@ IFS=$'\n\t'
 umask 077
 export LC_ALL=C
 # Git Bash on Windows otherwise rewrites Cloud Run URL paths such as
-# /healthz and /mcp into local C:/Program Files/Git paths. Exclude only the
+# /mcp into local C:/Program Files/Git paths. Exclude only the
 # affected gcloud arguments so its own bundled-Python path still converts.
 export MSYS2_ARG_CONV_EXCL='--startup-probe=;--args=;--set-env-vars=;--update-env-vars='
 
@@ -219,6 +219,7 @@ gcloud run deploy "$WORKER_SERVICE" \
     --max-instances=1 \
     --timeout=900 \
     --ingress=all \
+    --invoker-iam-check \
     --no-allow-unauthenticated \
     --set-env-vars="${COMMON_DJANGO_ENV}|WEB_CONCURRENCY=1|GUNICORN_THREADS=1|GUNICORN_TIMEOUT=840" \
     --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
@@ -256,6 +257,7 @@ gcloud run deploy "$MCP_SERVICE" \
     --max-instances=2 \
     --timeout=60 \
     --ingress=all \
+    --invoker-iam-check \
     --no-allow-unauthenticated \
     --command=python \
     --args=-m,geospatial.mcp_server \
@@ -293,6 +295,7 @@ gcloud run deploy "$AGENT_SERVICE" \
     --max-instances=1 \
     --timeout=300 \
     --ingress=all \
+    --invoker-iam-check \
     --no-allow-unauthenticated \
     --command=adk \
     --args="api_server,--host=0.0.0.0,--port=8080,--no-reload,--session_service_uri=memory://,--artifact_service_uri=gs://${ARTIFACT_BUCKET},--auto_create_session,agentic_agriculture" \
@@ -324,7 +327,7 @@ gcloud run deploy "$WEB_SERVICE" \
     --max-instances=2 \
     --timeout=300 \
     --ingress=all \
-    --allow-unauthenticated \
+    --no-invoker-iam-check \
     --set-env-vars="${WEB_ENV}|WEB_CONCURRENCY=2|GUNICORN_THREADS=4|GUNICORN_TIMEOUT=840" \
     --set-secrets="DJANGO_SECRET_KEY=${DJANGO_SECRET_ID}:${DJANGO_SECRET_VERSION},DEMO_PASSWORD_HASH=${DEMO_PASSWORD_SECRET_ID}:${DEMO_PASSWORD_SECRET_VERSION},CLOUD_TASKS_SHARED_SECRET=${TASK_SECRET_ID}:${TASK_SECRET_VERSION}" \
     --startup-probe='initialDelaySeconds=0,timeoutSeconds=3,periodSeconds=5,failureThreshold=24,tcpSocket.port=8080' \

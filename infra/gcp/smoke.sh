@@ -68,24 +68,34 @@ if sys.argv[2] == "ready" and not all(payload.get("checks", {}).values()):
 PY
 }
 
-policy_is_public() {
+service_is_public() {
     local service_name=$1
+    local service_path="$TEMP_DIR/${service_name}-service.json"
     local policy_path="$TEMP_DIR/${service_name}-policy.json"
+    gcloud run services describe "$service_name" \
+        --project="$PROJECT_ID" --region="$REGION" --format=json >"$service_path"
     gcloud run services get-iam-policy "$service_name" \
         --project="$PROJECT_ID" --region="$REGION" --format=json >"$policy_path"
-    python3 - "$policy_path" <<'PY'
+    python3 - "$service_path" "$policy_path" <<'PY'
 import json
 import sys
 
 with open(sys.argv[1], encoding="utf-8") as source:
+    service = json.load(source)
+with open(sys.argv[2], encoding="utf-8") as source:
     policy = json.load(source)
+annotations = service.get("metadata", {}).get("annotations", {})
+invoker_check_disabled = (
+    str(annotations.get("run.googleapis.com/invoker-iam-disabled", "")).lower()
+    == "true"
+)
 public_members = {"allUsers", "allAuthenticatedUsers"}
-is_public = any(
+public_binding = any(
     binding.get("role") == "roles/run.invoker"
     and public_members.intersection(binding.get("members", []))
     for binding in policy.get("bindings", [])
 )
-raise SystemExit(0 if is_public else 1)
+raise SystemExit(0 if invoker_check_disabled or public_binding else 1)
 PY
 }
 
@@ -148,14 +158,14 @@ AGENT_IMAGE="$(assert_service_shape "$AGENT_SERVICE" "$AGENT_SA" 1 4 300)"
     "$WEB_IMAGE" == "$AGENT_IMAGE" ]] || die "Cloud Run roles do not use the same image."
 
 log "Checking the public/private Cloud Run IAM boundary."
-policy_is_public "$WEB_SERVICE" || die "Web service is not publicly invokable."
+service_is_public "$WEB_SERVICE" || die "Web service is not publicly invokable."
 for private_service in "$WORKER_SERVICE" "$MCP_SERVICE" "$AGENT_SERVICE"; do
-    if policy_is_public "$private_service"; then
+    if service_is_public "$private_service"; then
         die "Private service has a public invoker binding: $private_service"
     fi
 done
 
-for private_url in "$WORKER_URL/healthz" "$MCP_URL/mcp" "$AGENT_URL/list-apps"; do
+for private_url in "$WORKER_URL/login/" "$MCP_URL/mcp" "$AGENT_URL/list-apps"; do
     status_code="$(curl --silent --output /dev/null --write-out '%{http_code}' "$private_url")"
     # Cloud Run may deliberately hide a private route with 404 instead of
     # exposing whether the service exists. IAM policy was checked above.
@@ -200,10 +210,10 @@ if uniform is not True or prevention != "enforced":
     raise SystemExit("bucket must enforce uniform access and public access prevention")
 PY
 
-log "Checking public liveness and readiness."
-curl --fail --silent --show-error "$WEB_URL/healthz" >"$TEMP_DIR/health.json"
-assert_json_status "$TEMP_DIR/health.json" ok
-curl --fail --silent --show-error "$WEB_URL/readyz" >"$TEMP_DIR/ready.json"
+log "Checking the public login surface and readiness."
+login_status="$(curl --silent --output /dev/null --write-out '%{http_code}' "$WEB_URL/login/")"
+[[ "$login_status" == "200" ]] || die "Public login returned HTTP $login_status."
+curl --fail --silent --show-error "$WEB_URL/ready" >"$TEMP_DIR/ready.json"
 assert_json_status "$TEMP_DIR/ready.json" ready
 
 if [[ "${AA_SKIP_AUTHENTICATED_SMOKE:-false}" != "true" ]]; then
@@ -213,9 +223,8 @@ if [[ "${AA_SKIP_AUTHENTICATED_SMOKE:-false}" != "true" ]]; then
 
     curl --fail --silent --show-error \
         --header="Authorization: Bearer ${IDENTITY_TOKEN}" \
-        "$WORKER_URL/healthz" >"$TEMP_DIR/worker-health.json" || \
+        "$WORKER_URL/login/" >"$TEMP_DIR/worker-login.html" || \
         die "The active identity needs roles/run.invoker on the private worker for smoke testing."
-    assert_json_status "$TEMP_DIR/worker-health.json" ok
 
     curl --fail --silent --show-error \
         --header="Authorization: Bearer ${IDENTITY_TOKEN}" \

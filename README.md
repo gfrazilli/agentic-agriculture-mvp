@@ -67,7 +67,7 @@ Requirements: Docker with Compose.
    ```
 
 Open <http://localhost:8080/login/> and use `DEMO_USERNAME` plus the password chosen in
-step 3. The Compose health check calls `/readyz`, so the container remains unhealthy until
+step 3. The Compose health check calls `/ready`, so the container remains unhealthy until
 the demonstration credentials are valid.
 
 ## Local development
@@ -174,8 +174,8 @@ multiple workers and Cloud Run instances safely.
 | `GET`, `POST` | `/login/` | Demonstration login; POST is CSRF-protected. |
 | `POST` | `/logout/` | Clears the signed session. |
 | `POST` | `/i18n/setlang/` | Persists PT-BR or English in Django's language cookie. |
-| `GET` | `/healthz` | Cheap liveness response, independent of auth and persistence. |
-| `GET` | `/readyz` | Validates the minimum demonstration credential configuration. |
+| `GET` | `/live` | Cheap liveness response, independent of auth and persistence. |
+| `GET` | `/ready` | Validates the minimum demonstration credential configuration. |
 | `POST` | `/internal/tasks/analyses` | Authenticated delivery contract for Cloud Tasks. |
 
 ### API v1

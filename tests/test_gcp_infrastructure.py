@@ -58,8 +58,9 @@ def test_deploy_uses_one_pinned_image_and_only_web_is_public():
     script = _read("deploy.sh")
 
     assert script.count('--image="$IMAGE_URI"') == 4
-    assert script.count("--allow-unauthenticated") == 1
     assert script.count("--no-allow-unauthenticated") == 3
+    assert script.count("--invoker-iam-check") == 3
+    assert script.count("--no-invoker-iam-check") == 1
     assert ":latest" not in script
     assert "DJANGO_SECRET_VERSION" in script
     assert "DEMO_PASSWORD_SECRET_VERSION" in script
@@ -106,7 +107,9 @@ def test_smoke_accepts_cloud_run_private_route_hiding():
     script = _read("smoke.sh")
 
     assert 'status_code" == "404"' in script
-    assert "policy_is_public" in script
+    assert "service_is_public" in script
+    assert "run.googleapis.com/invoker-iam-disabled" in script
+    assert '"$WEB_URL/login/"' in script
 
 
 def test_infrastructure_never_creates_long_lived_keys_or_embeds_secret_values():

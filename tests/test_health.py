@@ -3,6 +3,7 @@ from django.urls import reverse
 
 
 def test_healthz_is_public_and_cache_disabled(client):
+    assert reverse("healthz") == "/live"
     response = client.get(reverse("healthz"))
 
     assert response.status_code == 200
@@ -11,6 +12,7 @@ def test_healthz_is_public_and_cache_disabled(client):
 
 
 def test_readyz_reports_ready_with_valid_demo_credentials(client):
+    assert reverse("readyz") == "/ready"
     response = client.get(reverse("readyz"))
 
     assert response.status_code == 200

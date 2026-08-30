@@ -72,7 +72,7 @@ after a worker crash, retries resume once the 20-minute lease becomes stale.
 
 ## Verification before the demo
 
-1. Confirm `/healthz` and authenticated `/readyz` behavior on the web service.
+1. Confirm `/live` and `/ready` behavior on the public, login-protected web service.
 2. Submit one field and verify that a Cloud Task completes with a persisted analysis result.
 3. Inspect scene IDs, dates, scale/offset metadata, coverage, and the generated GeoJSON.
 4. From the agent identity, call the private MCP service; verify that an unauthenticated call

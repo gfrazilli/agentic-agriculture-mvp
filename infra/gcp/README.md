@@ -99,13 +99,17 @@ uses the MCP origin (without `/mcp`) as the ADK token audience.
 ## Verification
 
 `smoke.sh` verifies resource locations and privacy, IAM exposure, queue state, bucket controls,
-service identities, timeouts, scaling, the shared image digest, public health/readiness, and
+service identities, timeouts, scaling, the shared image digest, public liveness/readiness, and
 authenticated worker/MCP/ADK calls. Set `AA_SKIP_AUTHENTICATED_SMOKE=true` only when the active
 operator is intentionally not allowed to invoke private services.
+
+The HTTP probes use `/live` and `/ready`. Cloud Run reserves some paths ending in `z`, so the
+deployment deliberately avoids conventional names such as `/healthz`.
 
 Useful official references:
 
 - [Cloud Run service identity](https://cloud.google.com/run/docs/securing/service-identity)
+- [Cloud Run known issues and reserved paths](https://cloud.google.com/run/docs/known-issues)
 - [Cloud Run service-to-service authentication](https://cloud.google.com/run/docs/authenticating/service-to-service)
 - [Cloud Tasks authenticated HTTP targets](https://cloud.google.com/tasks/docs/creating-http-target-tasks)
 - [Firestore database management](https://cloud.google.com/firestore/docs/manage-databases)
