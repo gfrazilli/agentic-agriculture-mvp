@@ -34,11 +34,14 @@ def test_landing_story_and_science_are_available_in_portuguese(client):
     content = response.content.decode()
 
     assert response.status_code == 200
-    assert "Descubra onde sua lavoura merece atenção. Em poucos minutos." in content
-    assert "A sua lavoura não é uma média." in content
-    assert "Da órbita à próxima inspeção." in content
+    assert "Saiba onde olhar primeiro. Em poucos minutos." in content
+    assert "Uma área plantada não se desenvolve toda por igual." in content
+    assert "Do satélite à próxima visita em campo." in content
     assert "Uma safra inteira de dados. Uma explicação que faz sentido." in content
-    assert "A lavoura também se comunica em espectros invisíveis." in content
+    assert "A lavoura reflete sinais que nossos olhos não conseguem ver." in content
+    assert "talhão" not in content.lower()
+    assert "zona" not in content.lower()
+    assert "não é uma média" not in content.lower()
     assert "Faixa de produtividade e dimensão da área: página 2." in content
     assert "Seu e-mail, assunto e mensagem são enviados pelo Resend" in content
 

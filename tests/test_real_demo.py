@@ -85,6 +85,7 @@ class CompletingPipeline:
             for point, scene_id in zip(zone["trajectory"], scene_ids, strict=True):
                 point["scene_id"] = scene_id
         live_result = AnalysisResult.model_validate_json(json.dumps(result_payload))
+        completed_at = max(NOW, queued.created_at)
         completed = Analysis(
             id=queued.id,
             field_id=queued.field_id,
@@ -96,12 +97,12 @@ class CompletingPipeline:
                 stage=AnalysisStage.COMPLETED,
                 message_pt="Demonstração real concluída.",
                 message_en="Real demonstration completed.",
-                updated_at=NOW,
+                updated_at=completed_at,
             ),
             result=live_result,
             error=None,
             created_at=queued.created_at,
-            updated_at=NOW,
+            updated_at=completed_at,
         )
         self.repository.save_analysis(completed)
         return SimpleNamespace(status="completed", error_code=None)

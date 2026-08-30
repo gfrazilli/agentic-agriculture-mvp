@@ -46,8 +46,8 @@ msgid "Language"
 msgstr "Idioma"
 
 # Farmer interface (PR3A)
-msgid "Satellite signals translated into practical field zones."
-msgstr "Sinais de satélite traduzidos em zonas práticas da lavoura."
+msgid "Satellite insights that show you where to look first."
+msgstr "Informações de satélite que mostram onde olhar primeiro."
 
 #, python-format
 msgid "Map your field · %(product_name)s"
@@ -327,14 +327,14 @@ msgstr "Mapear outra lavoura"
 msgid "Download zone GeoJSON"
 msgstr "Baixar GeoJSON das zonas"
 
-msgid "1415 Agri · Know where your field deserves attention"
-msgstr "1415 Agri · Descubra onde sua lavoura merece atenção"
+msgid "1415 Agri · Know where to scout first"
+msgstr "1415 Agri · Saiba onde olhar primeiro"
 
-msgid "Satellite monitoring that turns a season of Sentinel-2 evidence into clear priorities for field inspection, with Gemini."
-msgstr "Monitoramento por satélite que transforma uma safra de evidências do Sentinel-2 em prioridades claras para inspeção em campo, com o Gemini."
+msgid "Satellite crop monitoring that turns a season of Sentinel-2 imagery into clear priorities for field scouting, with Gemini."
+msgstr "Monitoramento por satélite que transforma imagens do Sentinel-2 em indicações claras de onde verificar primeiro, com o Gemini."
 
-msgid "Know where your field deserves attention."
-msgstr "Descubra onde sua lavoura merece atenção."
+msgid "Know where to scout first."
+msgstr "Saiba onde olhar primeiro."
 
 msgid "Skip to content"
 msgstr "Pular para o conteúdo"
@@ -369,14 +369,14 @@ msgstr "Ver demonstração"
 msgid "Smart satellite monitoring · Powered by Gemini"
 msgstr "Monitoramento inteligente por satélite · Powered by Gemini"
 
-msgid "Know where your field deserves attention. In minutes."
-msgstr "Descubra onde sua lavoura merece atenção. Em poucos minutos."
+msgid "Know where to scout first. In minutes."
+msgstr "Saiba onde olhar primeiro. Em poucos minutos."
 
-msgid "Satellites follow your field over time. Gemini connects what changed and turns an analysis once slow and restricted to specialists into a clear view of what deserves attention—so you can decide where to look first."
-msgstr "Os satélites acompanham sua lavoura ao longo do tempo. O Gemini conecta o que mudou e transforma uma análise antes demorada e restrita a especialistas em uma visão clara do que merece atenção — para que você decida onde olhar primeiro."
+msgid "Satellite imagery monitors your crop throughout the growing season. Gemini compares changes over time and highlights areas that need a closer look—so you can decide where to scout first."
+msgstr "Imagens de satélite acompanham sua área plantada ao longo da safra. O Gemini compara as mudanças ao longo do tempo e destaca os pontos que merecem um olhar mais atento — para você saber onde ir primeiro."
 
-msgid "Analyze a field"
-msgstr "Analisar uma lavoura"
+msgid "Analyze my field"
+msgstr "Analisar minha área"
 
 msgid "See how it works"
 msgstr "Ver como funciona"
@@ -390,59 +390,59 @@ msgstr "Sentinel-2 real"
 msgid "Traceable evidence"
 msgstr "Evidências rastreáveis"
 
-msgid "Farmer in control"
-msgstr "Produtor no controle"
+msgid "You stay in control"
+msgstr "Você mantém o controle"
 
-msgid "1415 Agri analysis preview showing development zones and a Gemini explanation"
-msgstr "Prévia de uma análise da 1415 Agri com zonas de desenvolvimento e uma explicação do Gemini"
+msgid "1415 Agri analysis preview showing crop variability and a Gemini explanation"
+msgstr "Prévia de uma análise da 1415 Agri mostrando diferenças no crescimento da lavoura e uma explicação do Gemini"
 
 msgid "Analysis complete"
 msgstr "Análise concluída"
 
 msgid "FIELD ANALYSIS"
-msgstr "ANÁLISE DA LAVOURA"
+msgstr "ANÁLISE DA ÁREA"
 
-msgid "North field · Soybean"
-msgstr "Talhão norte · Soja"
+msgid "North field · Soybeans"
+msgstr "Área norte · Soja"
 
-msgid "Relative development zones"
-msgstr "Zonas de desenvolvimento relativo"
+msgid "Crop variability map"
+msgstr "Mapa das diferenças na lavoura"
 
-msgid "A sample field divided into four zones, with one area highlighted for inspection."
-msgstr "Uma lavoura de exemplo dividida em quatro zonas, com uma área destacada para inspeção."
+msgid "A sample field divided into four areas, with one highlighted for field scouting."
+msgstr "Uma área plantada dividida em quatro partes, com uma delas destacada para verificação em campo."
 
-msgid "Priority inspection"
-msgstr "Inspeção prioritária"
+msgid "Priority scouting area"
+msgstr "Área prioritária para verificar"
 
-msgid "clear observations"
-msgstr "observações sem nuvens"
+msgid "cloud-free images"
+msgstr "imagens sem nuvens"
 
-msgid "spectral indices"
-msgstr "índices espectrais"
+msgid "vegetation indices"
+msgstr "índices de vegetação"
 
-msgid "priority area"
-msgstr "área prioritária"
+msgid "area to scout"
+msgstr "área para verificar"
 
 msgid "Gemini explanation"
 msgstr "Explicação do Gemini"
 
-msgid "Zone 4 deserves a closer look"
-msgstr "A zona 4 merece um olhar mais atento"
+msgid "Area 4 needs a closer look"
+msgstr "A área 4 merece atenção"
 
-msgid "This area developed differently from the rest of the field across the selected dates. Its combined NDVI, NDRE and NDMI history makes it the clearest priority for your next field inspection."
-msgstr "Esta área se desenvolveu de forma diferente do restante da lavoura ao longo das datas selecionadas. Seu histórico combinado de NDVI, NDRE e NDMI faz dela a prioridade mais clara para sua próxima inspeção em campo."
+msgid "Across the selected dates, this part of the field showed a different growth pattern. Its NDVI, NDRE and NDMI history makes it the highest-priority area for your next scouting trip."
+msgstr "Ao longo das datas selecionadas, esta parte da lavoura apresentou um padrão de crescimento diferente. O histórico de NDVI, NDRE e NDMI indica que este é o melhor lugar para começar a verificação em campo."
 
 msgid "Why this area?"
 msgstr "Por que esta área?"
 
-msgid "Consistent difference across dates"
-msgstr "Diferença consistente entre as datas"
+msgid "Pattern persisted across dates"
+msgstr "O padrão se manteve em diferentes datas"
 
-msgid "Signals agree across spectra"
-msgstr "Os sinais coincidem entre os espectros"
+msgid "Multiple vegetation indices point to this area"
+msgstr "Vários índices de vegetação destacam esta área"
 
-msgid "Original images remain linked"
-msgstr "As imagens originais permanecem vinculadas"
+msgid "Original satellite images remain linked"
+msgstr "As imagens originais do satélite continuam disponíveis"
 
 msgid "Ask about this analysis"
 msgstr "Pergunte sobre esta análise"
@@ -450,50 +450,56 @@ msgstr "Pergunte sobre esta análise"
 msgid "The challenge"
 msgstr "O desafio"
 
-msgid "Your field is not an average."
-msgstr "A sua lavoura não é uma média."
+msgid "Crop growth is not uniform across an entire field."
+msgstr "Uma área plantada não se desenvolve toda por igual."
 
-msgid "Within the same field, differences in soil, moisture, fertility, weather and management can make each region develop in a different way."
-msgstr "Dentro do mesmo talhão, diferenças de solo, umidade, fertilidade, clima e manejo podem fazer cada região se desenvolver de uma maneira."
+msgid "Across a single field, differences in soil, moisture, fertility, weather and management can affect crop growth from one area to another."
+msgstr "Dentro da mesma área, diferenças de solo, umidade, fertilidade, clima e manejo podem fazer a lavoura crescer de formas diferentes."
 
-msgid "1415 Agri helps you find where those differences are emerging—and where it is worth investigating first."
-msgstr "A 1415 Agri ajuda você a encontrar onde essas diferenças estão surgindo e onde vale a pena investigar primeiro."
+msgid "1415 Agri helps you see where those differences are emerging—and where to scout first."
+msgstr "A 1415 Agri mostra onde essas diferenças estão aparecendo e por onde vale a pena começar a verificação em campo."
 
-msgid "tonnes of corn per hectare"
+msgid "38"
+msgstr "2,4"
+
+msgid "151"
+msgstr "9,5"
+
+msgid "bushels of corn per acre"
 msgstr "toneladas de milho por hectare"
 
-msgid "within a single 38-hectare field documented by Embrapa researchers."
-msgstr "dentro de uma única área de 38 hectares documentada por pesquisadores da Embrapa."
+msgid "across a single 94-acre field documented by Embrapa researchers."
+msgstr "em uma única área de 38 hectares documentada por pesquisadores da Embrapa."
 
 msgid "Read the source"
 msgstr "Consultar a fonte"
 
-msgid "From orbit to your next inspection."
-msgstr "Da órbita à próxima inspeção."
+msgid "From satellite imagery to your next scouting trip."
+msgstr "Do satélite à próxima visita em campo."
 
-msgid "A guided path from a field boundary to a clear priority."
-msgstr "Um caminho guiado, da delimitação da lavoura a uma prioridade clara."
+msgid "A guided path from a field boundary to a clear scouting priority."
+msgstr "Um caminho simples: você delimita a área e recebe uma indicação clara de onde olhar primeiro."
 
 msgid "Select your field"
-msgstr "Selecione sua lavoura"
+msgstr "Selecione sua área"
 
-msgid "Outline the field and tell us the crop and period you want to follow."
-msgstr "Delimite o talhão e informe a cultura e o período que deseja acompanhar."
+msgid "Draw your field boundary and choose the crop and growing season or date range you want to monitor."
+msgstr "Delimite a área plantada e informe a cultura e a safra ou o período que deseja acompanhar."
 
 msgid "Request an analysis"
 msgstr "Peça uma análise"
 
-msgid "The platform gathers Sentinel-2 images throughout the season and compares how each region developed."
-msgstr "A plataforma reúne imagens do Sentinel-2 ao longo da safra e compara como cada região se desenvolveu."
+msgid "The platform gathers Sentinel-2 imagery throughout the growing season and compares crop performance across the field."
+msgstr "A plataforma reúne imagens do Sentinel-2 ao longo da safra e compara o crescimento da lavoura em diferentes partes da área."
 
-msgid "Talk to the results"
-msgstr "Converse com os resultados"
+msgid "Ask Gemini about your results"
+msgstr "Pergunte ao Gemini sobre os resultados"
 
 msgid "Gemini connects the evidence, highlights what changed and explains why an area deserves attention."
 msgstr "O Gemini conecta as evidências, destaca o que mudou e explica por que determinada área merece atenção."
 
-msgid "You receive a clear priority to guide the next field inspection."
-msgstr "Você recebe uma prioridade clara para orientar a próxima inspeção em campo."
+msgid "You get a clear recommendation for where to scout first."
+msgstr "Você recebe uma indicação clara de onde começar a verificação em campo."
 
 msgid "Why Gemini"
 msgstr "Por que Gemini"
@@ -507,11 +513,11 @@ msgstr "Encontrar imagens sem nuvens, comparar diferentes datas e interpretar si
 msgid "Gemini changes that experience. It understands what you want to investigate, coordinates the necessary tools, connects the evidence and turns complex results into a clear conversation."
 msgstr "O Gemini muda essa experiência. Ele entende o que você deseja investigar, coordena as ferramentas necessárias, relaciona as evidências encontradas e transforma resultados complexos em uma conversa clara."
 
-msgid "Compares different moments in the season"
-msgstr "Compara diferentes momentos da safra"
+msgid "Compares crop conditions over time"
+msgstr "Compara as condições da lavoura ao longo da safra"
 
-msgid "Connects signals from different spectra"
-msgstr "Relaciona sinais de diferentes espectros"
+msgid "Connects patterns across multiple vegetation indices"
+msgstr "Relaciona padrões de diferentes índices de vegetação"
 
 msgid "Explains why an area was highlighted"
 msgstr "Explica por que uma área foi destacada"
@@ -528,8 +534,8 @@ msgstr "O Gemini coordena a busca por imagens de satélite, a análise espectral
 msgid "Your question"
 msgstr "Sua pergunta"
 
-msgid "Where should I inspect first?"
-msgstr "Onde devo inspecionar primeiro?"
+msgid "Where should I scout first?"
+msgstr "Por onde devo começar?"
 
 msgid "Agent coordinator"
 msgstr "Agente coordenador"
@@ -537,20 +543,20 @@ msgstr "Agente coordenador"
 msgid "Imagery"
 msgstr "Imagens"
 
-msgid "Spectra"
-msgstr "Espectros"
+msgid "Indices"
+msgstr "Índices"
 
-msgid "Dates · zones"
-msgstr "Datas · zonas"
+msgid "Dates · areas"
+msgstr "Datas · áreas"
 
-msgid "A priority you can question, inspect and trace back to its source."
-msgstr "Uma prioridade que você pode questionar, inspecionar e rastrear até a fonte."
+msgid "A scouting priority you can question, verify in the field and trace back to its source."
+msgstr "Uma indicação que você pode questionar, conferir no campo e rastrear até a fonte."
 
 msgid "Beyond what eyes can see"
 msgstr "Além do que os olhos veem"
 
-msgid "The field also communicates in invisible spectra."
-msgstr "A lavoura também se comunica em espectros invisíveis."
+msgid "Your crop reflects signals the human eye cannot see."
+msgstr "A lavoura reflete sinais que nossos olhos não conseguem ver."
 
 msgid "Sentinel-2 records reflected light beyond the visible range. Those bands help compare how vegetation changes across space and time."
 msgstr "O Sentinel-2 registra a luz refletida além do espectro visível. Essas bandas ajudam a comparar como a vegetação muda no espaço e ao longo do tempo."
@@ -564,17 +570,17 @@ msgstr "INVISÍVEL"
 msgid "Red-edge"
 msgstr "Red-edge"
 
-msgid "Can reveal changes related to chlorophyll and the physiological state of vegetation."
-msgstr "Pode revelar mudanças relacionadas à clorofila e ao estado fisiológico da vegetação."
+msgid "May reveal changes in chlorophyll activity and plant vigor."
+msgstr "Pode revelar mudanças na atividade da clorofila e no vigor das plantas."
 
 msgid "Near-infrared"
 msgstr "Infravermelho próximo"
 
-msgid "Helps observe vegetation vigor, canopy density and structure."
-msgstr "Ajuda a observar o vigor, a densidade e a estrutura do dossel."
+msgid "Helps show crop vigor, canopy density and structure."
+msgstr "Ajuda a observar o vigor da lavoura, a densidade e a estrutura das plantas."
 
-msgid "Responds to vegetation water content and can reveal changes compatible with water stress."
-msgstr "Responde ao conteúdo de água da vegetação e pode revelar mudanças compatíveis com estresse hídrico."
+msgid "Responds to vegetation water content and may reveal patterns associated with moisture stress."
+msgstr "Responde ao conteúdo de água da vegetação e pode revelar padrões associados ao estresse hídrico."
 
 msgid "18 days"
 msgstr "18 dias"
@@ -585,8 +591,8 @@ msgstr "Evidência científica"
 msgid "A signal before the symptom was visible"
 msgstr "Um sinal antes de o sintoma ficar visível"
 
-msgid "In a soybean experiment using multispectral UAV sensors, red-edge differentiated groups at 46 days after planting. Visible wilting appeared at 64 days—18 days later."
-msgstr "Em um experimento com soja usando sensores multiespectrais em drone, o red-edge diferenciou grupos aos 46 dias após o plantio. O murchamento visível apareceu aos 64 dias — 18 dias depois."
+msgid "In a soybean experiment using multispectral drone imagery, red-edge differentiated groups at 46 days after planting. Visible wilting appeared at 64 days—18 days later."
+msgstr "Em um experimento com soja e imagens multiespectrais de drone, o red-edge diferenciou grupos aos 46 dias após o plantio. O murchamento visível apareceu aos 64 dias — 18 dias depois."
 
 msgid "This is evidence of pre-visual detection under experimental conditions, not a guarantee of the same lead time from Sentinel-2 or 1415 Agri."
 msgstr "Essa é uma evidência de detecção pré-visual em condições experimentais, não uma garantia da mesma antecedência pelo Sentinel-2 ou pela 1415 Agri."
@@ -606,17 +612,17 @@ msgstr "O Gemini raciocina."
 msgid "You decide."
 msgstr "O produtor decide."
 
-msgid "1415 Agri does not try to diagnose a disease from space."
-msgstr "A 1415 Agri não tenta diagnosticar uma doença pelo espaço."
+msgid "1415 Agri does not diagnose crop disease from satellite imagery."
+msgstr "A 1415 Agri não diagnostica doenças por imagens de satélite."
 
-msgid "It identifies areas that developed differently, presents the evidence and helps you formulate a more objective investigation."
-msgstr "Ela identifica áreas que se desenvolveram de maneira diferente, apresenta as evidências e ajuda você a formular uma investigação mais objetiva."
+msgid "It highlights areas where crop growth differs, presents the evidence and helps you plan a more focused field investigation."
+msgstr "Ela destaca partes da lavoura com crescimento diferente, apresenta as evidências e ajuda você a planejar uma verificação mais objetiva no campo."
 
-msgid "The cause is still confirmed in the field, by the people who know it."
-msgstr "A causa continua sendo confirmada no campo, por quem conhece a lavoura."
+msgid "The cause is confirmed in the field by the grower or agronomist who knows the crop."
+msgstr "A causa é confirmada no campo pelo produtor ou agrônomo que conhece a lavoura."
 
-msgid "Decision support, never a black-box verdict."
-msgstr "Apoio à decisão, nunca um veredito de caixa-preta."
+msgid "Decision support—not a black-box verdict."
+msgstr "Apoio para decidir, nunca uma conclusão sem explicação."
 
 msgid "Our vision"
 msgstr "Nossa visão"
@@ -633,11 +639,11 @@ msgstr "A 1415 Agri nasce para tornar a inteligência geoespacial acessível —
 msgid "Start with one field"
 msgstr "Comece com uma área"
 
-msgid "Your field is already producing signals. Start understanding them."
-msgstr "Sua lavoura já está produzindo sinais. Comece a entendê-los."
+msgid "Your crop is already reflecting valuable signals. Start making sense of them."
+msgstr "Sua lavoura já reflete sinais valiosos. Comece a entendê-los."
 
-msgid "Follow its development and discover where to look first."
-msgstr "Acompanhe sua evolução e descubra onde olhar primeiro."
+msgid "Monitor crop growth and know where to scout first."
+msgstr "Acompanhe o crescimento e saiba onde olhar primeiro."
 
 msgid "Talk to the team"
 msgstr "Falar com a equipe"
@@ -663,8 +669,8 @@ msgstr "Site da empresa"
 msgid "Send message"
 msgstr "Enviar mensagem"
 
-msgid "Satellite intelligence made clear for the people who grow."
-msgstr "Inteligência de satélite de forma clara para quem produz."
+msgid "Clear satellite insights for growers."
+msgstr "Informações de satélite de forma clara para quem produz."
 
 msgid "Why 1415?"
 msgstr "Por que 1415?"
