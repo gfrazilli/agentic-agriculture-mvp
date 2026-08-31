@@ -8,6 +8,11 @@
   const alertBox = app.querySelector("#app-alert");
   const csrfToken = form.querySelector("[name='csrfmiddlewaretoken']").value;
   const language = document.documentElement.lang.toLowerCase().startsWith("pt") ? "pt" : "en";
+  const locale = language === "pt" ? "pt-BR" : "en-US";
+  const acresPerHectare = 2.4710538147;
+  const areaInput = form.elements.namedItem("estimated_area");
+  const areaUnitSelect = form.elements.namedItem("area_unit");
+  let selectedAreaUnit = language === "pt" ? "hectares" : "acres";
   const svgNamespace = "http://www.w3.org/2000/svg";
   const workflowRestoreKey = "agentic-agriculture:language-switch:v1";
   const workflowRestoreLifetimeMs = 15 * 60 * 1000;
@@ -19,28 +24,32 @@
         point: "Ponto",
         longitude: "Longitude",
         latitude: "Latitude",
-        zonesFound: "zonas de desenvolvimento relativo foram encontradas em",
-        sceneSingular: "imagem sem nuvens relevantes",
-        scenePlural: "imagens sem nuvens relevantes",
+        zonesFound: "áreas com desenvolvimento diferente foram identificadas usando",
+        sceneSingular: "imagem utilizável do Sentinel-2",
+        scenePlural: "imagens utilizáveis do Sentinel-2",
         source: "Fonte",
         processing: "processamento",
-        dateInvalid: "A data final deve ser posterior ao plantio e a safra não pode passar de 365 dias.",
+        dateInvalid: "A data final deve ser posterior ao plantio e o período não pode passar de 365 dias.",
+        areaInvalid: "Informe uma área entre 0,1 e 500 hectares ou o equivalente em acres.",
         coordinateInvalid: "Informe uma latitude e longitude válidas.",
         geometryInvalid: "Revise as coordenadas do polígono.",
         preparedDemoLoaded: "Resultado Sentinel preparado carregado.",
         lower: "Desenvolvimento relativo menor",
         similar: "Desenvolvimento relativo semelhante",
         higher: "Desenvolvimento relativo maior",
+        lowerSummary: "A trajetória espectral desta parte ficou relativamente abaixo do conjunto da área plantada.",
+        similarSummary: "A trajetória espectral desta parte ficou próxima do conjunto da área plantada.",
+        higherSummary: "A trajetória espectral desta parte ficou relativamente acima do conjunto da área plantada.",
         regroupTitle: "Compare outro agrupamento",
-        regroupBody: "Use as mesmas imagens e veja o talhão dividido em outra quantidade de zonas.",
-        zoneCount: "Quantidade de zonas",
-        regroup: "Reagrupar zonas",
+        regroupBody: "Use as mesmas imagens e compare a área plantada dividida em outra quantidade de partes.",
+        zoneCount: "Número de divisões",
+        regroup: "Comparar divisões",
         regroupBusy: "Reagrupando…",
         regroupDemo: "O reagrupamento fica disponível no resultado processado e persistido.",
         assistantTitle: "Pergunte ao Gemini",
-        assistantBody: "O coordenador do Google ADK consulta os especialistas e as evidências do talhão antes de responder.",
-        assistantWelcome: "Pergunte o que as diferenças significam ou qual zona merece uma visita de campo primeiro.",
-        assistantPlaceholder: "Ex.: qual zona devo inspecionar primeiro?",
+        assistantBody: "O coordenador do Google ADK consulta os especialistas e as evidências da área antes de responder.",
+        assistantWelcome: "Pergunte o que as diferenças significam ou qual parte da área merece uma visita de campo primeiro.",
+        assistantPlaceholder: "Ex.: qual parte devo inspecionar primeiro?",
         send: "Enviar",
         sending: "Consultando Gemini…",
         listen: "Falar",
@@ -67,28 +76,32 @@
         point: "Point",
         longitude: "Longitude",
         latitude: "Latitude",
-        zonesFound: "relative development zones were found across",
-        sceneSingular: "image without relevant cloud cover",
-        scenePlural: "images without relevant cloud cover",
+        zonesFound: "relative-development areas were identified using",
+        sceneSingular: "usable Sentinel-2 observation",
+        scenePlural: "usable Sentinel-2 observations",
         source: "Source",
         processing: "processing",
-        dateInvalid: "The end date must follow planting and the season cannot exceed 365 days.",
+        dateInvalid: "The end date must follow planting and the monitoring period cannot exceed 365 days.",
+        areaInvalid: "Enter an area from 0.1 to 500 hectares or the equivalent in acres.",
         coordinateInvalid: "Enter a valid latitude and longitude.",
         geometryInvalid: "Review the polygon coordinates.",
         preparedDemoLoaded: "Prepared Sentinel result loaded.",
         lower: "Lower relative development",
         similar: "Similar relative development",
         higher: "Higher relative development",
+        lowerSummary: "This area's spectral trajectory was relatively below the field as a whole.",
+        similarSummary: "This area's spectral trajectory remained close to the field as a whole.",
+        higherSummary: "This area's spectral trajectory was relatively above the field as a whole.",
         regroupTitle: "Compare another grouping",
-        regroupBody: "Use the same images and view the field divided into a different number of zones.",
-        zoneCount: "Number of zones",
-        regroup: "Regroup zones",
+        regroupBody: "Use the same imagery and compare a different number of relative-development areas.",
+        zoneCount: "Number of areas",
+        regroup: "Compare areas",
         regroupBusy: "Regrouping…",
         regroupDemo: "Regrouping is available for a processed and persisted result.",
         assistantTitle: "Ask Gemini",
         assistantBody: "The Google ADK coordinator consults specialists and field evidence before answering.",
-        assistantWelcome: "Ask what the differences mean or which zone deserves a field visit first.",
-        assistantPlaceholder: "For example: which zone should I inspect first?",
+        assistantWelcome: "Ask what the differences mean or which area should be scouted first.",
+        assistantPlaceholder: "For example: which area should I scout first?",
         send: "Send",
         sending: "Consulting Gemini…",
         listen: "Speak",
@@ -111,6 +124,124 @@
         },
       };
 
+  const areaNumberFormatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+  const smallAreaNumberFormatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const indexNumberFormatter = new Intl.NumberFormat(locale, {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  const integerNumberFormatter = new Intl.NumberFormat(locale, {
+    maximumFractionDigits: 0,
+  });
+
+  function displayAreaToHectares(value, unit = selectedAreaUnit) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return Number.NaN;
+    const hectares = unit === "acres" ? numericValue / acresPerHectare : numericValue;
+    if (hectares < 0.1 && hectares >= 0.099995) return 0.1;
+    return hectares > 500 && hectares <= 500.005 ? 500 : hectares;
+  }
+
+  function hectaresToDisplayArea(value, unit = selectedAreaUnit) {
+    const numericValue = Number(value);
+    if (!Number.isFinite(numericValue)) return Number.NaN;
+    return unit === "acres" ? numericValue * acresPerHectare : numericValue;
+  }
+
+  function areaInputValueFromHectares(value, unit = selectedAreaUnit) {
+    const displayValue = hectaresToDisplayArea(value, unit);
+    if (!Number.isFinite(displayValue)) return "";
+    return String(Number(displayValue.toFixed(2)));
+  }
+
+  function areaUnitLabel(unit = selectedAreaUnit) {
+    return unit === "acres" ? copy.copyAcres : copy.copyHectares;
+  }
+
+  function formatAreaFromHectares(value) {
+    const displayValue = hectaresToDisplayArea(value);
+    const formatter = Math.abs(displayValue) < 1
+      ? smallAreaNumberFormatter
+      : areaNumberFormatter;
+    return `${formatter.format(displayValue)} ${areaUnitLabel()}`;
+  }
+
+  const legacyCopy = language === "pt"
+    ? new Map([
+        ["Comparação concluída em quatro zonas de desenvolvimento relativo.", "Comparação concluída em quatro áreas com desenvolvimento diferente."],
+        ["Esta zona manteve sinais espectrais relativamente menores que o conjunto do talhão nas três datas.", "Esta parte da área manteve sinais espectrais relativamente menores que a área plantada como um todo nas três datas."],
+        ["Esta zona acompanhou de perto a trajetória espectral predominante no talhão.", "Esta parte da área acompanhou de perto a trajetória espectral predominante na área plantada."],
+        ["Esta zona apresentou sinais espectrais relativamente maiores que o conjunto do talhão.", "Esta parte da área apresentou sinais espectrais relativamente maiores que a área plantada como um todo."],
+        ["Esta zona permaneceu próxima da trajetória geral, com pequenas diferenças entre as datas.", "Esta parte da área permaneceu próxima da trajetória geral, com pequenas diferenças entre as datas."],
+        ["As zonas comparam sinais espectrais relativos e não identificam a causa das diferenças observadas.", "As áreas destacadas comparam sinais espectrais relativos e não identificam a causa das diferenças observadas."],
+        ["A trajetória espectral desta zona ficou relativamente abaixo do conjunto do talhão.", "A trajetória espectral desta parte ficou relativamente abaixo da área plantada como um todo."],
+        ["A trajetória espectral desta zona ficou relativamente acima do conjunto do talhão.", "A trajetória espectral desta parte ficou relativamente acima da área plantada como um todo."],
+        ["A trajetória espectral desta zona ficou próxima do conjunto do talhão.", "A trajetória espectral desta parte ficou próxima da área plantada como um todo."],
+      ])
+    : new Map([
+        ["Comparison completed across four relative development zones.", "Comparison completed across four relative-development areas."],
+        ["This zone kept relatively lower spectral signals than the field as a whole on all three dates.", "This area consistently showed lower spectral signals than the field as a whole on all three dates."],
+        ["This zone closely followed the predominant spectral trajectory in the field.", "This area closely followed the predominant spectral trajectory in the field."],
+        ["This zone showed relatively higher spectral signals than the field as a whole.", "This area showed relatively higher spectral signals than the field as a whole."],
+        ["This zone stayed close to the overall trajectory, with small differences between dates.", "This area stayed close to the overall trajectory, with small differences between dates."],
+        ["The zones compare relative spectral signals and do not identify the cause of the observed differences.", "The highlighted areas compare relative spectral signals and do not identify the cause of the observed differences."],
+        ["The zones compare relative spectral signals and do not identify the cause of observed differences.", "The highlighted areas compare relative spectral signals and do not identify the cause of observed differences."],
+        ["This zone's spectral trajectory was relatively below the field as a whole.", "This area's spectral trajectory was relatively below the field as a whole."],
+        ["This zone's spectral trajectory was relatively above the field as a whole.", "This area's spectral trajectory was relatively above the field as a whole."],
+        ["This zone's spectral trajectory remained close to the field as a whole.", "This area's spectral trajectory remained close to the field as a whole."],
+      ]);
+
+  function normalizeLegacyCopy(value) {
+    if (value === null || value === undefined) return value;
+    const text = String(value);
+    return legacyCopy.get(text) || text;
+  }
+
+  function currentAreaHectares(unit = selectedAreaUnit) {
+    if (areaInput.value !== state.areaDisplayValue) {
+      state.areaHectares = areaInput.value === ""
+        ? null
+        : displayAreaToHectares(areaInput.value, unit);
+      state.areaDisplayValue = areaInput.value;
+    }
+    return state.areaHectares;
+  }
+
+  function setAreaInputFromHectares(value) {
+    const numericValue = Number(value);
+    state.areaHectares = Number.isFinite(numericValue) ? numericValue : null;
+    areaInput.value = Number.isFinite(numericValue) ? areaInputValueFromHectares(numericValue) : "";
+    state.areaDisplayValue = areaInput.value;
+  }
+
+  function configureAreaInput() {
+    const usesAcres = selectedAreaUnit === "acres";
+    areaUnitSelect.value = selectedAreaUnit;
+    areaInput.min = usesAcres ? "0.2471" : "0.1";
+    areaInput.max = usesAcres ? "1235.53" : "500";
+    areaInput.step = usesAcres ? "any" : "0.01";
+  }
+
+  function changeAreaUnit() {
+    const previousUnit = selectedAreaUnit;
+    const currentHectares = currentAreaHectares(previousUnit);
+    selectedAreaUnit = areaUnitSelect.value === "acres" ? "acres" : "hectares";
+    configureAreaInput();
+    if (Number.isFinite(currentHectares)) {
+      setAreaInputFromHectares(currentHectares);
+    }
+    areaInput.setCustomValidity("");
+    areaInput.removeAttribute("aria-invalid");
+    if (state.boundary) renderBoundary();
+    if (state.analysis?.result) renderZoneCards(state.analysis.result.zones);
+  }
+
   const state = {
     field: null,
     boundary: null,
@@ -124,6 +255,8 @@
     resultInteractionsBuilt: false,
     idempotencyKeys: new Map(),
     draggingVertex: null,
+    areaHectares: null,
+    areaDisplayValue: "",
   };
 
   class ApiRequestError extends Error {
@@ -169,9 +302,75 @@
     }
   }
 
+  function boundaryForLanguageSwitch() {
+    if (!state.boundary) return null;
+    const savedBoundary = JSON.parse(JSON.stringify(state.boundary));
+    const rows = [...app.querySelectorAll(".boundary-point")];
+    if (rows.length < 3) return savedBoundary;
+
+    const unique = rows.map((row) => [
+      Number(row.querySelector("[data-coordinate='longitude']")?.value),
+      Number(row.querySelector("[data-coordinate='latitude']")?.value),
+    ]);
+    if (unique.flat().every((value) => Number.isFinite(value))) {
+      savedBoundary.boundary.coordinates[0] = [...unique, [...unique[0]]];
+    }
+    return savedBoundary;
+  }
+
+  function isValidSavedBoundary(value, fieldId) {
+    const ring = value?.boundary?.coordinates?.[0];
+    const estimatedArea = Number(value?.estimated_area_ha);
+    const confidence = Number(value?.confidence);
+    return value?.boundary?.type === "Polygon"
+      && String(value?.field_id || "") === String(fieldId)
+      && Array.isArray(ring)
+      && ring.length >= 4
+      && ring.length <= 1000
+      && ring.every((position) => Array.isArray(position)
+        && position.length >= 2
+        && Number.isFinite(Number(position[0]))
+        && Number.isFinite(Number(position[1]))
+        && Number(position[0]) >= -180
+        && Number(position[0]) <= 180
+        && Number(position[1]) >= -90
+        && Number(position[1]) <= 90)
+      && Number.isFinite(estimatedArea)
+      && estimatedArea > 0
+      && Number.isFinite(confidence)
+      && confidence >= 0
+      && confidence <= 1;
+  }
+
   function saveWorkflowForLanguageSwitch() {
-    const analysis = state.persistedAnalysis || state.analysis;
+    const savedAt = Date.now();
     const fieldId = String(state.field?.id || "");
+    try {
+      if (state.guidedResult && state.analysis?.result && uuidPattern.test(fieldId)) {
+        window.sessionStorage.setItem(workflowRestoreKey, JSON.stringify({
+          mode: "guided",
+          fieldId,
+          savedAt,
+        }));
+        return;
+      }
+      if (state.boundary && uuidPattern.test(fieldId) && !state.persistedAnalysis) {
+        const boundary = boundaryForLanguageSwitch();
+        window.sessionStorage.setItem(workflowRestoreKey, JSON.stringify({
+          mode: "boundary",
+          fieldId,
+          boundary,
+          guided: app.querySelector("#guided-demo").checked,
+          savedAt,
+        }));
+        return;
+      }
+    } catch (_error) {
+      // The language change must still work when storage is unavailable.
+      return;
+    }
+
+    const analysis = state.persistedAnalysis || state.analysis;
     const analysisId = String(analysis?.id || "");
     if (
       !uuidPattern.test(fieldId)
@@ -181,9 +380,10 @@
 
     try {
       window.sessionStorage.setItem(workflowRestoreKey, JSON.stringify({
+        mode: "analysis",
         fieldId,
         analysisId,
-        savedAt: Date.now(),
+        savedAt,
       }));
     } catch (_error) {
       // The language change must still work when storage is unavailable.
@@ -202,11 +402,22 @@
     try {
       const saved = JSON.parse(raw);
       const age = Date.now() - Number(saved.savedAt);
-      const isValid = uuidPattern.test(saved.fieldId)
-        && uuidPattern.test(saved.analysisId)
-        && Number.isFinite(age)
+      const fresh = Number.isFinite(age)
         && age >= 0
         && age <= workflowRestoreLifetimeMs;
+      const isGuided = saved.mode === "guided"
+        && uuidPattern.test(saved.fieldId)
+        && fresh;
+      const isBoundary = saved.mode === "boundary"
+        && uuidPattern.test(saved.fieldId)
+        && isValidSavedBoundary(saved.boundary, saved.fieldId)
+        && typeof saved.guided === "boolean"
+        && fresh;
+      const isAnalysis = (saved.mode === "analysis" || saved.mode === undefined)
+        && uuidPattern.test(saved.fieldId)
+        && uuidPattern.test(saved.analysisId)
+        && fresh;
+      const isValid = isGuided || isBoundary || isAnalysis;
       if (isValid) return saved;
     } catch (_error) {
       // Invalid or obsolete state is discarded below.
@@ -243,6 +454,7 @@
     if (error.status === 409) return copy.copyConflict;
     if (error.status === 422) return copy.copyInvalid;
     if (error.status === 429) return copy.copyRateLimit;
+    if (language === "pt") return copy.copyGenericError;
     return error.message || copy.copyGenericError;
   }
 
@@ -290,11 +502,26 @@
   }
 
   function populateFieldForm(field) {
-    setFieldValue("name", field.name);
-    setFieldValue("crop", field.crop);
+    const isDemoName = [
+      "Talhão demonstrativo",
+      "Área plantada de demonstração",
+      "Área de demonstração",
+      "Demo field",
+    ].includes(field.name);
+    setFieldValue("name", isDemoName ? (language === "pt" ? "Área de demonstração" : "Demo field") : field.name);
+    const cropAliases = {
+      corn: "milho",
+      maize: "milho",
+      milho: "milho",
+      soja: "soja",
+      soybean: "soja",
+      soybeans: "soja",
+    };
+    const normalizedCrop = cropAliases[String(field.crop || "").trim().toLowerCase()] || "";
+    setFieldValue("crop", normalizedCrop);
     setFieldValue("season_start", field.season_start);
     setFieldValue("season_end", field.season_end);
-    setFieldValue("estimated_area_ha", field.estimated_area_ha);
+    setAreaInputFromHectares(field.estimated_area_ha);
     setFieldValue("longitude", field.reference_location.coordinates[0]);
     setFieldValue("latitude", field.reference_location.coordinates[1]);
   }
@@ -380,6 +607,15 @@
       if (duration < 1 || duration > 365) endInput.setCustomValidity(runtimeCopy.dateInvalid);
     }
 
+    const estimatedAreaHectares = currentAreaHectares();
+    if (
+      !Number.isFinite(estimatedAreaHectares)
+      || estimatedAreaHectares < 0.1
+      || estimatedAreaHectares > 500.000001
+    ) {
+      areaInput.setCustomValidity(runtimeCopy.areaInvalid);
+    }
+
     const latitude = Number(form.elements.namedItem("latitude").value);
     const longitude = Number(form.elements.namedItem("longitude").value);
     if (!Number.isFinite(latitude) || latitude < -90 || latitude > 90) {
@@ -398,12 +634,13 @@
   }
 
   function fieldPayload() {
+    const estimatedAreaHectares = currentAreaHectares();
     return {
       name: form.elements.namedItem("name").value.trim(),
       crop: form.elements.namedItem("crop").value,
       season_start: form.elements.namedItem("season_start").value,
       season_end: form.elements.namedItem("season_end").value,
-      estimated_area_ha: Number(form.elements.namedItem("estimated_area_ha").value),
+      estimated_area_ha: Number(estimatedAreaHectares.toFixed(6)),
       reference_location: {
         type: "Point",
         coordinates: [
@@ -596,15 +833,17 @@
   function renderBoundary() {
     state.boundary.boundary.coordinates[0] = normalizeRing(state.boundary.boundary);
     const confidence = Math.round(state.boundary.confidence * 100);
-    app.querySelector("#boundary-confidence").textContent = `${confidence}% ${runtimeCopy.confidence}`;
-    app.querySelector("#boundary-area").textContent = `${state.boundary.estimated_area_ha.toFixed(1)} ${copy.copyHectares}`;
+    app.querySelector("#boundary-confidence").textContent = `${integerNumberFormatter.format(confidence)}% ${runtimeCopy.confidence}`;
+    app.querySelector("#boundary-area").textContent = formatAreaFromHectares(state.boundary.estimated_area_ha);
     renderBoundaryEditor();
     renderBoundaryMap();
   }
 
   function updateProgress(analysis) {
     const percent = analysis.progress?.percent ?? 0;
-    const message = language === "pt" ? analysis.progress?.message_pt : analysis.progress?.message_en;
+    const message = language === "pt"
+      ? normalizeLegacyCopy(analysis.progress?.message_pt)
+      : normalizeLegacyCopy(analysis.progress?.message_en);
     app.querySelector("#analysis-progress").setAttribute("aria-valuenow", String(percent));
     app.querySelector("#progress-bar").style.width = `${percent}%`;
     app.querySelector("#progress-value").textContent = `${percent}%`;
@@ -615,6 +854,14 @@
     if (relativeLabel === "lower_than_field") return runtimeCopy.lower;
     if (relativeLabel === "higher_than_field") return runtimeCopy.higher;
     return runtimeCopy.similar;
+  }
+
+  function summaryFor(zone) {
+    const source = language === "pt" ? zone.summary_pt : zone.summary_en;
+    if (source) return normalizeLegacyCopy(source);
+    if (zone.relative_label === "lower_than_field") return runtimeCopy.lowerSummary;
+    if (zone.relative_label === "higher_than_field") return runtimeCopy.higherSummary;
+    return runtimeCopy.similarSummary;
   }
 
   function classFor(relativeLabel) {
@@ -668,10 +915,10 @@
       const header = createElement("header");
       header.append(
         createElement("h3", { text: `${copy.copyZone} ${index + 1}` }),
-        createElement("span", { text: `${zone.area_percent.toFixed(1)}%` }),
+        createElement("span", { text: `${areaNumberFormatter.format(zone.area_percent)}%` }),
       );
-      const area = createElement("strong", { text: `${zone.area_ha.toFixed(1)} ${copy.copyHectares} · ${labelFor(zone.relative_label)}` });
-      const summary = createElement("p", { text: language === "pt" ? zone.summary_pt : zone.summary_en });
+      const area = createElement("strong", { text: `${formatAreaFromHectares(zone.area_ha)} · ${labelFor(zone.relative_label)}` });
+      const summary = createElement("p", { text: summaryFor(zone) });
       card.append(header, area, summary);
       container.append(card);
     });
@@ -686,7 +933,7 @@
 
     const rows = app.querySelector("#scene-rows");
     rows.replaceChildren();
-    const dateFormatter = new Intl.DateTimeFormat(language === "pt" ? "pt-BR" : "en", {
+    const dateFormatter = new Intl.DateTimeFormat(locale, {
       day: "2-digit",
       month: "short",
       year: "numeric",
@@ -696,10 +943,10 @@
       const row = createElement("tr");
       const values = [
         dateFormatter.format(new Date(scene.captured_at)),
-        scene.field_indices.ndvi.toFixed(2),
-        scene.field_indices.ndre.toFixed(2),
-        scene.field_indices.ndmi.toFixed(2),
-        `${scene.cloud_cover_percent.toFixed(1)}%`,
+        indexNumberFormatter.format(scene.field_indices.ndvi),
+        indexNumberFormatter.format(scene.field_indices.ndre),
+        indexNumberFormatter.format(scene.field_indices.ndmi),
+        `${areaNumberFormatter.format(scene.cloud_cover_percent)}%`,
       ];
       values.forEach((value) => row.append(createElement("td", { text: value })));
       rows.append(row);
@@ -1038,7 +1285,9 @@
     const result = analysis.result;
     const sceneWord = result.scenes.length === 1 ? runtimeCopy.sceneSingular : runtimeCopy.scenePlural;
     app.querySelector("#results-summary").textContent = `${result.selected_zone_count} ${runtimeCopy.zonesFound} ${result.scenes.length} ${sceneWord}.`;
-    app.querySelector("#result-disclaimer").textContent = language === "pt" ? result.scope.disclaimer_pt : result.scope.disclaimer_en;
+    app.querySelector("#result-disclaimer").textContent = language === "pt"
+      ? normalizeLegacyCopy(result.scope.disclaimer_pt)
+      : normalizeLegacyCopy(result.scope.disclaimer_en);
     renderZoneMap(result.zones);
     renderZoneLegend(result.zones);
     renderZoneCards(result.zones);
@@ -1086,6 +1335,36 @@
     if (!saved) return;
 
     try {
+      if (saved.mode === "guided") {
+        const [field, completed] = await Promise.all([
+          apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`),
+          apiRequest(copy.fixtureResultUrl),
+        ]);
+        state.field = field;
+        state.analysis = completed;
+        state.persistedAnalysis = null;
+        state.guidedResult = true;
+        state.agentSession = null;
+        state.agentSessionPromise = null;
+        populateFieldForm(field);
+        updateProgress(completed);
+        clearWorkflowRestore();
+        renderResult(completed);
+        return;
+      }
+      if (saved.mode === "boundary") {
+        const field = await apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`);
+        state.field = field;
+        state.boundary = saved.boundary;
+        state.boundaryProjection = null;
+        populateFieldForm(field);
+        app.querySelector("#guided-demo").checked = saved.guided;
+        renderBoundary();
+        clearWorkflowRestore();
+        setStep(2);
+        showAlert(copy.copyBoundaryReady, "success");
+        return;
+      }
       const [field, analysis] = await Promise.all([
         apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`),
         apiRequest(`${copy.analysesUrl}${saved.analysisId}/`),
@@ -1113,7 +1392,7 @@
         await pollAnalysis(analysis.id);
         return;
       }
-      showAlert(analysis.error?.message || copy.copyAnalysisFailed);
+      showAlert(copy.copyAnalysisFailed);
     } catch (error) {
       clearWorkflowRestore();
       showAlert(errorMessage(error));
@@ -1198,28 +1477,33 @@
           zone_id: zone.zone_id,
           relative_label: zone.relative_label,
           area_ha: zone.area_ha,
+          area_acres: Number((zone.area_ha * acresPerHectare).toFixed(6)),
           area_percent: zone.area_percent,
         },
       })),
     };
     const blob = new Blob([JSON.stringify(featureCollection, null, 2)], { type: "application/geo+json" });
     const url = URL.createObjectURL(blob);
-    const link = createElement("a", { attributes: { href: url, download: "agentic-agriculture-zones.geojson" } });
+    const link = createElement("a", { attributes: { href: url, download: "1415-agri-field-areas.geojson" } });
     document.body.append(link);
     link.click();
     link.remove();
     URL.revokeObjectURL(url);
   }
 
+  areaUnitSelect.value = selectedAreaUnit;
+  configureAreaInput();
   form.addEventListener("submit", submitField);
   form.addEventListener("input", (event) => {
     if (event.target.matches("input, select")) {
       event.target.setCustomValidity("");
       event.target.removeAttribute("aria-invalid");
     }
+    if (event.target === areaInput) currentAreaHectares();
   });
   app.querySelector("#use-location").addEventListener("click", requestCurrentLocation);
   app.querySelector("#use-demo").addEventListener("click", loadDemonstrationField);
+  areaUnitSelect.addEventListener("change", changeAreaUnit);
   app.querySelector("#redraw-boundary").addEventListener("click", () => {
     clearAlert();
     if (updateBoundaryFromEditor()) renderBoundaryMap();

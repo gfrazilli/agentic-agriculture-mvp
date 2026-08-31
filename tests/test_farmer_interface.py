@@ -89,10 +89,38 @@ def test_farmer_interface_exposes_four_step_form_and_contract_fields(client):
         "crop",
         "season_start",
         "season_end",
-        "estimated_area_ha",
+        "estimated_area",
+        "area_unit",
         "latitude",
         "longitude",
     } <= field_names
+
+
+def test_farmer_interface_offers_locale_aware_area_units_and_only_supported_crops(
+    client,
+):
+    _, parser = _authenticated_demo(client)
+
+    input_tag, area_input = parser.attributes_for_id("estimated-area")
+    select_tag, area_unit = parser.attributes_for_id("area-unit")
+    assert input_tag == "input"
+    assert area_input["name"] == "estimated_area"
+    assert area_input["min"] == "0.1"
+    assert area_input["max"] == "500"
+    assert area_input["step"] == "0.01"
+    assert select_tag == "select"
+    assert area_unit["name"] == "area_unit"
+    assert area_unit.get("aria-label") == "Area unit"
+
+    options = {
+        attributes["value"]: attributes
+        for tag, attributes in parser.elements
+        if tag == "option" and attributes.get("value") is not None
+    }
+    assert "disabled" not in options["soja"]
+    assert "disabled" not in options["milho"]
+    for crop in ("cafe", "cana-de-acucar", "algodao", "trigo", "arroz", "outra"):
+        assert "disabled" in options[crop]
 
 
 def test_farmer_interface_configures_only_real_versioned_api_routes(client):
@@ -144,7 +172,8 @@ def test_farmer_interface_renders_in_portuguese_and_english(client):
     english = client.get(reverse("demo"))
     assert english.status_code == 200
     assert '<html lang="en">' in english.content.decode()
-    assert "Register your field" in english.content.decode()
+    assert "Add a field" in english.content.decode()
+    assert "Coffee (soon)" in english.content.decode()
 
     switch = client.post(
         reverse("set_language"),
@@ -155,7 +184,12 @@ def test_farmer_interface_renders_in_portuguese_and_english(client):
     portuguese = client.get(switch.url)
     assert portuguese.status_code == 200
     assert '<html lang="pt-br">' in portuguese.content.decode()
-    assert "Cadastre sua lavoura" in portuguese.content.decode()
+    portuguese_content = portuguese.content.decode()
+    assert "Adicione uma área" in portuguese_content
+    assert "Café (em breve)" in portuguese_content
+    assert "Sua área plantada não é toda igual" in portuguese_content
+    assert "talhão" not in portuguese_content.lower()
+    assert "zona" not in portuguese_content.lower()
 
 
 def test_anonymous_farmer_is_redirected_to_the_demo_login(client):
@@ -198,6 +232,21 @@ def test_farmer_script_uses_real_contract_and_safe_dom_updates():
     assert 'boundary.type === "MultiPolygon"' in script
     assert '"fill-rule": "evenodd"' in script
     assert "zoneGeometryPath(zone.boundary, projection)" in script
+    assert 'const locale = language === "pt" ? "pt-BR" : "en-US"' in script
+    assert 'let selectedAreaUnit = language === "pt" ? "hectares" : "acres"' in script
+    assert 'soybean: "soja"' in script
+    assert 'corn: "milho"' in script
+    assert "displayAreaToHectares(areaInput.value, unit)" in script
+    assert "state.areaHectares" in script
+    assert "state.areaDisplayValue" in script
+    assert 'areaInput.min = usesAcres ? "0.2471" : "0.1"' in script
+    assert 'areaInput.max = usesAcres ? "1235.53" : "500"' in script
+    assert 'areaInput.step = usesAcres ? "any" : "0.01"' in script
+    assert "new Intl.NumberFormat(locale" in script
+    assert "smallAreaNumberFormatter" in script
+    assert "new Intl.DateTimeFormat(locale" in script
+    assert "area_acres:" in script
+    assert 'download: "1415-agri-field-areas.geojson"' in script
 
 
 def test_language_switch_restores_the_persisted_workflow_from_the_api():
@@ -209,6 +258,16 @@ def test_language_switch_restores_the_persisted_workflow_from_the_api():
     assert '"submit", saveWorkflowForLanguageSwitch' in script
     assert "window.sessionStorage.setItem(workflowRestoreKey" in script
     assert "window.sessionStorage.removeItem(workflowRestoreKey)" in script
+    assert 'mode: "guided"' in script
+    assert 'mode: "boundary"' in script
+    assert 'mode: "analysis"' in script
+    assert "boundaryForLanguageSwitch()" in script
+    assert "isValidSavedBoundary(saved.boundary, saved.fieldId)" in script
+    assert 'guided: app.querySelector("#guided-demo").checked' in script
+    assert 'typeof saved.guided === "boolean"' in script
+    assert 'app.querySelector("#guided-demo").checked = saved.guided' in script
+    assert "apiRequest(copy.fixtureResultUrl)" in script
+    assert "state.boundary = saved.boundary" in script
     assert "apiRequest(`${copy.fieldsUrl}${saved.fieldId}/`)" in script
     assert "apiRequest(`${copy.analysesUrl}${saved.analysisId}/`)" in script
     assert 'if (analysis.status === "completed")' in script

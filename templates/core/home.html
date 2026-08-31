@@ -30,8 +30,8 @@
     data-copy-rate-limit="{% translate 'The daily analysis limit was reached. Try again tomorrow.' %}"
     data-copy-location-wait="{% translate 'Requesting your location…' %}"
     data-copy-location-ok="{% translate 'Location captured. You can fine-tune the coordinates below.' %}"
-    data-copy-location-denied="{% translate 'Location was not shared. Enter the coordinates or use the demonstration property.' %}"
-    data-copy-demo-loaded="{% translate 'Demonstration property loaded.' %}"
+    data-copy-location-denied="{% translate 'Location was not shared. Enter the coordinates or load the demo field.' %}"
+    data-copy-demo-loaded="{% translate 'Demo field loaded.' %}"
     data-copy-field-saving="{% translate 'Saving the field and estimating its boundary…' %}"
     data-copy-boundary-ready="{% translate 'Boundary estimate ready. Review every vertex before confirming.' %}"
     data-copy-boundary-saving="{% translate 'Confirming the boundary…' %}"
@@ -41,9 +41,10 @@
     data-copy-zone-lower="{% translate 'Lower relative development' %}"
     data-copy-zone-similar="{% translate 'Similar relative development' %}"
     data-copy-zone-higher="{% translate 'Higher relative development' %}"
-    data-copy-zone="{% translate 'Zone' %}"
+    data-copy-zone="{% translate 'Area' %}"
     data-copy-hectares="{% translate 'ha' %}"
-    data-copy-map-label="{% translate 'Relative development zones within the confirmed field boundary' %}"
+    data-copy-acres="{% translate 'acres' %}"
+    data-copy-map-label="{% translate 'Relative-development areas within the confirmed field boundary' %}"
   >
     <div class="farmer-intro">
       <div>
@@ -70,7 +71,7 @@
         <li class="is-active" data-step-indicator="1" aria-current="step"><span>1</span><strong>{% translate "Field" %}</strong></li>
         <li data-step-indicator="2"><span>2</span><strong>{% translate "Boundary" %}</strong></li>
         <li data-step-indicator="3"><span>3</span><strong>{% translate "Analysis" %}</strong></li>
-        <li data-step-indicator="4"><span>4</span><strong>{% translate "Zones" %}</strong></li>
+        <li data-step-indicator="4"><span>4</span><strong>{% translate "Areas" %}</strong></li>
       </ol>
     </nav>
 
@@ -79,7 +80,7 @@
     <section class="app-card app-step is-active" id="step-field" data-step="1" aria-labelledby="field-title">
       <div class="step-heading">
         <span class="eyebrow">{% translate "Step 1 of 4 · Field details" %}</span>
-        <h2 id="field-title">{% translate "Register your field" %}</h2>
+        <h2 id="field-title">{% translate "Add a field" %}</h2>
         <p>{% translate "A reference point is enough for Gemini to start a boundary estimate. You remain in control of the final polygon." %}</p>
       </div>
 
@@ -94,14 +95,14 @@
             <label for="crop">{% translate "Crop" %}<span aria-hidden="true"> *</span></label>
             <select id="crop" name="crop" required>
               <option value="">{% translate "Select a crop" %}</option>
-              <option value="soja">{% translate "Soybean" %}</option>
+              <option value="soja">{% translate "Soybeans" %}</option>
               <option value="milho">{% translate "Corn" %}</option>
-              <option value="cafe">{% translate "Coffee" %}</option>
-              <option value="cana-de-acucar">{% translate "Sugarcane" %}</option>
-              <option value="algodao">{% translate "Cotton" %}</option>
-              <option value="trigo">{% translate "Wheat" %}</option>
-              <option value="arroz">{% translate "Rice" %}</option>
-              <option value="outra">{% translate "Other" %}</option>
+              <option value="cafe" disabled>{% translate "Coffee (soon)" %}</option>
+              <option value="cana-de-acucar" disabled>{% translate "Sugarcane (soon)" %}</option>
+              <option value="algodao" disabled>{% translate "Cotton (soon)" %}</option>
+              <option value="trigo" disabled>{% translate "Wheat (soon)" %}</option>
+              <option value="arroz" disabled>{% translate "Rice (soon)" %}</option>
+              <option value="outra" disabled>{% translate "Other crops (soon)" %}</option>
             </select>
           </div>
           <div class="field-control">
@@ -109,24 +110,27 @@
             <input id="season-start" name="season_start" type="date" required>
           </div>
           <div class="field-control">
-            <label for="season-end">{% translate "Expected end" %}<span aria-hidden="true"> *</span></label>
+            <label for="season-end">{% translate "Monitoring end date" %}<span aria-hidden="true"> *</span></label>
             <input id="season-end" name="season_end" type="date" required>
           </div>
           <div class="field-control field-wide">
             <label for="estimated-area">{% translate "Estimated area" %}<span aria-hidden="true"> *</span></label>
-            <div class="input-suffix">
-              <input id="estimated-area" name="estimated_area_ha" type="number" min="0.1" max="500" step="0.1" inputmode="decimal" required>
-              <span>{% translate "hectares" %}</span>
+            <div class="area-input-group">
+              <input id="estimated-area" name="estimated_area" type="number" min="0.1" max="500" step="0.01" inputmode="decimal" required>
+              <select id="area-unit" name="area_unit" aria-label="{% translate 'Area unit' %}">
+                <option value="hectares">{% translate "Hectares" %}</option>
+                <option value="acres">{% translate "Acres" %}</option>
+              </select>
             </div>
           </div>
         </div>
 
         <fieldset class="location-fieldset">
           <legend>{% translate "Reference location" %}</legend>
-          <p>{% translate "Use the phone location, the demonstration property, or type a coordinate." %}</p>
+          <p>{% translate "Use your phone location, load the demo field, or enter coordinates." %}</p>
           <div class="location-actions">
             <button class="choice-button" id="use-location" type="button"><span aria-hidden="true">⌖</span>{% translate "Use my location" %}</button>
-            <button class="choice-button" id="use-demo" type="button"><span aria-hidden="true">◇</span>{% translate "Use demonstration property" %}</button>
+            <button class="choice-button" id="use-demo" type="button"><span aria-hidden="true">◇</span>{% translate "Load demo field" %}</button>
           </div>
           <p class="location-status" id="location-status" aria-live="polite"></p>
           <div class="form-grid coordinate-grid">
@@ -189,20 +193,20 @@
         <p id="progress-message">{% translate "Preparing the Sentinel-2 image sequence." %}</p>
         <div class="progress-track" id="analysis-progress" role="progressbar" aria-live="polite" aria-label="{% translate 'Analysis progress' %}" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0"><span id="progress-bar"></span></div>
         <strong class="progress-value" id="progress-value">0%</strong>
-        <div class="analysis-pipeline" aria-label="{% translate 'Analysis pipeline' %}"><span>{% translate "Acquire scenes" %}</span><span>{% translate "Compare NDVI · NDRE · NDMI" %}</span><span>{% translate "Group zones" %}</span></div>
+        <div class="analysis-pipeline" aria-label="{% translate 'Analysis pipeline' %}"><span>{% translate "Acquire scenes" %}</span><span>{% translate "Compare NDVI · NDRE · NDMI" %}</span><span>{% translate "Group areas" %}</span></div>
       </div>
     </section>
 
     <section class="app-card app-step" id="step-results" data-step="4" role="region" aria-labelledby="results-title" hidden>
       <div id="analysis-results" role="region" aria-labelledby="results-title">
         <div class="step-heading results-heading">
-          <div><span class="eyebrow">{% translate "Step 4 of 4 · Result" %}</span><h2 id="results-title">{% translate "Your field does not develop uniformly" %}</h2><p id="results-summary"></p></div>
+          <div><span class="eyebrow">{% translate "Step 4 of 4 · Result" %}</span><h2 id="results-title">{% translate "Crop growth varies across your field" %}</h2><p id="results-summary"></p></div>
           <span class="result-badge">{% translate "Sentinel-2 · Multispectral" %}</span>
         </div>
 
         <div class="results-layout">
           <div class="map-shell result-map-shell">
-            <svg id="zone-map" class="field-map" viewBox="0 0 640 360" role="img" aria-label="{% translate 'Relative development zones within the confirmed field boundary' %}"></svg>
+            <svg id="zone-map" class="field-map" viewBox="0 0 640 360" role="img" aria-label="{% translate 'Relative-development areas within the confirmed field boundary' %}"></svg>
             <div class="zone-legend" id="zone-legend"></div>
           </div>
           <div class="zone-cards" id="zone-cards"></div>
@@ -226,7 +230,7 @@
         </div>
         <div class="form-actions result-actions">
           <button class="secondary-button" id="restart-analysis" type="button">{% translate "Map another field" %}</button>
-          <button class="primary-button app-primary" id="download-geojson" type="button">{% translate "Download zone GeoJSON" %}</button>
+          <button class="primary-button app-primary" id="download-geojson" type="button">{% translate "Download areas as GeoJSON" %}</button>
         </div>
       </div>
     </section>

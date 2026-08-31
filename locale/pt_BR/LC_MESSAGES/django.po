@@ -51,7 +51,7 @@ msgstr "Informações de satélite que mostram onde olhar primeiro."
 
 #, python-format
 msgid "Map your field · %(product_name)s"
-msgstr "Mapeie sua lavoura · %(product_name)s"
+msgstr "Mapeie sua área · %(product_name)s"
 
 msgid "Please wait…"
 msgstr "Aguarde…"
@@ -77,14 +77,14 @@ msgstr "Solicitando sua localização…"
 msgid "Location captured. You can fine-tune the coordinates below."
 msgstr "Localização capturada. Você pode ajustar as coordenadas abaixo."
 
-msgid "Location was not shared. Enter the coordinates or use the demonstration property."
-msgstr "A localização não foi compartilhada. Digite as coordenadas ou use a propriedade demonstrativa."
+msgid "Location was not shared. Enter the coordinates or load the demo field."
+msgstr "A localização não foi compartilhada. Digite as coordenadas ou carregue a área de demonstração."
 
-msgid "Demonstration property loaded."
-msgstr "Propriedade demonstrativa carregada."
+msgid "Demo field loaded."
+msgstr "Área de demonstração carregada."
 
 msgid "Saving the field and estimating its boundary…"
-msgstr "Salvando a lavoura e estimando seu limite…"
+msgstr "Salvando a área e estimando seu limite…"
 
 msgid "Boundary estimate ready. Review every vertex before confirming."
 msgstr "Estimativa do limite pronta. Revise cada ponto antes de confirmar."
@@ -110,14 +110,17 @@ msgstr "Desenvolvimento relativo semelhante"
 msgid "Higher relative development"
 msgstr "Desenvolvimento relativo maior"
 
-msgid "Zone"
-msgstr "Zona"
+msgid "Area"
+msgstr "Área"
 
 msgid "ha"
 msgstr "ha"
 
-msgid "Relative development zones within the confirmed field boundary"
-msgstr "Zonas de desenvolvimento relativo dentro do limite confirmado da lavoura"
+msgid "acres"
+msgstr "acres"
+
+msgid "Relative-development areas within the confirmed field boundary"
+msgstr "Áreas com desenvolvimento diferente dentro do limite confirmado da área plantada"
 
 msgid "Precision agriculture, made accessible"
 msgstr "Agricultura de precisão ao alcance de todos"
@@ -126,7 +129,7 @@ msgid "See differences the eye cannot see."
 msgstr "Veja diferenças que os olhos não conseguem ver."
 
 msgid "Mark your field, compare its spectral history and receive a clear map of areas that developed differently."
-msgstr "Marque sua lavoura, compare seu histórico espectral e receba um mapa claro das áreas que se desenvolveram de forma diferente."
+msgstr "Marque sua área, compare seu histórico espectral e receba um mapa claro das partes que se desenvolveram de forma diferente."
 
 #, python-format
 msgid "Connected as %(username)s"
@@ -139,7 +142,7 @@ msgid "Analysis steps"
 msgstr "Etapas da análise"
 
 msgid "Field"
-msgstr "Lavoura"
+msgstr "Área"
 
 msgid "Boundary"
 msgstr "Limite"
@@ -147,23 +150,23 @@ msgstr "Limite"
 msgid "Analysis"
 msgstr "Análise"
 
-msgid "Zones"
-msgstr "Zonas"
+msgid "Areas"
+msgstr "Áreas"
 
 msgid "Step 1 of 4 · Field details"
-msgstr "Etapa 1 de 4 · Dados da lavoura"
+msgstr "Etapa 1 de 4 · Dados da área"
 
-msgid "Register your field"
-msgstr "Cadastre sua lavoura"
+msgid "Add a field"
+msgstr "Adicione uma área"
 
 msgid "A reference point is enough for Gemini to start a boundary estimate. You remain in control of the final polygon."
 msgstr "Um ponto de referência basta para o Gemini iniciar a estimativa do limite. Você mantém o controle sobre o polígono final."
 
 msgid "Field name"
-msgstr "Nome da lavoura"
+msgstr "Nome da área"
 
 msgid "My field"
-msgstr "Minha lavoura"
+msgstr "Minha área"
 
 msgid "Crop"
 msgstr "Cultura"
@@ -171,53 +174,59 @@ msgstr "Cultura"
 msgid "Select a crop"
 msgstr "Selecione uma cultura"
 
-msgid "Soybean"
+msgid "Soybeans"
 msgstr "Soja"
 
 msgid "Corn"
 msgstr "Milho"
 
-msgid "Coffee"
-msgstr "Café"
+msgid "Coffee (soon)"
+msgstr "Café (em breve)"
 
-msgid "Sugarcane"
-msgstr "Cana-de-açúcar"
+msgid "Sugarcane (soon)"
+msgstr "Cana-de-açúcar (em breve)"
 
-msgid "Cotton"
-msgstr "Algodão"
+msgid "Cotton (soon)"
+msgstr "Algodão (em breve)"
 
-msgid "Wheat"
-msgstr "Trigo"
+msgid "Wheat (soon)"
+msgstr "Trigo (em breve)"
 
-msgid "Rice"
-msgstr "Arroz"
+msgid "Rice (soon)"
+msgstr "Arroz (em breve)"
 
-msgid "Other"
-msgstr "Outra"
+msgid "Other crops (soon)"
+msgstr "Outras culturas (em breve)"
 
 msgid "Planting date"
 msgstr "Data do plantio"
 
-msgid "Expected end"
-msgstr "Término previsto"
+msgid "Monitoring end date"
+msgstr "Data final do monitoramento"
 
 msgid "Estimated area"
 msgstr "Área estimada"
 
-msgid "hectares"
-msgstr "hectares"
+msgid "Area unit"
+msgstr "Unidade da área"
+
+msgid "Hectares"
+msgstr "Hectares"
+
+msgid "Acres"
+msgstr "Acres"
 
 msgid "Reference location"
 msgstr "Localização de referência"
 
-msgid "Use the phone location, the demonstration property, or type a coordinate."
-msgstr "Use a localização do celular, a propriedade demonstrativa ou digite uma coordenada."
+msgid "Use your phone location, load the demo field, or enter coordinates."
+msgstr "Use a localização do celular, carregue a área de demonstração ou digite as coordenadas."
 
 msgid "Use my location"
 msgstr "Usar minha localização"
 
-msgid "Use demonstration property"
-msgstr "Usar propriedade demonstrativa"
+msgid "Load demo field"
+msgstr "Carregar área de demonstração"
 
 msgid "Latitude"
 msgstr "Latitude"
@@ -235,7 +244,7 @@ msgid "* Required fields"
 msgstr "* Campos obrigatórios"
 
 msgid "Estimate field boundary"
-msgstr "Estimar limite da lavoura"
+msgstr "Estimar limite da área"
 
 msgid "Step 2 of 4 · Boundary"
 msgstr "Etapa 2 de 4 · Limite"
@@ -244,10 +253,10 @@ msgid "Confirm the cultivated area"
 msgstr "Confirme a área cultivada"
 
 msgid "The green polygon is an estimate. Drag its points or edit the coordinates, then confirm only when it matches the field."
-msgstr "O polígono verde é uma estimativa. Arraste os pontos ou edite as coordenadas e só confirme quando ele corresponder à lavoura."
+msgstr "O polígono verde é uma estimativa. Arraste os pontos ou edite as coordenadas e só confirme quando ele corresponder à área plantada."
 
 msgid "Editable estimated field boundary"
-msgstr "Estimativa editável do limite da lavoura"
+msgstr "Estimativa editável do limite da área"
 
 msgid "Estimated boundary"
 msgstr "Limite estimado"
@@ -274,7 +283,7 @@ msgid "Step 3 of 4 · Analysis"
 msgstr "Etapa 3 de 4 · Análise"
 
 msgid "Gemini is coordinating the field analysis"
-msgstr "O Gemini está coordenando a análise da lavoura"
+msgstr "O Gemini está coordenando a análise da área"
 
 msgid "Preparing the Sentinel-2 image sequence."
 msgstr "Preparando a sequência de imagens do Sentinel-2."
@@ -291,14 +300,14 @@ msgstr "Buscar imagens"
 msgid "Compare NDVI · NDRE · NDMI"
 msgstr "Comparar NDVI · NDRE · NDMI"
 
-msgid "Group zones"
-msgstr "Agrupar zonas"
+msgid "Group areas"
+msgstr "Agrupar áreas"
 
 msgid "Step 4 of 4 · Result"
 msgstr "Etapa 4 de 4 · Resultado"
 
-msgid "Your field does not develop uniformly"
-msgstr "Sua lavoura não se desenvolve de forma uniforme"
+msgid "Crop growth varies across your field"
+msgstr "Sua área plantada não é toda igual"
 
 msgid "Sentinel-2 · Multispectral"
 msgstr "Sentinel-2 · Multiespectral"
@@ -322,10 +331,10 @@ msgid "A map for investigation, not a diagnosis"
 msgstr "Um mapa para investigação, não um diagnóstico"
 
 msgid "Map another field"
-msgstr "Mapear outra lavoura"
+msgstr "Mapear outra área"
 
-msgid "Download zone GeoJSON"
-msgstr "Baixar GeoJSON das zonas"
+msgid "Download areas as GeoJSON"
+msgstr "Baixar GeoJSON das áreas"
 
 msgid "1415 Agri · Know where to scout first"
 msgstr "1415 Agri · Saiba onde olhar primeiro"

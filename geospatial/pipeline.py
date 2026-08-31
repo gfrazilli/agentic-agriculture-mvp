@@ -1065,7 +1065,7 @@ def _zone_svg(label_grid: tuple[tuple[int | None, ...], ...]) -> bytes:
     width = len(label_grid[0])
     parts = [
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {width} {height}" '
-        f'role="img" aria-label="{escape("Mapa de zonas relativas")}">',
+        f'role="img" aria-label="{escape("Mapa de áreas com desenvolvimento diferente")}">',
         f'<rect width="{width}" height="{height}" fill="#e5e7eb"/>',
     ]
     for row_index, row in enumerate(label_grid):

@@ -8,8 +8,8 @@
   "progress": {
     "percent": 100,
     "stage": "completed",
-    "message_pt": "Comparação concluída em quatro zonas de desenvolvimento relativo.",
-    "message_en": "Comparison completed across four relative development zones.",
+    "message_pt": "Comparação concluída em quatro áreas com desenvolvimento diferente.",
+    "message_en": "Comparison completed across four relative-development areas.",
     "updated_at": "2026-03-28T12:02:30Z"
   },
   "result": {
@@ -86,8 +86,8 @@
             "indices": {"ndvi": 0.59, "ndre": 0.32, "ndmi": 0.15}
           }
         ],
-        "summary_pt": "Esta zona manteve sinais espectrais relativamente menores que o conjunto do talhão nas três datas.",
-        "summary_en": "This zone kept relatively lower spectral signals than the field as a whole on all three dates."
+        "summary_pt": "Esta parte da área manteve sinais espectrais relativamente menores que a área plantada como um todo nas três datas.",
+        "summary_en": "This area consistently showed lower spectral signals than the field as a whole on all three dates."
       },
       {
         "zone_id": "zone-2",
@@ -123,8 +123,8 @@
             "indices": {"ndvi": 0.72, "ndre": 0.44, "ndmi": 0.23}
           }
         ],
-        "summary_pt": "Esta zona acompanhou de perto a trajetória espectral predominante no talhão.",
-        "summary_en": "This zone closely followed the predominant spectral trajectory in the field."
+        "summary_pt": "Esta parte da área acompanhou de perto a trajetória espectral predominante na área plantada.",
+        "summary_en": "This area closely followed the predominant spectral trajectory in the field."
       },
       {
         "zone_id": "zone-3",
@@ -160,8 +160,8 @@
             "indices": {"ndvi": 0.83, "ndre": 0.55, "ndmi": 0.33}
           }
         ],
-        "summary_pt": "Esta zona apresentou sinais espectrais relativamente maiores que o conjunto do talhão.",
-        "summary_en": "This zone showed relatively higher spectral signals than the field as a whole."
+        "summary_pt": "Esta parte da área apresentou sinais espectrais relativamente maiores que a área plantada como um todo.",
+        "summary_en": "This area showed relatively higher spectral signals than the field as a whole."
       },
       {
         "zone_id": "zone-4",
@@ -197,8 +197,8 @@
             "indices": {"ndvi": 0.75, "ndre": 0.46, "ndmi": 0.25}
           }
         ],
-        "summary_pt": "Esta zona permaneceu próxima da trajetória geral, com pequenas diferenças entre as datas.",
-        "summary_en": "This zone stayed close to the overall trajectory, with small differences between dates."
+        "summary_pt": "Esta parte da área permaneceu próxima da trajetória geral, com pequenas diferenças entre as datas.",
+        "summary_en": "This area stayed close to the overall trajectory, with small differences between dates."
       }
     ],
     "scope": {

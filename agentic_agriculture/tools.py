@@ -125,7 +125,7 @@ class AgricultureActionTools:
                 error_code="invalid_field_id",
                 error_type="ValidationError",
             )
-            return _not_found("invalid_field_id", "O ID do talhão é inválido.")
+            return _not_found("invalid_field_id", "O ID da área plantada é inválido.")
 
         service = self._service_provider()
         try:
@@ -159,7 +159,7 @@ class AgricultureActionTools:
             )
             return _not_found(
                 "invalid_analysis_request",
-                "A quantidade de zonas deve estar entre 2 e 7.",
+                "A quantidade de divisões deve estar entre 2 e 7.",
             )
         except APIError as exc:
             audit_event(
@@ -223,19 +223,19 @@ class ReadOnlyAgricultureTools:
         self._repository_provider = repository_provider
 
     def get_field_context(self, field_id: str) -> dict[str, Any]:
-        """Busca dados confirmados de um talhão pelo ID, sem alterar o cadastro."""
+        """Busca dados confirmados de uma área plantada pelo ID, sem alterar o cadastro."""
 
         try:
             normalized = _identifier(field_id, name="field_id")
         except ValueError:
-            return _not_found("invalid_field_id", "O ID do talhão é inválido.")
+            return _not_found("invalid_field_id", "O ID da área plantada é inválido.")
         field = self._repository_provider().get_field(normalized)
         if field is None:
-            return _not_found("field_not_found", "O talhão não foi encontrado.")
+            return _not_found("field_not_found", "A área plantada não foi encontrada.")
         return {"ok": True, "evidence": field_evidence(field)}
 
     def get_analysis_evidence(self, analysis_id: str) -> dict[str, Any]:
-        """Busca status, cenas, zonas e proveniência de uma análise pelo ID."""
+        """Busca status, cenas, partes analisadas e proveniência de uma análise pelo ID."""
 
         try:
             normalized = _identifier(analysis_id, name="analysis_id")
@@ -247,7 +247,7 @@ class ReadOnlyAgricultureTools:
         return {"ok": True, "evidence": analysis_evidence(analysis)}
 
     def get_zone_evidence(self, analysis_id: str, zone_id: str) -> dict[str, Any]:
-        """Busca geometria e trajetória exatas de uma zona de uma análise concluída."""
+        """Busca a geometria e a trajetória exatas de uma parte em uma análise concluída."""
 
         try:
             normalized = _identifier(analysis_id, name="analysis_id")
@@ -255,7 +255,10 @@ class ReadOnlyAgricultureTools:
             return _not_found("invalid_analysis_id", "O ID da análise é inválido.")
         zone_id = zone_id.strip()
         if _ZONE_ID.fullmatch(zone_id) is None:
-            return _not_found("invalid_zone_id", "O ID da zona deve estar entre zone-1 e zone-7.")
+            return _not_found(
+                "invalid_zone_id",
+                "O identificador da parte deve estar entre zone-1 e zone-7.",
+            )
         analysis = self._repository_provider().get_analysis(normalized)
         if analysis is None:
             return _not_found("analysis_not_found", "A análise não foi encontrada.")
@@ -263,17 +266,17 @@ class ReadOnlyAgricultureTools:
         if evidence is None:
             return _not_found(
                 "zone_evidence_unavailable",
-                "A zona não existe ou a análise ainda não tem resultado.",
+                "A parte da área não existe ou a análise ainda não tem resultado.",
             )
         return {"ok": True, "evidence": evidence}
 
     def list_field_analyses(self, field_id: str, limit: int = 5) -> dict[str, Any]:
-        """Lista as análises mais recentes de um talhão, sem iniciar processamento."""
+        """Lista as análises mais recentes de uma área plantada, sem iniciar processamento."""
 
         try:
             normalized = _identifier(field_id, name="field_id")
         except ValueError:
-            return _not_found("invalid_field_id", "O ID do talhão é inválido.")
+            return _not_found("invalid_field_id", "O ID da área plantada é inválido.")
         if not 1 <= limit <= 20:
             return _not_found("invalid_limit", "O limite deve estar entre 1 e 20.")
         analyses = self._repository_provider().list_analyses(normalized)

@@ -263,22 +263,15 @@
   background: #fff4ef;
 }
 
-.input-suffix {
-  position: relative;
+.area-input-group {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(8rem, auto);
+  gap: 0.65rem;
 }
 
-.input-suffix input {
-  padding-right: 6.2rem;
-}
-
-.input-suffix > span {
-  position: absolute;
-  top: 50%;
-  right: 0.9rem;
-  transform: translateY(-50%);
-  color: var(--aa-moss);
-  font-size: 0.8rem;
-  pointer-events: none;
+.area-input-group select {
+  width: auto;
+  min-width: 8rem;
 }
 
 .location-fieldset {
@@ -1086,6 +1079,14 @@
   .form-grid,
   .analysis-pipeline {
     grid-template-columns: 1fr;
+  }
+
+  .area-input-group {
+    grid-template-columns: 1fr;
+  }
+
+  .area-input-group select {
+    width: 100%;
   }
 
   .field-wide {

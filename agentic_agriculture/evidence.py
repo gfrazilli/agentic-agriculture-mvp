@@ -7,9 +7,14 @@ from typing import Any
 from agriculture.schemas import Analysis, Field, Zone
 
 INTERPRETATION_LIMITS_PT = (
-    "Compara somente a variabilidade espacial relativa dentro do talhão.",
+    "Compara somente a variabilidade espacial relativa dentro da área plantada.",
     "Não identifica causa, praga, doença, solo, falta de água, tratamento ou produtividade.",
     "Uma decisão agronômica exige verificação em campo e contexto profissional.",
+)
+INTERPRETATION_LIMITS_EN = (
+    "Compares only relative spatial variability within the field.",
+    "Does not identify a cause, pest, disease, soil issue, water need, treatment, or yield.",
+    "An agronomic decision requires field verification and professional context.",
 )
 
 
@@ -37,6 +42,7 @@ def field_evidence(field: Field) -> dict[str, Any]:
             "updated_at": field.updated_at.isoformat(),
         },
         "interpretation_limits_pt": INTERPRETATION_LIMITS_PT,
+        "interpretation_limits_en": INTERPRETATION_LIMITS_EN,
     }
 
 
@@ -52,6 +58,7 @@ def analysis_summary(analysis: Analysis) -> dict[str, Any]:
             "percent": analysis.progress.percent,
             "stage": analysis.progress.stage.value,
             "message_pt": analysis.progress.message_pt,
+            "message_en": analysis.progress.message_en,
             "updated_at": analysis.progress.updated_at.isoformat(),
         },
         "requested_zone_count": analysis.requested_zone_count,
@@ -80,6 +87,7 @@ def _zone_overview(zone: Zone) -> dict[str, Any]:
         "area_percent": zone.area_percent,
         "trajectory": [_json(point) for point in zone.trajectory],
         "summary_pt": zone.summary_pt,
+        "summary_en": zone.summary_en,
     }
 
 
@@ -92,6 +100,7 @@ def analysis_evidence(analysis: Analysis) -> dict[str, Any]:
         "source": "agriculture_repository",
         "analysis": analysis_summary(analysis),
         "interpretation_limits_pt": INTERPRETATION_LIMITS_PT,
+        "interpretation_limits_en": INTERPRETATION_LIMITS_EN,
     }
     if analysis.error is not None:
         envelope["error"] = _json(analysis.error)
@@ -140,4 +149,5 @@ def zone_evidence(analysis: Analysis, zone_id: str) -> dict[str, Any] | None:
         "provenance": _json(analysis.result.provenance),
         "scope": _json(analysis.result.scope),
         "interpretation_limits_pt": INTERPRETATION_LIMITS_PT,
+        "interpretation_limits_en": INTERPRETATION_LIMITS_EN,
     }

@@ -447,12 +447,12 @@ def analyze_temporal_zones(
             "diagnostic": False,
             "excluded_inferences": ("pest", "disease", "soil", "water"),
             "disclaimer_pt": (
-                "As zonas comparam sinais espectrais relativos e não identificam a causa "
-                "das diferenças observadas."
+                "As áreas destacadas comparam sinais espectrais relativos e não identificam "
+                "a causa das diferenças observadas."
             ),
             "disclaimer_en": (
-                "The zones compare relative spectral signals and do not identify the cause "
-                "of observed differences."
+                "The highlighted areas compare relative spectral signals and do not identify "
+                "the cause of observed differences."
             ),
         },
     )
@@ -562,28 +562,28 @@ def _cluster_matrix(
     if requested_zone_count is not None and requested_zone_count in accepted_results:
         selected = requested_zone_count
         mode = "requested"
-        reason_pt = f"Reagrupamento executado nas {selected} zonas solicitadas."
-        reason_en = f"Regrouping used the requested {selected} zones."
+        reason_pt = f"Reagrupamento executado com as {selected} divisões solicitadas."
+        reason_en = f"Regrouping used the requested {selected} areas."
     elif requested_zone_count is not None:
         selected = max(accepted_results)
         mode = "requested_capped"
         reason_pt = (
-            f"A solicitação de {requested_zone_count} zonas foi limitada a {selected}, "
-            "pois mais zonas não teriam suporte mínimo de pixels."
+            f"A solicitação de {requested_zone_count} divisões foi limitada a {selected}, "
+            "pois mais divisões não teriam suporte mínimo de pixels."
         )
         reason_en = (
-            f"The request for {requested_zone_count} zones was capped at {selected} because "
-            "additional zones lacked minimum pixel support."
+            f"The request for {requested_zone_count} areas was capped at {selected} because "
+            "additional areas lacked minimum pixel support."
         )
     else:
         selected = max(accepted_results, key=lambda count: (accepted_results[count][1], -count))
         mode = "automatic"
         reason_pt = (
-            f"Foram selecionadas {selected} zonas pelo melhor equilíbrio entre separação "
-            "espectral, continuidade espacial e simplicidade."
+            f"Foram selecionadas {selected} partes da área pelo melhor equilíbrio entre "
+            "separação espectral, continuidade espacial e simplicidade."
         )
         reason_en = (
-            f"{selected} zones were selected for the best balance of spectral separation, "
+            f"{selected} areas were selected for the best balance of spectral separation, "
             "spatial continuity and simplicity."
         )
 
@@ -744,24 +744,27 @@ def _build_zone_statistics(
         if zone_signal < field_mean - threshold:
             relative_label = "lower_than_field"
             summary_pt = (
-                "A trajetória espectral desta zona ficou relativamente abaixo do conjunto "
-                "do talhão."
+                "A trajetória espectral desta parte ficou relativamente abaixo da área "
+                "plantada como um todo."
             )
             summary_en = (
-                "This zone's spectral trajectory was relatively below the field as a whole."
+                "This area's spectral trajectory was relatively below the field as a whole."
             )
         elif zone_signal > field_mean + threshold:
             relative_label = "higher_than_field"
             summary_pt = (
-                "A trajetória espectral desta zona ficou relativamente acima do conjunto do talhão."
+                "A trajetória espectral desta parte ficou relativamente acima da área "
+                "plantada como um todo."
             )
             summary_en = (
-                "This zone's spectral trajectory was relatively above the field as a whole."
+                "This area's spectral trajectory was relatively above the field as a whole."
             )
         else:
             relative_label = "similar_to_field"
-            summary_pt = "A trajetória espectral desta zona ficou próxima do conjunto do talhão."
-            summary_en = "This zone's spectral trajectory remained close to the field as a whole."
+            summary_pt = (
+                "A trajetória espectral desta parte ficou próxima da área plantada como um todo."
+            )
+            summary_en = "This area's spectral trajectory remained close to the field as a whole."
 
         trajectory: list[TrajectoryPoint] = []
         reshaped = temporal_values[selected]
