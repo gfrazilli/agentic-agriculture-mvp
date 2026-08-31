@@ -242,6 +242,10 @@ def test_farmer_script_uses_real_contract_and_safe_dom_updates():
     assert 'areaInput.min = usesAcres ? "0.2471" : "0.1"' in script
     assert 'areaInput.max = usesAcres ? "1235.53" : "500"' in script
     assert 'areaInput.step = usesAcres ? "any" : "0.01"' in script
+    assert "visibleBoundaryVertexIndexes" in script
+    assert "maximumVisible = 24" in script
+    assert "r: 6" in script
+    assert 'r: 11, class: "zone-label"' in script
     assert "new Intl.NumberFormat(locale" in script
     assert "smallAreaNumberFormatter" in script
     assert "new Intl.DateTimeFormat(locale" in script

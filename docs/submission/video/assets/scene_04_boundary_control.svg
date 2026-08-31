@@ -1,0 +1,67 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Human-controlled field boundary workflow</title>
+  <desc id="desc">Editorial card describing the real boundary proposal from the recorded run: 30.3 hectares, 74 percent confidence, editable geometry, and required farmer confirmation.</desc>
+  <defs>
+    <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfdfb"/>
+      <stop offset="1" stop-color="#edf6ef"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="8" stdDeviation="14" flood-color="#173d30" flood-opacity="0.11"/>
+    </filter>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="8" refY="5" orient="auto">
+      <path d="M0,0 L9,5 L0,10 z" fill="#2f8b5c"/>
+    </marker>
+    <style>
+      .eyebrow{font:700 20px Arial,Helvetica,sans-serif;letter-spacing:2.2px;fill:#2d7c54}
+      .headline{font:700 64px Arial,Helvetica,sans-serif;fill:#0b3d2f}
+      .sub{font:400 27px Arial,Helvetica,sans-serif;fill:#53675e}
+      .label{font:700 17px Arial,Helvetica,sans-serif;letter-spacing:1.6px;fill:#63766d}
+      .value{font:700 32px Arial,Helvetica,sans-serif;fill:#133f31}
+      .body{font:400 23px Arial,Helvetica,sans-serif;fill:#496057}
+      .step{font:700 23px Arial,Helvetica,sans-serif;fill:#176b49}
+    </style>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#wash)"/>
+  <circle cx="1770" cy="130" r="300" fill="#dfeee3" opacity="0.7"/>
+  <circle cx="100" cy="1020" r="300" fill="#e7f2e9" opacity="0.82"/>
+
+  <text x="145" y="130" class="eyebrow">HUMAN CONTROL · ACTUAL RECORDED RUN</text>
+  <text x="145" y="225" class="headline">The farmer controls the boundary.</text>
+  <text x="145" y="282" class="sub">The estimate can guide the workflow, but it cannot authorize itself.</text>
+
+  <g filter="url(#shadow)">
+    <rect x="145" y="390" width="470" height="330" rx="30" fill="#ffffff" stroke="#bdd6c5" stroke-width="3"/>
+    <rect x="725" y="390" width="470" height="330" rx="30" fill="#ffffff" stroke="#bdd6c5" stroke-width="3"/>
+    <rect x="1305" y="390" width="470" height="330" rx="30" fill="#ffffff" stroke="#9fc7ad" stroke-width="3"/>
+  </g>
+
+  <circle cx="210" cy="455" r="28" fill="#e8f4eb"/>
+  <text x="210" y="464" text-anchor="middle" class="step">1</text>
+  <text x="260" y="464" class="label">REFERENCE</text>
+  <text x="195" y="535" class="value">36-hectare estimate</text>
+  <text x="195" y="585" class="body">One authorized reference point</text>
+  <text x="195" y="620" class="body">starts the proposal.</text>
+
+  <circle cx="790" cy="455" r="28" fill="#e8f4eb"/>
+  <text x="790" y="464" text-anchor="middle" class="step">2</text>
+  <text x="840" y="464" class="label">EDITABLE PROPOSAL</text>
+  <text x="775" y="535" class="value">30.3 ha · 74% confidence</text>
+  <text x="775" y="585" class="body">Full geometry stays available</text>
+  <text x="775" y="620" class="body">in the detailed editor.</text>
+
+  <circle cx="1370" cy="455" r="28" fill="#dff0e4"/>
+  <text x="1370" y="464" text-anchor="middle" class="step">3</text>
+  <text x="1420" y="464" class="label">EXPLICIT CONFIRMATION</text>
+  <text x="1355" y="535" class="value">Required human gate</text>
+  <text x="1355" y="585" class="body">Analysis remains blocked until</text>
+  <text x="1355" y="620" class="body">the farmer confirms.</text>
+
+  <line x1="630" y1="555" x2="700" y2="555" stroke="#2f8b5c" stroke-width="5" marker-end="url(#arrow)"/>
+  <line x1="1210" y1="555" x2="1280" y2="555" stroke="#2f8b5c" stroke-width="5" marker-end="url(#arrow)"/>
+
+  <rect x="145" y="820" width="1630" height="120" rx="28" fill="#e8f4eb" stroke="#afd0bb" stroke-width="2"/>
+  <circle cx="210" cy="880" r="17" fill="#2c8b5b"/>
+  <text x="255" y="871" class="label">CONTROL BOUNDARY</text>
+  <text x="255" y="908" class="body">Satellite measurements begin only after the cultivated area is explicitly confirmed.</text>
+</svg>

@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">1415 Agri title card</title>
+  <desc id="desc">Submission video title with the canonical company logo.</desc>
+  <defs>
+    <linearGradient id="wash" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#fbfdfb"/>
+      <stop offset="1" stop-color="#f0f7f2"/>
+    </linearGradient>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#wash)"/>
+  <circle cx="1635" cy="180" r="330" fill="#e5f2e8" opacity="0.72"/>
+  <circle cx="235" cy="975" r="400" fill="#eef6ef" opacity="0.88"/>
+  <image x="710" y="105" width="500" height="474" preserveAspectRatio="xMidYMid meet" xlink:href="../../../../core/static/core/brand/1415-agri-logo.png"/>
+  <text x="960" y="680" text-anchor="middle" fill="#0b3d2f" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700">The Collaborative Partner</text>
+  <text x="960" y="751" text-anchor="middle" fill="#4f665c" font-family="Arial, Helvetica, sans-serif" font-size="32" font-weight="400">Satellite evidence · Gemini reasoning · Farmer control</text>
+  <rect x="755" y="821" width="410" height="58" rx="29" fill="#e5f3e9" stroke="#b4d2bf" stroke-width="2"/>
+  <text x="960" y="859" text-anchor="middle" fill="#176b49" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="1.6">ALL THINGS AGENTIC 2026</text>
+</svg>

@@ -86,8 +86,8 @@ msgstr "Área de demonstração carregada."
 msgid "Saving the field and estimating its boundary…"
 msgstr "Salvando a área e estimando seu limite…"
 
-msgid "Boundary estimate ready. Review every vertex before confirming."
-msgstr "Estimativa do limite pronta. Revise cada ponto antes de confirmar."
+msgid "Boundary estimate ready. Review the boundary carefully before confirming."
+msgstr "Estimativa do limite pronta. Revise o contorno com atenção antes de confirmar."
 
 msgid "Confirming the boundary…"
 msgstr "Confirmando o limite…"

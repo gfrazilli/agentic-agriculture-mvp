@@ -700,6 +700,17 @@
     return ring.map((position) => projection.project(position).map((value) => value.toFixed(2)).join(",")).join(" ");
   }
 
+  function visibleBoundaryVertexIndexes(vertexCount, maximumVisible = 24) {
+    if (vertexCount <= maximumVisible) {
+      return Array.from({ length: vertexCount }, (_value, index) => index);
+    }
+    const interval = vertexCount / maximumVisible;
+    return Array.from(
+      { length: maximumVisible },
+      (_value, index) => Math.floor(index * interval),
+    );
+  }
+
   function zoneGeometryPolygons(boundary) {
     if (boundary.type === "Polygon") return [boundary.coordinates];
     if (boundary.type === "MultiPolygon") return boundary.coordinates;
@@ -788,12 +799,14 @@
       class: "boundary-fill",
     });
     svg.append(polygon);
-    ring.slice(0, -1).forEach((position, index) => {
+    const uniqueVertices = ring.slice(0, -1);
+    visibleBoundaryVertexIndexes(uniqueVertices.length).forEach((index) => {
+      const position = uniqueVertices[index];
       const [x, y] = projection.project(position);
       const vertex = createSvgElement("circle", {
         cx: x,
         cy: y,
-        r: 9,
+        r: 6,
         class: "vertex",
         tabindex: "0",
         role: "button",
@@ -889,7 +902,7 @@
       const unique = ring.slice(0, -1);
       const center = unique.reduce((total, position) => [total[0] + position[0], total[1] + position[1]], [0, 0]).map((value) => value / unique.length);
       const [x, y] = projection.project(center);
-      svg.append(createSvgElement("circle", { cx: x, cy: y, r: 15, class: "zone-label" }));
+      svg.append(createSvgElement("circle", { cx: x, cy: y, r: 11, class: "zone-label" }));
       const number = createSvgElement("text", { x, y, class: "zone-number" });
       number.textContent = String(index + 1);
       svg.append(number);

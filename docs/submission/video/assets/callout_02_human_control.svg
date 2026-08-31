@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-label="Farmer confirms the boundary callout">
+  <defs><filter id="s" x="-20%" y="-30%" width="150%" height="180%"><feDropShadow dx="0" dy="6" stdDeviation="9" flood-color="#0c3024" flood-opacity="0.18"/></filter></defs>
+  <g filter="url(#s)">
+    <rect x="78" y="72" width="570" height="132" rx="24" fill="#ffffff" fill-opacity="0.96" stroke="#b7d2c0" stroke-width="2"/>
+    <rect x="78" y="72" width="13" height="132" rx="6" fill="#2f8b5c"/>
+  </g>
+  <text x="119" y="114" fill="#5a7066" font-family="Arial,Helvetica,sans-serif" font-size="17" font-weight="700" letter-spacing="1.8">HUMAN-IN-THE-LOOP</text>
+  <text x="119" y="156" fill="#0b3d2f" font-family="Arial,Helvetica,sans-serif" font-size="28" font-weight="700">FARMER CONFIRMS BOUNDARY</text>
+  <text x="119" y="186" fill="#3f5f51" font-family="Arial,Helvetica,sans-serif" font-size="20">No analysis starts before confirmation</text>
+</svg>

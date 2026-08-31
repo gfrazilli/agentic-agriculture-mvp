@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Transparent processing-time disclosure card</title>
+  <desc id="desc">Optional card used only when a real processing wait must be condensed.</desc>
+  <rect width="1920" height="1080" fill="#fbfdfb"/>
+  <circle cx="960" cy="465" r="105" fill="none" stroke="#d8e8dd" stroke-width="18"/>
+  <path d="M960 360 A105 105 0 0 1 1065 465" fill="none" stroke="#2f8b5c" stroke-width="18" stroke-linecap="round"/>
+  <text x="960" y="640" text-anchor="middle" fill="#0b3d2f" font-family="Arial,Helvetica,sans-serif" font-size="51" font-weight="700">Processing continued</text>
+  <text x="960" y="704" text-anchor="middle" fill="#50665c" font-family="Arial,Helvetica,sans-serif" font-size="28">Same analysis ID · show the truthful elapsed time in the edit</text>
+  <text x="960" y="850" text-anchor="middle" fill="#72857c" font-family="Arial,Helvetica,sans-serif" font-size="20">Use only when the complete normal-speed wait cannot fit inside four minutes.</text>
+</svg>

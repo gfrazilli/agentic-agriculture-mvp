@@ -1,0 +1,32 @@
+[SCENE_01_PROBLEM | 00:00-00:18]
+Farmers can walk a field, but they cannot see red-edge, near-infrared, or short-wave infrared. Sentinel-2 captures those signals, yet turning a season of satellite data into a useful field visit usually requires specialist software. 1415 Agri makes that workflow accessible.
+
+[SCENE_02_ARCHITECTURE | 00:18-00:34]
+This is a Collaborative Partner, not a diagnostic chatbot. Gemini 3.5 Flash leads the workflow through Google ADK and MCP tools. Deterministic services measure the pixels; the farmer confirms the boundary and decides what to inspect.
+
+[SCENE_03_FIELD_CONTEXT | 00:34-00:55]
+This family field in Taquarituba is authorized for this demonstration. We provide soybeans, the 2025–26 season, 36 hectares, and a reference point. Guided mode is off, so every result comes from the real satellite workflow now reaching Django on Cloud Run, with a traceable request ID for replay and auditing.
+
+[SCENE_04_BOUNDARY | 00:55-01:15]
+The proposed polygon is never accepted silently. The service suggests a boundary around the reference point, but the farmer stays in control. I can inspect the outline, correct a point, compare its 30.3-hectare estimate with the expected area, and explicitly confirm the cultivated area before analysis can start.
+
+[SCENE_05_PROCESSING | 01:15-01:55]
+Cloud Tasks now delivers an authenticated job to a private Cloud Run worker. It searches real Sentinel-2 Level-2A observations, reads bounded image windows, applies cloud masking, aligns the dates, and calculates NDVI, NDRE, and NDMI. In this live run, the worker selects five usable observations from October through March and completes the analysis in 93 seconds. Progress and provenance are persisted at every stage. The same analysis ID ties every stage together. These are checkpoints from the live processing run. Gemini does not calculate or invent these pixels; it reasons only after deterministic processing is complete.
+
+[SCENE_06_RESULTS | 01:55-02:22]
+The output divides one field into four areas with different spectral trajectories. We compare five usable Sentinel-2 observations and inspect every value behind the map. Evidence stays connected to dates, NDVI, NDRE, NDMI, mission metadata, source bands, cloud coverage, and provenance. Area One differs most clearly. This is a scouting priority map, not a diagnosis.
+
+[SCENE_07_GEMINI | 02:22-02:53]
+Gemini receives typed evidence, not raw rasters. Asked where to scout first, it selects Area One, compares February twenty-second and March fourteenth, cites NDVI, NDRE, and NDMI, and returns three field steps without diagnosis. The table is the field-wide baseline; the cited values are persisted Area One observations from get_analysis_evidence. The trace exposes Gemini 3.5 Flash, Google ADK, the temporal specialist, and MCP tools, so the chain remains auditable.
+
+[SCENE_08_AGENT_ACTION | 02:53-03:15]
+This second turn changes application state. With explicit permission, the temporal specialist calls request_field_analysis, creates a three-area comparison, and queues work. The returned analysis ID connects it to worker logs, while idempotency prevents a Gemini retry from creating duplicate jobs and preserves an audit trail.
+
+[SCENE_09_FEEDBACK | 03:15-03:27]
+The farmer can request a different grouping and rate the explanation. Feedback is stored with the exact analysis and conversation; it never silently changes the scientific result.
+
+[SCENE_10_CLOUD | 03:27-03:44]
+One immutable container runs as four separately permissioned Cloud Run services. Vertex AI provides Gemini; Firestore stores evidence and feedback; Cloud Storage stores artifacts; and Cloud Tasks runs the satellite workflow. Private endpoints reject anonymous calls.
+
+[SCENE_11_CLOSE | 03:44-03:53]
+1415 Agri turns invisible satellite signals into an understandable, accountable field visit for farmers left out of precision agriculture.

@@ -1,0 +1,93 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">1415 Agri agentic architecture</title>
+  <desc id="desc">Gemini and Google ADK coordinate tools while deterministic Cloud Run services measure Sentinel-2 pixels.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%">
+      <feDropShadow dx="0" dy="7" stdDeviation="11" flood-color="#183f32" flood-opacity="0.11"/>
+    </filter>
+    <marker id="greenArrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#198754"/>
+    </marker>
+    <marker id="blueArrow" markerWidth="12" markerHeight="12" refX="10" refY="5" orient="auto">
+      <path d="M0,0 L10,5 L0,10 z" fill="#3d6fae"/>
+    </marker>
+    <style>
+      .headline{font:700 52px Arial,Helvetica,sans-serif;fill:#0b3d2f}
+      .sub{font:400 25px Arial,Helvetica,sans-serif;fill:#51665d}
+      .cap{font:700 16px Arial,Helvetica,sans-serif;letter-spacing:1.7px;fill:#4c6258}
+      .node-title{font:700 27px Arial,Helvetica,sans-serif;fill:#103e30}
+      .node-body{font:400 20px Arial,Helvetica,sans-serif;fill:#52675f}
+      .edge{font:700 16px Arial,Helvetica,sans-serif;fill:#246c4c}
+      .edge-blue{font:700 16px Arial,Helvetica,sans-serif;fill:#416897}
+    </style>
+  </defs>
+  <rect width="1920" height="1080" fill="#fbfdfb"/>
+  <text x="100" y="105" class="headline">Gemini guides. Deterministic services measure.</text>
+  <text x="100" y="151" class="sub">One typed, auditable workflow on Google Cloud</text>
+
+  <rect x="85" y="270" width="260" height="190" rx="28" fill="#e9f6ed" stroke="#6da887" stroke-width="3" filter="url(#shadow)"/>
+  <text x="215" y="323" text-anchor="middle" class="cap">HUMAN CONTROL</text>
+  <text x="215" y="370" text-anchor="middle" class="node-title">Farmer</text>
+  <text x="215" y="408" text-anchor="middle" class="node-body">confirms boundary</text>
+  <text x="215" y="436" text-anchor="middle" class="node-body">decides where to scout</text>
+
+  <rect x="470" y="250" width="350" height="230" rx="28" fill="#ffffff" stroke="#abd0b9" stroke-width="3" filter="url(#shadow)"/>
+  <text x="645" y="302" text-anchor="middle" class="cap">PUBLIC CLOUD RUN</text>
+  <text x="645" y="350" text-anchor="middle" class="node-title">Django web + API</text>
+  <text x="645" y="392" text-anchor="middle" class="node-body">session · CSRF · validation</text>
+  <text x="645" y="423" text-anchor="middle" class="node-body">typed field and analysis state</text>
+  <text x="645" y="454" text-anchor="middle" class="node-body">1415agri.com</text>
+
+  <rect x="945" y="230" width="390" height="270" rx="28" fill="#eaf5ff" stroke="#87add6" stroke-width="3" filter="url(#shadow)"/>
+  <text x="1140" y="282" text-anchor="middle" class="cap">PRIVATE CLOUD RUN</text>
+  <text x="1140" y="332" text-anchor="middle" class="node-title">Gemini 3.5 Flash</text>
+  <text x="1140" y="373" text-anchor="middle" class="node-body">Google ADK coordinator</text>
+  <text x="1140" y="405" text-anchor="middle" class="node-body">specialist agents · grounded tools</text>
+  <text x="1140" y="437" text-anchor="middle" class="node-body">MCP discovery · safe action</text>
+  <rect x="1040" y="458" width="200" height="33" rx="16" fill="#dbeeff"/>
+  <text x="1140" y="481" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="16" font-weight="700" fill="#315f91">VERTEX AI</text>
+
+  <rect x="1490" y="250" width="340" height="230" rx="28" fill="#ffffff" stroke="#a9c3df" stroke-width="3" filter="url(#shadow)"/>
+  <text x="1660" y="302" text-anchor="middle" class="cap">PRIVATE CLOUD RUN</text>
+  <text x="1660" y="350" text-anchor="middle" class="node-title">Geospatial MCP</text>
+  <text x="1660" y="392" text-anchor="middle" class="node-body">allowlisted read tools</text>
+  <text x="1660" y="423" text-anchor="middle" class="node-body">Sentinel-2 catalog</text>
+  <text x="1660" y="454" text-anchor="middle" class="node-body">compact typed envelopes</text>
+
+  <path d="M345 365 H470" fill="none" stroke="#198754" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <path d="M820 365 H945" fill="none" stroke="#198754" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <path d="M1335 365 H1490" fill="none" stroke="#3d6fae" stroke-width="5" marker-end="url(#blueArrow)"/>
+  <text x="405" y="345" text-anchor="middle" class="edge">HTTPS</text>
+  <text x="882" y="345" text-anchor="middle" class="edge">ID token</text>
+  <text x="1411" y="345" text-anchor="middle" class="edge-blue">MCP tools</text>
+
+  <rect x="300" y="635" width="315" height="190" rx="28" fill="#ffffff" stroke="#abd0b9" stroke-width="3" filter="url(#shadow)"/>
+  <text x="458" y="686" text-anchor="middle" class="cap">GOOGLE CLOUD</text>
+  <text x="458" y="734" text-anchor="middle" class="node-title">Cloud Tasks</text>
+  <text x="458" y="775" text-anchor="middle" class="node-body">OIDC delivery · retries</text>
+  <text x="458" y="805" text-anchor="middle" class="node-body">idempotent queue</text>
+
+  <rect x="780" y="610" width="390" height="240" rx="28" fill="#ffffff" stroke="#abd0b9" stroke-width="3" filter="url(#shadow)"/>
+  <text x="975" y="662" text-anchor="middle" class="cap">PRIVATE CLOUD RUN</text>
+  <text x="975" y="710" text-anchor="middle" class="node-title">Deterministic worker</text>
+  <text x="975" y="751" text-anchor="middle" class="node-body">real Sentinel-2 L2A pixels</text>
+  <text x="975" y="782" text-anchor="middle" class="node-body">B04 · B05 · B08 · B11 · SCL</text>
+  <text x="975" y="813" text-anchor="middle" class="node-body">NDVI · NDRE · NDMI</text>
+
+  <rect x="1340" y="635" width="440" height="190" rx="28" fill="#f2f6fb" stroke="#9db6d3" stroke-width="3" filter="url(#shadow)"/>
+  <text x="1560" y="686" text-anchor="middle" class="cap">AUDITABLE EVIDENCE</text>
+  <text x="1560" y="734" text-anchor="middle" class="node-title">Firestore + Storage</text>
+  <text x="1560" y="775" text-anchor="middle" class="node-body">scenes · dates · indices · feedback</text>
+  <text x="1560" y="805" text-anchor="middle" class="node-body">provenance · GeoJSON · traces</text>
+
+  <path d="M645 480 C645 570 510 570 470 635" fill="none" stroke="#198754" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <path d="M615 730 H780" fill="none" stroke="#198754" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <path d="M1170 730 H1340" fill="none" stroke="#198754" stroke-width="5" marker-end="url(#greenArrow)"/>
+  <path d="M1140 500 C1140 555 1050 565 1020 610" fill="none" stroke="#3d6fae" stroke-width="4" stroke-dasharray="12 10" marker-end="url(#blueArrow)"/>
+  <text x="700" y="708" text-anchor="middle" class="edge">OIDC task</text>
+  <text x="1255" y="708" text-anchor="middle" class="edge">persist</text>
+  <text x="1112" y="555" class="edge-blue">safe action</text>
+
+  <rect x="570" y="936" width="780" height="62" rx="31" fill="#e6f2e9" stroke="#b6d3c0" stroke-width="2"/>
+  <text x="960" y="976" text-anchor="middle" font-family="Arial,Helvetica,sans-serif" font-size="22" font-weight="700" fill="#176b49" letter-spacing="1.4">ONE IMMUTABLE IMAGE · FOUR SEPARATELY PERMISSIONED ROLES</text>
+</svg>

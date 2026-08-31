@@ -1,0 +1,239 @@
+1
+00:00:00,000 --> 00:00:04,500
+Farmers can walk a field,
+but they cannot see red-edge,
+
+2
+00:00:04,500 --> 00:00:09,000
+near-infrared,
+or short-wave infrared.
+
+3
+00:00:09,000 --> 00:00:13,500
+Sentinel-2 captures those signals, yet turning
+a season of satellite data
+
+4
+00:00:13,500 --> 00:00:15,800
+into a useful field visit usually requires
+specialist software.
+
+5
+00:00:15,800 --> 00:00:18,000
+1415 Agri makes that workflow accessible.
+
+6
+00:00:18,000 --> 00:00:23,200
+This is a Collaborative Partner,
+not a diagnostic chatbot.
+
+7
+00:00:23,200 --> 00:00:28,800
+Gemini 3.5 Flash leads the workflow
+through Google ADK and MCP tools.
+
+8
+00:00:28,800 --> 00:00:34,000
+Deterministic services measure the pixels;
+the farmer confirms the boundary and decides what to inspect.
+
+9
+00:00:34,000 --> 00:00:39,000
+This family field in Taquarituba
+is authorized for this demonstration.
+
+10
+00:00:39,000 --> 00:00:44,500
+We provide soybeans, the 2025–26 season,
+36 hectares, and a reference point.
+
+11
+00:00:44,500 --> 00:00:49,500
+Guided mode is off, so every result comes
+from the real satellite workflow
+
+12
+00:00:49,500 --> 00:00:55,000
+now reaching Django on Cloud Run,
+with a traceable request ID for replay and auditing.
+
+13
+00:00:55,000 --> 00:01:00,000
+The proposed polygon is never accepted silently.
+
+14
+00:01:00,000 --> 00:01:05,000
+The service suggests a boundary around the reference
+point, but the farmer stays in control.
+
+15
+00:01:05,000 --> 00:01:10,500
+I can inspect the outline, correct a point,
+compare its 30.3-hectare estimate with the expected area,
+
+16
+00:01:10,500 --> 00:01:15,000
+and explicitly confirm the cultivated area
+before analysis can start.
+
+17
+00:01:15,000 --> 00:01:19,800
+Cloud Tasks now delivers an authenticated job
+to a private Cloud Run worker.
+
+18
+00:01:19,800 --> 00:01:24,500
+It searches real Sentinel-2 Level-2A observations,
+reads bounded image windows,
+
+19
+00:01:24,500 --> 00:01:29,000
+applies cloud masking,
+aligns the dates,
+
+20
+00:01:29,000 --> 00:01:33,200
+and calculates NDVI, NDRE, and NDMI.
+
+21
+00:01:33,200 --> 00:01:38,000
+In this live run, the worker selects five usable observations
+from October through March
+
+22
+00:01:38,000 --> 00:01:42,500
+and completes the analysis in 93 seconds.
+
+23
+00:01:42,500 --> 00:01:47,000
+Progress and provenance are persisted at every stage.
+
+24
+00:01:47,000 --> 00:01:50,500
+The same analysis ID ties every stage together.
+These are checkpoints from the live processing run.
+
+25
+00:01:50,500 --> 00:01:55,000
+Gemini does not calculate or invent these pixels;
+it reasons only after deterministic processing is complete.
+
+26
+00:01:55,000 --> 00:02:00,000
+The output divides one field into four areas
+with different spectral trajectories.
+
+27
+00:02:00,000 --> 00:02:05,500
+We compare five usable Sentinel-2 observations
+and inspect every value behind the map.
+
+28
+00:02:05,500 --> 00:02:11,000
+Evidence stays connected to dates,
+NDVI, NDRE, NDMI, mission metadata,
+
+29
+00:02:11,000 --> 00:02:16,000
+source bands, cloud coverage, and provenance.
+Area One differs most clearly.
+
+30
+00:02:16,000 --> 00:02:22,000
+This is a scouting priority map,
+not a diagnosis.
+
+31
+00:02:22,000 --> 00:02:26,000
+Gemini receives typed evidence, not raw rasters.
+
+32
+00:02:26,000 --> 00:02:31,000
+Asked where to scout first, it selects Area One,
+compares February twenty-second and March fourteenth,
+
+33
+00:02:31,000 --> 00:02:36,000
+cites NDVI, NDRE, and NDMI,
+and returns three field steps without diagnosis.
+
+34
+00:02:36,000 --> 00:02:41,000
+The table is the field-wide baseline;
+the cited values are persisted Area One observations
+
+35
+00:02:41,000 --> 00:02:45,000
+from get_analysis_evidence.
+The trace exposes Gemini 3.5 Flash,
+
+36
+00:02:45,000 --> 00:02:53,000
+Google ADK, the temporal specialist, and MCP tools,
+so the chain remains auditable.
+
+37
+00:02:53,000 --> 00:02:57,500
+This second turn changes application state.
+
+38
+00:02:57,500 --> 00:03:03,000
+With explicit permission, the temporal specialist
+calls request_field_analysis,
+
+39
+00:03:03,000 --> 00:03:09,000
+creates a three-area comparison, and queues work.
+The returned analysis ID connects it to worker logs,
+
+40
+00:03:09,000 --> 00:03:15,000
+while idempotency prevents a Gemini retry from creating
+duplicate jobs and preserves an audit trail.
+
+41
+00:03:15,000 --> 00:03:19,500
+The farmer can request a different grouping
+and rate the explanation.
+
+42
+00:03:19,500 --> 00:03:23,500
+Feedback is stored with the exact analysis
+and conversation;
+
+43
+00:03:23,500 --> 00:03:27,000
+it never silently changes
+the scientific result.
+
+44
+00:03:27,000 --> 00:03:31,500
+One immutable container runs as four separately
+permissioned Cloud Run services.
+
+45
+00:03:31,500 --> 00:03:34,800
+Vertex AI provides Gemini;
+
+46
+00:03:34,800 --> 00:03:38,200
+Firestore stores evidence and feedback;
+
+47
+00:03:38,200 --> 00:03:41,500
+Cloud Storage stores artifacts;
+and Cloud Tasks runs the satellite workflow.
+
+48
+00:03:41,500 --> 00:03:44,000
+Private endpoints reject anonymous calls.
+
+49
+00:03:44,000 --> 00:03:49,000
+1415 Agri turns invisible satellite signals
+into an understandable, accountable field visit
+
+50
+00:03:49,000 --> 00:03:53,000
+for farmers left out
+of precision agriculture.
