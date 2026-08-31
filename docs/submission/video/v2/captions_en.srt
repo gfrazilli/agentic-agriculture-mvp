@@ -1,0 +1,285 @@
+1
+00:00:00,096 --> 00:00:02,298
+Farmers can walk a field.
+
+2
+00:00:02,338 --> 00:00:04,688
+But they cannot see infrared.
+
+3
+00:00:07,092 --> 00:00:09,262
+Multispectral sensors can.
+
+4
+00:00:09,302 --> 00:00:12,866
+In a peer-reviewed soybean drought study,
+drone-based red-edge imagery revealed differences
+
+5
+00:00:12,906 --> 00:00:15,116
+between plots at day forty-six.
+
+6
+00:00:15,156 --> 00:00:18,637
+Wilting became visible at day sixty-four—
+eighteen days later.
+
+7
+00:00:18,677 --> 00:00:22,632
+Sentinel-2 carries multispectral bands
+across fields and seasons.
+
+8
+00:00:23,096 --> 00:00:25,321
+These analyses exist.
+
+9
+00:00:25,361 --> 00:00:28,782
+But finding clear images, aligning dates,
+processing spectral bands,
+
+10
+00:00:28,822 --> 00:00:32,358
+and interpreting results takes
+specialist software and hours.
+
+11
+00:00:32,398 --> 00:00:37,888
+Gemini 3.5 can coordinate the workflow and explain it
+in language a farmer can use.
+
+12
+00:00:39,096 --> 00:00:40,974
+Satellites measure.
+
+13
+00:00:41,014 --> 00:00:42,942
+Gemini reasons.
+
+14
+00:00:42,982 --> 00:00:45,008
+The farmer decides.
+
+15
+00:00:47,095 --> 00:00:51,078
+Field mapping means collecting GPS points
+and cleaning polygons.
+
+16
+00:00:51,118 --> 00:00:54,326
+With 1415 Agri, one point becomes
+a proposed boundary
+
+17
+00:00:54,366 --> 00:00:56,726
+for the farmer to review and confirm.
+
+18
+00:00:56,766 --> 00:00:58,360
+Two clicks.
+
+19
+00:00:59,096 --> 00:01:01,648
+Meet 1415 Agri.
+
+20
+00:01:05,092 --> 00:01:08,262
+Gemini 3.5 Flash runs on Vertex AI.
+
+21
+00:01:08,302 --> 00:01:10,679
+Google ADK routes requests.
+
+22
+00:01:10,719 --> 00:01:13,814
+MCP exposes typed evidence and action tools.
+
+23
+00:01:13,854 --> 00:01:17,512
+Deterministic services handle geometry
+and pixel math.
+
+24
+00:01:18,096 --> 00:01:23,554
+Now, a real family field in Taquarituba, Brazil:
+soybeans, the 2025–26 season,
+
+25
+00:01:23,594 --> 00:01:26,710
+about thirty-six hectares,
+and one reference point.
+
+26
+00:01:26,750 --> 00:01:28,828
+Guided Demo is off.
+
+27
+00:01:28,868 --> 00:01:32,312
+The system proposes the cultivated boundary;
+the farmer reviews it,
+
+28
+00:01:32,352 --> 00:01:35,072
+adjusts it if needed, and confirms.
+
+29
+00:01:40,096 --> 00:01:44,057
+The request goes through Cloud Tasks
+to a private Cloud Run worker.
+
+30
+00:01:44,097 --> 00:01:48,154
+It searches real Sentinel-2 Level-2A imagery,
+masks clouds, aligns dates,
+
+31
+00:01:48,194 --> 00:01:51,719
+and calculates NDVI, NDRE, and NDMI.
+
+32
+00:01:51,759 --> 00:01:54,983
+This run finds five usable observations
+from October through March
+
+33
+00:01:55,023 --> 00:01:57,495
+and finishes in ninety-three seconds.
+
+34
+00:01:57,535 --> 00:02:01,968
+The same analysis ID connects
+every stage, artifact, and log.
+
+35
+00:02:05,096 --> 00:02:09,115
+One season becomes four areas
+with different spectral histories.
+
+36
+00:02:09,155 --> 00:02:13,363
+Every highlight connects back to dates, index values,
+source bands, cloud coverage,
+
+37
+00:02:13,403 --> 00:02:15,446
+and Sentinel-2 provenance.
+
+38
+00:02:15,486 --> 00:02:18,108
+Area One shows the clearest change.
+
+39
+00:02:18,148 --> 00:02:21,088
+That is where the next field visit begins.
+
+40
+00:02:25,100 --> 00:02:29,135
+So the farmer asks a normal question:
+“Why should I check Area One first,
+
+41
+00:02:29,175 --> 00:02:31,710
+and what should I look for when I get there?”
+
+42
+00:02:31,750 --> 00:02:36,360
+Gemini calls the evidence tools and compares
+this field's stored history.
+
+43
+00:02:36,400 --> 00:02:40,998
+It cites February twenty-second and March fourteenth,
+explains the changes in NDVI,
+
+44
+00:02:41,038 --> 00:02:45,098
+NDRE, and NDMI,
+and gives three practical checks.
+
+45
+00:02:45,138 --> 00:02:49,698
+The trace shows Gemini 3.5 Flash, Google ADK,
+the temporal specialist,
+
+46
+00:02:49,738 --> 00:02:52,776
+and every MCP tool behind the answer.
+
+47
+00:02:55,095 --> 00:02:56,991
+Then Gemini acts.
+
+48
+00:02:57,031 --> 00:03:00,886
+The farmer asks,
+“Compare this field again using three areas.”
+
+49
+00:03:00,926 --> 00:03:05,083
+The trace shows the temporal specialist calling
+request_field_analysis,
+
+50
+00:03:05,123 --> 00:03:08,420
+creating the new request,
+and queuing the background job.
+
+51
+00:03:08,460 --> 00:03:12,384
+Idempotency makes retries safe
+instead of duplicating work.
+
+52
+00:03:14,096 --> 00:03:16,310
+The farmer rates the answer.
+
+53
+00:03:16,350 --> 00:03:20,584
+That feedback stays linked to the exact
+analysis and conversation.
+
+54
+00:03:21,096 --> 00:03:25,327
+Here is the production system running on Google Cloud:
+four permissioned Cloud Run services
+
+55
+00:03:25,367 --> 00:03:30,242
+for web, worker, MCP, and agent,
+all from one immutable container.
+
+56
+00:03:30,282 --> 00:03:33,009
+Vertex AI provides Gemini.
+
+57
+00:03:33,049 --> 00:03:35,717
+Firestore stores state and evidence.
+
+58
+00:03:35,757 --> 00:03:38,217
+Cloud Storage stores artifacts.
+
+59
+00:03:38,257 --> 00:03:41,192
+Cloud Tasks runs the satellite workflow.
+
+60
+00:03:41,232 --> 00:03:43,217
+Cloud Logging records the worker request
+
+61
+00:03:43,257 --> 00:03:45,776
+and the persisted analysis read.
+
+62
+00:03:48,095 --> 00:03:50,326
+The signal was always there.
+
+63
+00:03:50,366 --> 00:03:52,681
+Now small farmers can use it.
+
+64
+00:03:52,721 --> 00:03:55,592
+1415 Agri.

@@ -6,7 +6,9 @@ import argparse
 import hashlib
 import json
 import os
+import re
 import time
+import unicodedata
 from pathlib import Path
 
 from video_common import (
@@ -16,6 +18,27 @@ from video_common import (
     resolve_media_tools,
     safe_scene_id,
 )
+
+TOKENS = re.compile(r"[a-z0-9]+")
+
+
+def _tokens(value: str) -> list[str]:
+    normalized = unicodedata.normalize("NFKD", value).encode("ascii", "ignore").decode()
+    return TOKENS.findall(normalized.lower())
+
+
+def _assert_complete_word_boundaries(path: Path, expected_text: str) -> None:
+    spoken: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        item = json.loads(line)
+        if item.get("type") == "WordBoundary":
+            spoken.extend(_tokens(str(item.get("text", ""))))
+    expected = _tokens(expected_text)
+    if spoken != expected:
+        raise VideoPipelineError(
+            f"TTS word-boundary stream was incomplete: expected {len(expected)} tokens, "
+            f"received {len(spoken)}"
+        )
 
 
 def _scene_duration(scene: dict[str, object]) -> float:
@@ -112,10 +135,12 @@ def main() -> int:
         if not text or target <= 0:
             raise VideoPipelineError(f"Scene {scene_id} has invalid text or duration")
 
+        effective_rate = str(scene_value.get("rate", args.rate))
+
         signature = _signature(
             text=text,
             voice=args.voice,
-            rate=args.rate,
+            rate=effective_rate,
             volume=args.volume,
             pitch=args.pitch,
         )
@@ -143,7 +168,7 @@ def main() -> int:
                     communication = edge_tts.Communicate(
                         text,
                         args.voice,
-                        rate=args.rate,
+                        rate=effective_rate,
                         volume=args.volume,
                         pitch=args.pitch,
                         boundary="WordBoundary",
@@ -156,6 +181,7 @@ def main() -> int:
                         or temporary_words_path.stat().st_size == 0
                     ):
                         raise VideoPipelineError(f"TTS returned no word timing for {scene_id}")
+                    _assert_complete_word_boundaries(temporary_words_path, text)
                     os.replace(temporary_path, output_path)
                     os.replace(temporary_words_path, words_path)
                     break
@@ -181,6 +207,7 @@ def main() -> int:
                 "audio_duration": actual,
                 "headroom": args.headroom,
                 "fits": fits,
+                "rate": effective_rate,
                 "signature": signature,
             }
         )
@@ -188,7 +215,12 @@ def main() -> int:
     report = {
         "version": 1,
         "voice": args.voice,
-        "rate": args.rate,
+        "default_rate": args.rate,
+        "rate": (
+            "per-scene"
+            if any("rate" in item for item in scenes if isinstance(item, dict))
+            else args.rate
+        ),
         "volume": args.volume,
         "pitch": args.pitch,
         "scenes": report_scenes,

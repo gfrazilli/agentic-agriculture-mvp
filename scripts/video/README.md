@@ -7,6 +7,36 @@ The pipeline keeps binary media outside Git, normalizes every capture to 1080p/3
 adds one narration file per scene, burns English captions, exports a matching SRT, and
 fails if FFprobe detects a submission-contract violation.
 
+## Current V2 production package
+
+The approved V2 timeline and source assets live under
+`docs/submission/video/v2/`. Binary output defaults to
+`%USERPROFILE%\Videos\1415-Agri-Hackathon\v2` and contains a captioned master plus
+15 narrated, independently replaceable scene files.
+
+Build all silent scene visuals and then the narrated package:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\video\create_raw_scenes_v2.py `
+  --overwrite --ffmpeg-dir tmp\video-tools\win32
+.\.venv\Scripts\python.exe scripts\video\build_video_v2.py `
+  --overwrite --ffmpeg-dir tmp\video-tools\win32
+```
+
+After changing only one scene, rebuild that scene and remount the master without
+re-encoding the other 14 scene clips:
+
+```powershell
+$scene = 'scene_11_farmer_question'
+.\.venv\Scripts\python.exe scripts\video\create_raw_scenes_v2.py `
+  --scene $scene --overwrite --ffmpeg-dir tmp\video-tools\win32
+.\.venv\Scripts\python.exe scripts\video\build_video_v2.py `
+  --scene $scene --overwrite --ffmpeg-dir tmp\video-tools\win32
+```
+
+The current master is `v2\final\1415-agri-hackathon-v2.mp4`; the individual
+clips and their timing/narration index are in `v2\scenes\`.
+
 ## One-time setup
 
 Run from the repository root in PowerShell:

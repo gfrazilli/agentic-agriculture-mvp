@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#f7faf7"/>
+  <text x="104" y="102" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5" fill="#1a73e8">RUNNING ON GOOGLE CLOUD</text>
+  <text x="104" y="190" font-family="Arial, Helvetica, sans-serif" font-size="58" font-weight="700" fill="#082f25">Four permissioned roles. One immutable container.</text>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <g transform="translate(104,270)"><rect width="370" height="150" rx="24" fill="#ffffff" stroke="#c6dafc" stroke-width="3"/><circle cx="48" cy="50" r="15" fill="#34a853"/><text x="82" y="60" font-size="31" font-weight="700" fill="#174ea6">WEB</text><text x="48" y="111" font-size="21" fill="#50635a">Cloud Run · public UX</text></g>
+    <g transform="translate(520,270)"><rect width="370" height="150" rx="24" fill="#ffffff" stroke="#c6dafc" stroke-width="3"/><circle cx="48" cy="50" r="15" fill="#34a853"/><text x="82" y="60" font-size="31" font-weight="700" fill="#174ea6">WORKER</text><text x="48" y="111" font-size="21" fill="#50635a">Cloud Run · private jobs</text></g>
+    <g transform="translate(936,270)"><rect width="370" height="150" rx="24" fill="#ffffff" stroke="#c6dafc" stroke-width="3"/><circle cx="48" cy="50" r="15" fill="#34a853"/><text x="82" y="60" font-size="31" font-weight="700" fill="#174ea6">MCP</text><text x="48" y="111" font-size="21" fill="#50635a">Cloud Run · typed tools</text></g>
+    <g transform="translate(1352,270)"><rect width="370" height="150" rx="24" fill="#ffffff" stroke="#c6dafc" stroke-width="3"/><circle cx="48" cy="50" r="15" fill="#34a853"/><text x="82" y="60" font-size="31" font-weight="700" fill="#174ea6">AGENT</text><text x="48" y="111" font-size="21" fill="#50635a">Cloud Run · ADK + Gemini</text></g>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <rect x="104" y="490" width="810" height="390" rx="28" fill="#082f25"/>
+    <text x="154" y="554" font-size="22" font-weight="700" letter-spacing="3" fill="#a8ed62">GOOGLE CLOUD LOGGING · RECORDED EVENTS</text>
+    <text x="154" y="624" font-family="Consolas, monospace" font-size="23" fill="#d7ede3">13:23:07Z  worker-00029-zws</text>
+    <text x="154" y="664" font-family="Consolas, monospace" font-size="22" fill="#ffffff">POST /internal/tasks/analyses</text>
+    <text x="812" y="664" font-family="Consolas, monospace" font-size="22" text-anchor="end" fill="#a8ed62">200 · 49.125s</text>
+    <line x1="154" y1="704" x2="864" y2="704" stroke="#3e6759" stroke-width="2"/>
+    <text x="154" y="760" font-family="Consolas, monospace" font-size="23" fill="#d7ede3">13:24:55Z  web-00029-nqx</text>
+    <text x="154" y="800" font-family="Consolas, monospace" font-size="21" fill="#ffffff">GET /analyses/33c9e5f9…</text>
+    <text x="812" y="800" font-family="Consolas, monospace" font-size="22" text-anchor="end" fill="#a8ed62">200 · persisted result</text>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <rect x="964" y="490" width="758" height="390" rx="28" fill="#ffffff" stroke="#d8e5dc" stroke-width="2"/>
+    <text x="1016" y="554" font-size="22" font-weight="700" letter-spacing="3" fill="#14734b">PRODUCTION STACK</text>
+    <text x="1016" y="624" font-size="29" font-weight="700" fill="#082f25">Vertex AI</text><text x="1320" y="624" font-size="22" fill="#536b61">Gemini 3.5 Flash</text>
+    <text x="1016" y="684" font-size="29" font-weight="700" fill="#082f25">Firestore</text><text x="1320" y="684" font-size="22" fill="#536b61">state + evidence</text>
+    <text x="1016" y="744" font-size="29" font-weight="700" fill="#082f25">Cloud Storage</text><text x="1320" y="744" font-size="22" fill="#536b61">artifacts</text>
+    <text x="1016" y="804" font-size="29" font-weight="700" fill="#082f25">Cloud Tasks</text><text x="1320" y="804" font-size="22" fill="#536b61">authenticated jobs</text>
+  </g>
+  <text x="104" y="938" font-family="Arial, Helvetica, sans-serif" font-size="20" fill="#526a5f">Immutable image digest</text>
+  <text x="340" y="938" font-family="Consolas, monospace" font-size="20" font-weight="700" fill="#174ea6">sha256:50b63f122a5f78d0…</text>
+  <text x="1722" y="938" font-family="Arial, Helvetica, sans-serif" font-size="20" text-anchor="end" fill="#526a5f">southamerica-east1 · verified 31 Aug 2026</text>
+</svg>

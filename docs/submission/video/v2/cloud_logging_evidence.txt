@@ -1,0 +1,21 @@
+Sanitized read-only evidence used for Scene 14
+Verified against project agentic-agriculture-2026 on 31 Aug 2026.
+
+Cloud Run services visible in the captured Console overview:
+- agentic-agriculture-web
+- agentic-agriculture-worker
+- agentic-agriculture-mcp
+- agentic-agriculture-agent
+
+Google Cloud Logging records used in the editorial proof card:
+2026-08-31T13:23:07.351336Z  agentic-agriculture-worker-00029-zws
+POST /internal/tasks/analyses  200  49.124762558s
+
+2026-08-31T13:24:55.460623Z  agentic-agriculture-web-00029-nqx
+GET /api/v1/analyses/33c9e5f9-118a-4728-8dfa-1225515d1090/  200
+
+Current immutable image digest observed in the deployment audit:
+sha256:50b63f122a5f78d097710b014666424c36dfcc4dfa25827df1f03bd16edba7e2
+
+The card describes these as recorded events. It does not claim that the worker
+request payload itself exposed the analysis ID.

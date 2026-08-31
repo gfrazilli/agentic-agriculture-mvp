@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+  <rect width="1920" height="1080" fill="#f7faf7"/>
+  <text x="108" y="118" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="5" fill="#14734b">A FARMER'S QUESTION</text>
+  <text x="108" y="250" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="700" fill="#082f25">
+    <tspan x="108" dy="0">“Why should I check Area 1 first,</tspan>
+    <tspan x="108" dy="82">and what should I look for</tspan>
+    <tspan x="108" dy="82">when I get there?”</tspan>
+  </text>
+  <rect x="108" y="540" width="1120" height="276" rx="30" fill="#ffffff" stroke="#d8e5dc" stroke-width="2"/>
+  <text x="160" y="610" font-family="Arial, Helvetica, sans-serif" font-size="22" font-weight="700" letter-spacing="3" fill="#536b61">GROUNDED ANSWER PATH</text>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="700" text-anchor="middle">
+    <rect x="160" y="660" width="228" height="86" rx="22" fill="#e5f3e9"/><text x="274" y="714" font-size="26" fill="#0b4b38">Stored evidence</text>
+    <text x="430" y="714" font-size="34" fill="#8ba398">→</text>
+    <rect x="472" y="660" width="294" height="86" rx="22" fill="#eef4ff"/><text x="619" y="714" font-size="26" fill="#245899">Dates + indices</text>
+    <text x="808" y="714" font-size="34" fill="#8ba398">→</text>
+    <rect x="850" y="660" width="326" height="86" rx="22" fill="#eff6d6"/><text x="1013" y="714" font-size="26" fill="#445a13">3 field checks</text>
+  </g>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <rect x="1320" y="226" width="470" height="550" rx="34" fill="#093f31"/>
+    <text x="1380" y="304" font-size="24" font-weight="700" letter-spacing="3" fill="#a8ed62">TRACEABLE REASONING</text>
+    <text x="1380" y="382" font-size="32" font-weight="700" fill="#ffffff">Gemini 3.5 Flash</text>
+    <text x="1380" y="430" font-size="23" fill="#c9ded4">on Vertex AI</text>
+    <line x1="1380" y1="472" x2="1730" y2="472" stroke="#4d7568" stroke-width="2"/>
+    <text x="1380" y="535" font-size="30" font-weight="700" fill="#ffffff">Google ADK</text>
+    <text x="1380" y="580" font-size="23" fill="#c9ded4">temporal specialist</text>
+    <line x1="1380" y1="620" x2="1730" y2="620" stroke="#4d7568" stroke-width="2"/>
+    <text x="1380" y="683" font-size="30" font-weight="700" fill="#ffffff">MCP tools</text>
+    <text x="1380" y="728" font-size="23" fill="#c9ded4">typed evidence calls</text>
+  </g>
+  <text x="108" y="910" font-family="Arial, Helvetica, sans-serif" font-size="21" font-weight="700" letter-spacing="2" fill="#14734b">QUESTION SHORTENED FOR NARRATION · ANSWER GROUNDED IN THE SAME PERSISTED EVIDENCE</text>
+</svg>

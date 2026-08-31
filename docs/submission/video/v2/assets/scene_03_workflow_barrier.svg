@@ -1,0 +1,91 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080" role="img" aria-labelledby="title desc">
+  <title id="title">Scene 3 — the workflow is the barrier</title>
+  <desc id="desc">Five specialist analysis steps converge into one farmer conversation coordinated by Gemini.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#f9fbf8"/><stop offset="1" stop-color="#edf3ee"/></linearGradient>
+    <filter id="card-shadow" x="-20%" y="-30%" width="140%" height="170%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#163a2d" flood-opacity=".09"/></filter>
+    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M0 0 10 5 0 10Z" fill="#8ca89a"/></marker>
+  </defs>
+  <rect width="1920" height="1080" fill="url(#bg)"/>
+  <g font-family="Arial, Helvetica, sans-serif">
+    <text x="105" y="112" fill="#23764f" font-size="21" font-weight="700" letter-spacing="3">THE REAL BARRIER</text>
+    <text x="105" y="198" fill="#0b3d2f" font-size="64" font-weight="700" letter-spacing="-1.8">THE DATA EXISTS.</text>
+    <text x="105" y="275" fill="#0b3d2f" font-size="64" font-weight="700" letter-spacing="-1.8">THE WORKFLOW IS THE BARRIER.</text>
+  </g>
+
+  <g id="specialist-steps" font-family="Arial, Helvetica, sans-serif">
+    <g id="step-1" transform="translate(105 390)" filter="url(#card-shadow)">
+      <rect width="268" height="290" rx="28" fill="#fff" stroke="#dbe6de" stroke-width="2"/>
+      <text x="28" y="52" fill="#6c8479" font-size="18" font-weight="700">01</text>
+      <circle cx="134" cy="128" r="53" fill="#e9f1ff"/>
+      <path d="M102 128h64M134 96v64" stroke="#4285f4" stroke-width="8" stroke-linecap="round"/>
+      <text x="134" y="229" text-anchor="middle" fill="#143e31" font-size="23" font-weight="700">SEARCH</text>
+      <text x="134" y="260" text-anchor="middle" fill="#61766c" font-size="17">satellite scenes</text>
+    </g>
+    <g id="step-2" transform="translate(397 390)" filter="url(#card-shadow)">
+      <rect width="268" height="290" rx="28" fill="#fff" stroke="#dbe6de" stroke-width="2"/>
+      <text x="28" y="52" fill="#6c8479" font-size="18" font-weight="700">02</text>
+      <circle cx="134" cy="128" r="53" fill="#fff6dd"/>
+      <path d="M101 136c7-31 47-42 66-17 25-3 34 31 9 42h-70c-24-6-26-24-5-25Z" fill="none" stroke="#f9ab00" stroke-width="7"/>
+      <path d="m94 166 80-80" stroke="#ea4335" stroke-width="7" stroke-linecap="round"/>
+      <text x="134" y="229" text-anchor="middle" fill="#143e31" font-size="23" font-weight="700">FILTER</text>
+      <text x="134" y="260" text-anchor="middle" fill="#61766c" font-size="17">cloudy captures</text>
+    </g>
+    <g id="step-3" transform="translate(689 390)" filter="url(#card-shadow)">
+      <rect width="268" height="290" rx="28" fill="#fff" stroke="#dbe6de" stroke-width="2"/>
+      <text x="28" y="52" fill="#6c8479" font-size="18" font-weight="700">03</text>
+      <circle cx="134" cy="128" r="53" fill="#eaf6ee"/>
+      <path d="M96 108h75M96 132h75M96 156h75" stroke="#34a853" stroke-width="7" stroke-linecap="round"/>
+      <circle cx="120" cy="108" r="9" fill="#fff" stroke="#34a853" stroke-width="5"/>
+      <circle cx="151" cy="132" r="9" fill="#fff" stroke="#34a853" stroke-width="5"/>
+      <circle cx="131" cy="156" r="9" fill="#fff" stroke="#34a853" stroke-width="5"/>
+      <text x="134" y="229" text-anchor="middle" fill="#143e31" font-size="23" font-weight="700">ALIGN</text>
+      <text x="134" y="260" text-anchor="middle" fill="#61766c" font-size="17">dates and pixels</text>
+    </g>
+    <g id="step-4" transform="translate(981 390)" filter="url(#card-shadow)">
+      <rect width="268" height="290" rx="28" fill="#fff" stroke="#dbe6de" stroke-width="2"/>
+      <text x="28" y="52" fill="#6c8479" font-size="18" font-weight="700">04</text>
+      <circle cx="134" cy="128" r="53" fill="#f3ebfa"/>
+      <path d="M96 155c20-54 33-16 51-48 15-27 25 2 30 48" fill="none" stroke="#a142f4" stroke-width="8" stroke-linecap="round"/>
+      <text x="134" y="229" text-anchor="middle" fill="#143e31" font-size="23" font-weight="700">PROCESS</text>
+      <text x="134" y="260" text-anchor="middle" fill="#61766c" font-size="17">spectral bands</text>
+    </g>
+    <g id="step-5" transform="translate(1273 390)" filter="url(#card-shadow)">
+      <rect width="268" height="290" rx="28" fill="#fff" stroke="#dbe6de" stroke-width="2"/>
+      <text x="28" y="52" fill="#6c8479" font-size="18" font-weight="700">05</text>
+      <circle cx="134" cy="128" r="53" fill="#fdeeee"/>
+      <path d="M94 156 118 129l24 14 31-45" fill="none" stroke="#ea4335" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+      <text x="134" y="229" text-anchor="middle" fill="#143e31" font-size="23" font-weight="700">INTERPRET</text>
+      <text x="134" y="260" text-anchor="middle" fill="#61766c" font-size="17">a full season</text>
+    </g>
+  </g>
+
+  <g id="convergence">
+    <path d="M239 711v78h1220" fill="none" stroke="#9db1a7" stroke-width="3"/>
+    <path d="M531 711v78M823 711v78M1115 711v78M1407 711v78" stroke="#9db1a7" stroke-width="3"/>
+    <path d="M1459 789h107" fill="none" stroke="#8ca89a" stroke-width="4" marker-end="url(#arrow)"/>
+  </g>
+
+  <g id="gemini-conversation" transform="translate(1580 348)" filter="url(#card-shadow)" font-family="Arial, Helvetica, sans-serif">
+    <rect width="250" height="500" rx="32" fill="#fff" stroke="#bfcfc5" stroke-width="2"/>
+    <rect x="0" y="0" width="250" height="72" rx="32" fill="#0b3d2f"/>
+    <rect x="0" y="42" width="250" height="30" fill="#0b3d2f"/>
+    <text x="28" y="46" fill="#fff" font-size="22" font-weight="700">Gemini 3.5</text>
+    <rect x="24" y="108" width="180" height="62" rx="20" fill="#edf3ef"/>
+    <text x="42" y="136" fill="#30483e" font-size="14">Which area should</text>
+    <text x="42" y="156" fill="#30483e" font-size="14">I inspect first?</text>
+    <rect x="46" y="200" width="180" height="178" rx="20" fill="#e7f3e9"/>
+    <text x="64" y="232" fill="#176b49" font-size="15" font-weight="700">AREA 1</text>
+    <text x="64" y="260" fill="#30483e" font-size="14">The clearest change</text>
+    <text x="64" y="282" fill="#30483e" font-size="14">across two dates.</text>
+    <circle cx="68" cy="320" r="4" fill="#34a853"/><text x="82" y="325" fill="#30483e" font-size="13">Check plants</text>
+    <circle cx="68" cy="344" r="4" fill="#34a853"/><text x="82" y="349" fill="#30483e" font-size="13">Check moisture</text>
+    <rect x="24" y="420" width="202" height="48" rx="24" fill="#f6f8f6" stroke="#dce4de"/>
+    <text x="45" y="451" fill="#7b8e84" font-size="13">Ask about this field…</text>
+  </g>
+  <g id="bottom-claim" font-family="Arial, Helvetica, sans-serif">
+    <text x="105" y="936" fill="#0b3d2f" font-size="34" font-weight="700">ONE QUESTION IN.</text>
+    <text x="105" y="984" fill="#23764f" font-size="34" font-weight="700">ONE FIELD DECISION OUT.</text>
+    <text x="1815" y="970" text-anchor="end" fill="#60766b" font-size="20">COORDINATED BY GEMINI 3.5</text>
+  </g>
+</svg>

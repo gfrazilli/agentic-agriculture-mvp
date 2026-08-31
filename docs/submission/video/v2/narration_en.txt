@@ -1,0 +1,44 @@
+[SCENE_01_HUMAN_LIMIT | 00:00-00:07]
+Farmers can walk a field. But they cannot see infrared.
+
+[SCENE_02_SIGNAL_BEFORE_SYMPTOM | 00:07-00:23]
+Multispectral sensors can. In a peer-reviewed soybean drought study, drone-based red-edge imagery revealed differences between plots at day forty-six. Wilting became visible at day sixty-four—eighteen days later. Sentinel-2 carries multispectral bands across fields and seasons.
+
+[SCENE_03_WORKFLOW_BARRIER | 00:23-00:39]
+These analyses exist. But finding clear images, aligning dates, processing spectral bands, and interpreting results takes specialist software and hours. Gemini 3.5 can coordinate the workflow and explain it in language a farmer can use.
+
+[SCENE_04_PRODUCT_PRINCIPLE | 00:39-00:47]
+Satellites measure. Gemini reasons. The farmer decides.
+
+[SCENE_05_TWO_CLICK_MAPPING | 00:47-00:59]
+Field mapping means collecting GPS points and cleaning polygons. With 1415 Agri, one point becomes a proposed boundary for the farmer to review and confirm. Two clicks.
+
+[SCENE_06_PRODUCT_REVEAL | 00:59-01:05]
+Meet 1415 Agri.
+
+[SCENE_07_AGENTIC_PATH | 01:05-01:18]
+Gemini 3.5 Flash runs on Vertex AI. Google ADK routes requests. MCP exposes typed evidence and action tools. Deterministic services handle geometry and pixel math.
+
+[SCENE_08_FIELD_BOUNDARY | 01:18-01:40]
+Now, a real family field in Taquarituba, Brazil: soybeans, the 2025–26 season, about thirty-six hectares, and one reference point. Guided Demo is off. The system proposes the cultivated boundary; the farmer reviews it, adjusts it if needed, and confirms.
+
+[SCENE_09_SATELLITE_WORKFLOW | 01:40-02:05]
+The request goes through Cloud Tasks to a private Cloud Run worker. It searches real Sentinel-2 Level-2A imagery, masks clouds, aligns dates, and calculates NDVI, NDRE, and NDMI. This run finds five usable observations from October through March and finishes in ninety-three seconds. The same analysis ID connects every stage, artifact, and log.
+
+[SCENE_10_SEASON_PRIORITY | 02:05-02:25]
+One season becomes four areas with different spectral histories. Every highlight connects back to dates, index values, source bands, cloud coverage, and Sentinel-2 provenance. Area One shows the clearest change. That is where the next field visit begins.
+
+[SCENE_11_FARMER_QUESTION | 02:25-02:55]
+So the farmer asks a normal question: “Why should I check Area One first, and what should I look for when I get there?” Gemini calls the evidence tools and compares this field's stored history. It cites February twenty-second and March fourteenth, explains the changes in NDVI, NDRE, and NDMI, and gives three practical checks. The trace shows Gemini 3.5 Flash, Google ADK, the temporal specialist, and every MCP tool behind the answer.
+
+[SCENE_12_AGENT_ACTION | 02:55-03:14]
+Then Gemini acts. The farmer asks, “Compare this field again using three areas.” The trace shows the temporal specialist calling request_field_analysis, creating the new request, and queuing the background job. Idempotency makes retries safe instead of duplicating work.
+
+[SCENE_13_FEEDBACK | 03:14-03:21]
+The farmer rates the answer. That feedback stays linked to the exact analysis and conversation.
+
+[SCENE_14_CLOUD_PROOF | 03:21-03:48]
+Here is the production system running on Google Cloud: four permissioned Cloud Run services for web, worker, MCP, and agent, all from one immutable container. Vertex AI provides Gemini. Firestore stores state and evidence. Cloud Storage stores artifacts. Cloud Tasks runs the satellite workflow. Cloud Logging records the worker request and the persisted analysis read.
+
+[SCENE_15_CLOSE | 03:48-03:56]
+The signal was always there. Now small farmers can use it. 1415 Agri.
