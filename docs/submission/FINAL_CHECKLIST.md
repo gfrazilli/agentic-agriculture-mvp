@@ -85,7 +85,7 @@ team invitations, and the Devpost submit action should already be complete.
 
   ```bash
   python manage.py demo_preflight \
-    --web-url="[FINAL_HOSTED_URL]" \
+    --web-url="https://1415agri.com/" \
     --agent-url="$AGENT_API_URL" \
     --mcp-url="$AGENT_MCP_URL"
   ```
@@ -95,12 +95,12 @@ team invitations, and the Devpost submit action should already be complete.
 - [ ] Verify the public repository is
   https://github.com/gfrazilli/agentic-agriculture-mvp and has no secrets, `.env`, password, token,
   service-account key, billing detail, or unauthorized field data in history.
-- [ ] Confirm the architecture diagram renders correctly. Export the Mermaid diagram in
-  `ARCHITECTURE_NARRATIVE.md` to a legible PNG or SVG for Devpost.
+- [ ] Confirm `docs/submission/architecture.svg` renders correctly and attach that standalone visual
+  to Devpost; keep the editable Mermaid diagram in `ARCHITECTURE_NARRATIVE.md` as repository proof.
 
 ## 6. Hosted project and judge access
 
-- [ ] Replace `[FINAL_HOSTED_URL]` everywhere with the exact stable URL submitted to Devpost.
+- [ ] Confirm the hosted URL submitted to Devpost is exactly https://1415agri.com/.
 - [ ] Verify `/live` returns a healthy response and `/ready` passes immediately before recording and
   submitting.
 - [ ] Test the entire workflow from a clean, logged-out browser.
@@ -135,7 +135,7 @@ team invitations, and the Devpost submit action should already be complete.
 
 - [ ] Project name and tagline match `DEVPOST_SUBMISSION.md`.
 - [ ] Category is **The Collaborative Partner**.
-- [ ] Hosted-project URL is `[FINAL_HOSTED_URL]`.
+- [ ] Hosted-project URL is https://1415agri.com/.
 - [ ] Public repository URL is
   [gfrazilli/agentic-agriculture-mvp](https://github.com/gfrazilli/agentic-agriculture-mvp).
 - [ ] Public video URL is `[PUBLIC_VIDEO_URL]`.
@@ -147,7 +147,7 @@ team invitations, and the Devpost submit action should already be complete.
 - [ ] Screenshots are from the submitted build and do not imply a capability not present in the video
   or code.
 - [ ] All submission material is in English or has a complete English translation.
-- [ ] Search all five files in this directory for `[AUTHORIZED_FIELD_NAME]`, `[FINAL_HOSTED_URL]`, and
+- [ ] Search all five files in this directory for `[AUTHORIZED_FIELD_NAME]` and
   `[PUBLIC_VIDEO_URL]`; replace every occurrence before submission.
 - [ ] Save a Devpost draft, preview it while logged out where possible, then use the final submit
   action before the internal 8:00 PM Brasília cutoff.

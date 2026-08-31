@@ -2,7 +2,7 @@
 
 ## Project name
 
-Agentic Agriculture
+1415 Agri
 
 ## Tagline
 
@@ -14,13 +14,13 @@ The Collaborative Partner
 
 ## Links
 
-- Hosted project: `[FINAL_HOSTED_URL]`
+- Hosted project: https://1415agri.com/
 - Code: https://github.com/gfrazilli/agentic-agriculture-mvp
 - Demo video: `[PUBLIC_VIDEO_URL]`
 
 ## Short description
 
-Agentic Agriculture gives small farmers a guided precision-agriculture workflow without requiring
+1415 Agri gives small farmers a guided precision-agriculture workflow without requiring
 them to operate satellite software. The farmer identifies a field and confirms its cultivated
 boundary. A deterministic worker processes real Sentinel-2 red, red-edge, near-infrared, and
 short-wave infrared observations into NDVI, NDRE, NDMI, and relative-development zones. Gemini 3.5+
@@ -180,7 +180,7 @@ they are not represented as capabilities of this submission.
 
 ## Testing instructions
 
-1. Open `[FINAL_HOSTED_URL]`.
+1. Open https://1415agri.com/.
 2. Sign in with the demonstration credentials supplied in the Devpost testing instructions.
 3. Choose English from the language selector if desired.
 4. Use the authorized demonstration field or enter a permitted location and season.

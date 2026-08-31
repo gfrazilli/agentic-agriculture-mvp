@@ -23,6 +23,7 @@ staticfiles/*
 infra/gcp/.secrets/
 infra/gcp/.state/
 .private-demo/
+tmp/
 .idea/
 .vscode/
 .DS_Store

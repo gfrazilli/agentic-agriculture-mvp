@@ -7,8 +7,8 @@ Vimeo video. Use this English narration, or add accurate English subtitles to a 
 ## Before recording
 
 - Use only `[AUTHORIZED_FIELD_NAME]` and imagery that the team is authorized to demonstrate.
-- Open `[FINAL_HOSTED_URL]` in a clean browser profile and confirm that the `.run.app` address is
-  visible during the live sequence.
+- Open https://1415agri.com/ in a clean browser profile. Keep a separate Google Cloud Console tab
+  ready to show the public web service's `.run.app` origin as deployment proof.
 - Enter the authorized field details in advance, but do not submit the form yet.
 - Turn **Guided demonstration** off. The judged proof segment must use the real pipeline.
 - Run `python manage.py demo_preflight` with the deployed web, agent, and MCP endpoints.
@@ -25,14 +25,14 @@ Vimeo video. Use this English narration, or add accurate English subtitles to a 
 
 ### 0:00–0:20 — The problem
 
-**Visual:** Presenter on camera, then a clean title card: “Agentic Agriculture — The Collaborative
+**Visual:** Presenter on camera, then a clean title card: “1415 Agri — The Collaborative
 Partner.”
 
 **Narration:**
 
 > A small farmer can walk a field, but cannot see red-edge, near-infrared, or short-wave infrared.
 > Public satellite data contains those signals, yet turning it into a useful field visit usually
-> requires specialist software. Agentic Agriculture makes that workflow accessible without
+> requires specialist software. 1415 Agri makes that workflow accessible without
 > pretending that a spectral difference is a diagnosis.
 
 ### 0:20–0:38 — The value and category
@@ -53,7 +53,7 @@ mock animation or an earlier result.
 
 #### 0:38–0:58 — Field context
 
-**Visual:** Switch to `[FINAL_HOSTED_URL]`. Keep the `.run.app` address visible. Briefly show the
+**Visual:** Switch to https://1415agri.com/. Briefly show the
 already-entered crop, season, area, and permitted reference point for `[AUTHORIZED_FIELD_NAME]`, then
 click **Estimate field boundary**.
 
@@ -158,7 +158,7 @@ window. Do not display secrets or credentials.
 
 **Narration:**
 
-> Agentic Agriculture lets Gemini make advanced sensing understandable, actionable, and accountable
+> 1415 Agri lets Gemini make advanced sensing understandable, actionable, and accountable
 > for a farmer who was previously left out of precision agriculture.
 
 End before 4:00. Do not add credits after the limit.

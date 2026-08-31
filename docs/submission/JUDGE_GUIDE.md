@@ -2,7 +2,7 @@
 
 ## The 60-second version
 
-**Agentic Agriculture** is a Collaborative Partner for farmers who cannot afford a conventional
+**1415 Agri** is a Collaborative Partner for farmers who cannot afford a conventional
 precision-agriculture stack. A farmer identifies a field, reviews the proposed cultivated boundary,
 and keeps control by explicitly confirming or correcting it. The system then converts a season of
 real Sentinel-2 multispectral observations into a small set of relative-development zones. A Gemini
@@ -38,7 +38,7 @@ database changes, or UI changes.
 
 ## Fastest evaluation path
 
-1. Open `[FINAL_HOSTED_URL]` and use the credentials supplied in the Devpost testing instructions.
+1. Open https://1415agri.com/ and use the credentials supplied in the Devpost testing instructions.
 2. Switch the interface to English if needed.
 3. Register the authorized demonstration field, `[AUTHORIZED_FIELD_NAME]`, using its season and
    reference location.

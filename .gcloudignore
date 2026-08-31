@@ -3,6 +3,7 @@
 .git/
 .github/
 gha-creds-*.json
+tmp/
 
 #!include:.gitignore
 

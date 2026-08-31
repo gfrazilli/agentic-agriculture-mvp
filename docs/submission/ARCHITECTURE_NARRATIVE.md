@@ -2,7 +2,7 @@
 
 ## Design thesis
 
-Agentic Agriculture is designed around one strict boundary:
+1415 Agri is designed around one strict boundary:
 
 > Gemini decides how to guide the farmer and which safe tool to use; deterministic software decides
 > what the satellite pixels measure.
@@ -17,6 +17,9 @@ than cosmetic: public interaction, model reasoning, catalog tools, and long-runn
 have different trust, resource, and failure boundaries.
 
 ## System diagram
+
+Submission-ready visual: [architecture.svg](architecture.svg). The Mermaid source below preserves
+the same topology in an editable form.
 
 ```mermaid
 flowchart LR

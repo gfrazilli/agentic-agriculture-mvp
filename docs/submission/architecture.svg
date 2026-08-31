@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1600" height="900" viewBox="0 0 1600 900" role="img" aria-labelledby="title description">
+  <title id="title">1415 Agri production architecture</title>
+  <desc id="description">A farmer uses the public Django service. Private Google ADK, MCP, Cloud Tasks and Sentinel worker services coordinate Gemini, Firestore, Cloud Storage and public Sentinel-2 data.</desc>
+  <defs>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="140%">
+      <feDropShadow dx="0" dy="5" stdDeviation="8" flood-color="#12382c" flood-opacity="0.10"/>
+    </filter>
+    <marker id="arrow-green" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#137a50"/>
+    </marker>
+    <marker id="arrow-blue" markerWidth="10" markerHeight="10" refX="9" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#3f6fb3"/>
+    </marker>
+    <style>
+      .title{font:700 34px Arial,sans-serif;fill:#0a3d2e}.subtitle{font:400 17px Arial,sans-serif;fill:#52675f}
+      .group{fill:#f3f8f4;stroke:#94b7a7;stroke-width:2}.external{fill:#f4f7fb;stroke:#8ca7cb;stroke-width:2}
+      .box{fill:#fff;stroke:#b7ccc1;stroke-width:2;filter:url(#shadow)}.box-blue{fill:#fff;stroke:#9db6d8;stroke-width:2;filter:url(#shadow)}
+      .box-green{fill:#eaf6ef;stroke:#4d9b75;stroke-width:2;filter:url(#shadow)}
+      .label{font:700 18px Arial,sans-serif;fill:#103e30}.label-blue{font:700 18px Arial,sans-serif;fill:#264d84}
+      .small{font:400 14px Arial,sans-serif;fill:#52675f}.tiny{font:700 12px Arial,sans-serif;letter-spacing:1.2px;fill:#40564e}
+      .line{fill:none;stroke:#137a50;stroke-width:3;marker-end:url(#arrow-green)}
+      .line-blue{fill:none;stroke:#3f6fb3;stroke-width:3;marker-end:url(#arrow-blue)}
+      .line-dash{fill:none;stroke:#137a50;stroke-width:2.5;stroke-dasharray:7 6;marker-end:url(#arrow-green)}
+      .edge{font:600 12px Arial,sans-serif;fill:#315f4f}.edge-blue{font:600 12px Arial,sans-serif;fill:#42658f}
+    </style>
+  </defs>
+
+  <rect width="1600" height="900" fill="#fbfdfb"/>
+  <text x="70" y="64" class="title">1415 Agri · production architecture</text>
+  <text x="70" y="94" class="subtitle">Gemini guides the workflow; deterministic software measures every satellite pixel.</text>
+
+  <rect x="250" y="130" width="1090" height="650" rx="28" class="group"/>
+  <text x="282" y="168" class="tiny">GOOGLE CLOUD · AGENTIC-AGRICULTURE-2026</text>
+
+  <rect x="35" y="330" width="180" height="132" rx="20" class="box-green"/>
+  <text x="125" y="370" text-anchor="middle" class="label">Farmer</text>
+  <text x="125" y="397" text-anchor="middle" class="small">English or Portuguese</text>
+  <text x="125" y="419" text-anchor="middle" class="small">text or voice</text>
+  <text x="125" y="441" text-anchor="middle" class="small">confirms every boundary</text>
+
+  <rect x="300" y="235" width="250" height="128" rx="18" class="box-green"/>
+  <text x="425" y="270" text-anchor="middle" class="tiny">PUBLIC CLOUD RUN</text>
+  <text x="425" y="299" text-anchor="middle" class="label">Django web + API</text>
+  <text x="425" y="324" text-anchor="middle" class="small">session · CSRF · validation</text>
+  <text x="425" y="345" text-anchor="middle" class="small">1415agri.com</text>
+
+  <rect x="650" y="205" width="250" height="148" rx="18" class="box"/>
+  <text x="775" y="239" text-anchor="middle" class="tiny">PRIVATE CLOUD RUN</text>
+  <text x="775" y="269" text-anchor="middle" class="label">Google ADK</text>
+  <text x="775" y="294" text-anchor="middle" class="small">coordinator + 3 specialists</text>
+  <text x="775" y="316" text-anchor="middle" class="small">grounded tools + safe action</text>
+  <text x="775" y="338" text-anchor="middle" class="small">Gemini 3.5 Flash</text>
+
+  <rect x="1010" y="205" width="250" height="128" rx="18" class="box"/>
+  <text x="1135" y="239" text-anchor="middle" class="tiny">PRIVATE CLOUD RUN</text>
+  <text x="1135" y="269" text-anchor="middle" class="label">Geospatial MCP</text>
+  <text x="1135" y="294" text-anchor="middle" class="small">allowlisted read-only tools</text>
+  <text x="1135" y="316" text-anchor="middle" class="small">Streamable HTTP</text>
+
+  <rect x="650" y="430" width="220" height="100" rx="18" class="box"/>
+  <text x="760" y="466" text-anchor="middle" class="label">Cloud Tasks</text>
+  <text x="760" y="492" text-anchor="middle" class="small">OIDC · retries · deduplication</text>
+  <text x="760" y="514" text-anchor="middle" class="small">asynchronous execution</text>
+
+  <rect x="985" y="410" width="275" height="142" rx="18" class="box"/>
+  <text x="1122" y="445" text-anchor="middle" class="tiny">PRIVATE CLOUD RUN</text>
+  <text x="1122" y="475" text-anchor="middle" class="label">Sentinel worker</text>
+  <text x="1122" y="500" text-anchor="middle" class="small">B04 · B05 · B08 · B11 · SCL</text>
+  <text x="1122" y="522" text-anchor="middle" class="small">NDVI · NDRE · NDMI</text>
+  <text x="1122" y="544" text-anchor="middle" class="small">deterministic relative areas</text>
+
+  <rect x="340" y="620" width="210" height="102" rx="18" class="box"/>
+  <text x="445" y="658" text-anchor="middle" class="label">Firestore</text>
+  <text x="445" y="684" text-anchor="middle" class="small">fields · analyses · sessions</text>
+  <text x="445" y="706" text-anchor="middle" class="small">feedback · idempotency</text>
+
+  <rect x="665" y="620" width="210" height="102" rx="18" class="box"/>
+  <text x="770" y="658" text-anchor="middle" class="label">Cloud Storage</text>
+  <text x="770" y="684" text-anchor="middle" class="small">private GeoJSON</text>
+  <text x="770" y="706" text-anchor="middle" class="small">previews + ADK artifacts</text>
+
+  <rect x="1000" y="620" width="230" height="102" rx="18" class="box"/>
+  <text x="1115" y="658" text-anchor="middle" class="label">Secret Manager</text>
+  <text x="1115" y="684" text-anchor="middle" class="small">runtime secrets only</text>
+  <text x="1115" y="706" text-anchor="middle" class="small">separate service identities</text>
+
+  <rect x="1375" y="190" width="190" height="112" rx="18" class="box-blue"/>
+  <text x="1470" y="227" text-anchor="middle" class="tiny">GOOGLE AI</text>
+  <text x="1470" y="257" text-anchor="middle" class="label-blue">Vertex AI</text>
+  <text x="1470" y="282" text-anchor="middle" class="small">Gemini 3.5 Flash</text>
+
+  <rect x="1375" y="405" width="190" height="170" rx="18" class="external"/>
+  <text x="1470" y="441" text-anchor="middle" class="tiny">PUBLIC SATELLITE DATA</text>
+  <text x="1470" y="474" text-anchor="middle" class="label-blue">Earth Search</text>
+  <text x="1470" y="497" text-anchor="middle" class="small">Sentinel-2 L2A catalog</text>
+  <line x1="1403" y1="520" x2="1537" y2="520" stroke="#c1cee0"/>
+  <text x="1470" y="548" text-anchor="middle" class="label-blue">AWS Open Data</text>
+  <text x="1470" y="570" text-anchor="middle" class="small">bounded COG reads</text>
+
+  <path d="M215 396 H274 V299 H300" class="line"/>
+  <text x="247" y="384" class="edge">HTTPS</text>
+  <path d="M550 285 H650" class="line"/>
+  <text x="573" y="272" class="edge">Google ID token</text>
+  <path d="M900 270 H1010" class="line"/>
+  <text x="921" y="256" class="edge">MCP tools</text>
+  <path d="M900 226 C1080 130 1250 130 1375 226" class="line-blue"/>
+  <text x="1110" y="151" class="edge-blue">Vertex AI model turns</text>
+  <path d="M425 363 V480 H650" class="line"/>
+  <text x="477" y="467" class="edge">enqueue</text>
+  <path d="M775 353 V430" class="line-dash"/>
+  <text x="787" y="398" class="edge">agent action</text>
+  <path d="M870 480 H985" class="line"/>
+  <text x="894" y="466" class="edge">OIDC task</text>
+  <path d="M1260 463 H1375" class="line-blue"/>
+  <text x="1273" y="449" class="edge-blue">STAC + COG</text>
+  <path d="M1260 285 C1320 320 1320 420 1375 455" class="line-blue"/>
+  <text x="1284" y="363" class="edge-blue">catalog</text>
+  <path d="M425 363 V620" class="line"/>
+  <text x="438" y="579" class="edge">typed state</text>
+  <path d="M700 353 C630 420 590 560 520 620" class="line-dash"/>
+  <text x="584" y="520" class="edge">evidence</text>
+  <path d="M1070 552 C940 590 700 575 520 620" class="line"/>
+  <path d="M1122 552 C1040 605 930 655 875 670" class="line"/>
+  <text x="940" y="642" class="edge">artifacts</text>
+
+  <rect x="70" y="820" width="18" height="18" rx="4" fill="#eaf6ef" stroke="#4d9b75"/>
+  <text x="99" y="834" class="small">public human entry point</text>
+  <rect x="315" y="820" width="18" height="18" rx="4" fill="#fff" stroke="#b7ccc1"/>
+  <text x="344" y="834" class="small">private Google Cloud service</text>
+  <line x1="590" y1="829" x2="650" y2="829" class="line"/>
+  <text x="665" y="834" class="small">authenticated application flow</text>
+  <line x1="925" y1="829" x2="985" y2="829" class="line-blue"/>
+  <text x="1000" y="834" class="small">model or public satellite data</text>
+  <text x="800" y="872" text-anchor="middle" class="tiny">ONE IMMUTABLE CONTAINER IMAGE · FOUR RUNTIME ROLES</text>
+</svg>

@@ -5,6 +5,11 @@ combines public Sentinel-2 imagery, deterministic multispectral processing, MCP 
 Gemini 3.5+ agents while preserving a stable interface contract for the independently built
 PR3A web UI.
 
+![1415 Agri production architecture](docs/submission/architecture.svg)
+
+The diagram is also available as a standalone submission asset, with the complete trust boundaries
+and end-to-end explanation in [the architecture narrative](docs/submission/ARCHITECTURE_NARRATIVE.md).
+
 ## Scope
 
 This repository contains the application foundation plus the PR4-PR7 backend stack:
@@ -23,7 +28,7 @@ This repository contains the application foundation plus the PR4-PR7 backend sta
 - georeferenced boundary suggestions with an explicit low-confidence fallback;
 - calibrated NDVI, NDRE, and NDMI time-series analysis with deterministic 2-7-zone clustering;
 - read-only MCP tools for the geospatial catalog plus grounded repository tools for evidence;
-- a Portuguese Google ADK multi-agent application using Gemini 3.5+;
+- a Portuguese- and English-capable Google ADK multi-agent application using Gemini 3.5+;
 - deterministic in-memory adapters for automated tests and local prototyping;
 - public liveness and readiness endpoints;
 - Gunicorn + WhiteNoise production runtime;
